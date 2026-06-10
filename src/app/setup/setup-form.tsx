@@ -3,15 +3,15 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
-import { useRouter } from 'next/navigation'
 
 export default function SetupForm() {
   const [name, setName] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0]
@@ -24,6 +24,15 @@ export default function SetupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
+    if (!newPassword || newPassword.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
     setSaving(true)
     setError(null)
 
@@ -31,6 +40,10 @@ export default function SetupForm() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
+
+      // Update password
+      const { error: pwError } = await supabase.auth.updateUser({ password: newPassword })
+      if (pwError) throw pwError
 
       let avatarUrl: string | null = null
 
@@ -68,14 +81,14 @@ export default function SetupForm() {
         data: { full_name: name.trim(), avatar_url: avatarUrl },
       })
 
-      // Update profile via RPC to bypass RLS
+      // Update profile via RPC
       const { error: rpcError } = await supabase.rpc('setup_profile', {
         p_full_name: name.trim(),
         p_avatar_url: avatarUrl,
       })
       if (rpcError) throw rpcError
 
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -94,7 +107,7 @@ export default function SetupForm() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-5">
         <label className="mb-2 block text-sm text-zinc-400">Display Name</label>
         <input
           type="text"
@@ -102,6 +115,32 @@ export default function SetupForm() {
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="What should we call you?"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="mb-5">
+        <label className="mb-2 block text-sm text-zinc-400">New Password</label>
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+          minLength={6}
+          placeholder="At least 6 characters"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="mb-5">
+        <label className="mb-2 block text-sm text-zinc-400">Confirm Password</label>
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={6}
+          placeholder="Repeat password"
           className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
         />
       </div>
@@ -127,7 +166,7 @@ export default function SetupForm() {
 
       <button
         type="submit"
-        disabled={saving || !name.trim()}
+        disabled={saving || !name.trim() || !newPassword}
         className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
       >
         {saving ? 'Setting up...' : 'Get Started'}

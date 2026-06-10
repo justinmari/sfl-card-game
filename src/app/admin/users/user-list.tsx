@@ -21,7 +21,6 @@ export default function UserList({ users }: { users: User[] }) {
   const [showCreate, setShowCreate] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -47,7 +46,7 @@ export default function UserList({ users }: { users: User[] }) {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEmail || !newPassword || !newName) return
+    if (!newEmail || !newPassword) return
     setCreating(true)
     setCreateError(null)
 
@@ -55,7 +54,6 @@ export default function UserList({ users }: { users: User[] }) {
     const { error } = await supabase.rpc('admin_create_user', {
       p_email: newEmail.trim(),
       p_password: newPassword,
-      p_full_name: newName.trim(),
     })
 
     if (error) {
@@ -63,7 +61,6 @@ export default function UserList({ users }: { users: User[] }) {
     } else {
       setNewEmail('')
       setNewPassword('')
-      setNewName('')
       setShowCreate(false)
       router.refresh()
     }
@@ -80,15 +77,7 @@ export default function UserList({ users }: { users: User[] }) {
             {createError && (
               <p className="mb-3 text-sm text-red-400">{createError}</p>
             )}
-            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Display name"
-                required
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-              />
+            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input
                 type="email"
                 value={newEmail}
