@@ -23,8 +23,24 @@ export default function UserList({ users }: { users: User[] }) {
   const [newPassword, setNewPassword] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null)
 
   const router = useRouter()
+
+  const handleResetPassword = async (user: User) => {
+    if (!confirm(`Reset password for ${user.full_name || user.id.slice(0, 8)}?`)) return
+    const tempPassword = 'temp' + Math.random().toString(36).slice(2, 8)
+    const supabase = createClient()
+    const { error } = await supabase.rpc('admin_reset_password', {
+      p_user_id: user.id,
+      p_password: tempPassword,
+    })
+    if (error) {
+      alert(error.message)
+    } else {
+      setResetResult({ userId: user.id, password: tempPassword })
+    }
+  }
 
   const startEdit = (user: User) => {
     setEditingId(user.id)
@@ -169,16 +185,38 @@ export default function UserList({ users }: { users: User[] }) {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-amber-400">
-                  {user.gruten === -1 ? 'Infinite' : user.gruten.toLocaleString()} G
-                </span>
-                <button
-                  onClick={() => startEdit(user)}
-                  className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-                >
-                  Edit
-                </button>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-amber-400">
+                    {user.gruten === -1 ? 'Infinite' : user.gruten.toLocaleString()} G
+                  </span>
+                  <button
+                    onClick={() => startEdit(user)}
+                    className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                  >
+                    Edit
+                  </button>
+                  {user.role !== 'admin' && (
+                    <button
+                      onClick={() => handleResetPassword(user)}
+                      className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                    >
+                      Reset PW
+                    </button>
+                  )}
+                </div>
+                {resetResult?.userId === user.id && (
+                  <div className="flex items-center gap-2 rounded bg-amber-950/50 px-3 py-1.5">
+                    <span className="text-xs text-amber-400">Temp password:</span>
+                    <code className="text-xs font-mono text-white">{resetResult.password}</code>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(resetResult.password); }}
+                      className="text-xs text-zinc-400 hover:text-white"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

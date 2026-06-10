@@ -73,7 +73,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
                 <button
                   onClick={handleClaim}
                   className="animate-bounce cursor-pointer text-lg transition-transform hover:scale-125"
-                  title="Claim 200 daily Gruten!"
+                  title="Claim 500 daily Gruten!"
                 >
                   🎁
                 </button>
