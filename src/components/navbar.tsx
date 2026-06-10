@@ -131,7 +131,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
           <span className="text-2xl">🎁</span>
           <div>
             <p className="text-sm font-semibold text-white">Daily Reward Claimed!</p>
-            <p className="text-xs text-amber-400">+200 Gruten added to your balance</p>
+            <p className="text-xs text-amber-400">+500 Gruten added to your balance</p>
           </div>
         </div>
       </div>
