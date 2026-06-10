@@ -26,12 +26,10 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to login (except login and auth routes)
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&

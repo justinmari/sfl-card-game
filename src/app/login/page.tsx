@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,7 +9,6 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -21,38 +19,34 @@ export default function LoginPage() {
     const supabase = createClient()
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      })
+      const { error } = await supabase.auth.signUp({ email: email.trim(), password })
       if (error) {
         setError(error.message)
-      } else {
-        // Auto sign in after sign up
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        })
-        if (signInError) {
-          setError('Account created! Please sign in.')
-          setIsSignUp(false)
-        } else {
-          router.push('/setup')
-        }
+        setLoading(false)
+        return
       }
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (signInError) {
+        setError('Account created! Please sign in.')
+        setIsSignUp(false)
+        setLoading(false)
+        return
+      }
+      window.location.href = '/setup'
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (error) {
         setError(error.message)
-      } else {
-        router.push('/dashboard')
+        setLoading(false)
+        return
       }
+      if (!data.session) {
+        setError('Login failed')
+        setLoading(false)
+        return
+      }
+      window.location.href = '/dashboard'
     }
-
-    setLoading(false)
   }
 
   return (
