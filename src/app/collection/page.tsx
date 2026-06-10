@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import AppNavbar from '@/components/app-navbar'
 import CollectionGrid from './collection-grid'
 
 export default async function CollectionPage() {
@@ -17,7 +18,6 @@ export default async function CollectionPage() {
 
   const cards = userCards || []
 
-  // Count duplicates
   const cardCounts: { card: typeof cards[0]['cards']; count: number }[] = []
   const seen = new Map<string, number>()
   for (const uc of cards) {
@@ -32,30 +32,15 @@ export default async function CollectionPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <nav className="border-b border-zinc-800 px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-zinc-400 hover:text-white">
-              &larr; Back
-            </Link>
-            <h1 className="text-xl font-bold">My Collection</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-zinc-400">
-              {cards.length} card{cards.length !== 1 ? 's' : ''} ({cardCounts.length} unique)
-            </span>
-            {profile.user_metadata?.avatar_url && (
-              <img
-                src={profile.user_metadata.avatar_url}
-                alt="Avatar"
-                className="h-8 w-8 rounded-full"
-              />
-            )}
-          </div>
-        </div>
-      </nav>
+      <AppNavbar backHref="/dashboard" title="My Collection" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
+        {cards.length > 0 && (
+          <p className="mb-6 text-sm text-zinc-400">
+            {cards.length} card{cards.length !== 1 ? 's' : ''} ({cardCounts.length} unique)
+          </p>
+        )}
+
         {cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <span className="mb-6 text-5xl">📭</span>
