@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import FlippableCard from '@/components/flippable-card'
 import PackWrapper from '@/components/pack-wrapper'
 import SwipeableReveal from '@/components/swipeable-reveal'
+import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
 
 type Pack = {
   id: string
@@ -26,7 +27,9 @@ type PulledCard = {
   creature_name: string | null
 }
 
-export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack[]; gruten: number; packOwnership: Record<string, { owned: number; total: number }> }) {
+type RarityChance = { rarity: string; chance: number }
+
+export default function PackShop({ packs, gruten, packOwnership, packRarityChances }: { packs: Pack[]; gruten: number; packOwnership: Record<string, { owned: number; total: number }>; packRarityChances: Record<string, RarityChance[]> }) {
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
   const [buying, setBuying] = useState(false)
   const [pulledCards, setPulledCards] = useState<PulledCard[] | null>(null)
@@ -152,9 +155,32 @@ export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack
             {selectedPack.description && (
               <p className="mb-4 text-sm text-zinc-400">{selectedPack.description}</p>
             )}
-            <p className="mb-5 text-sm text-zinc-500">
+            <p className="mb-4 text-sm text-zinc-500">
               {selectedPack.cards_per_pack} cards per pack
             </p>
+
+            {/* Rarity chances */}
+            {packRarityChances[selectedPack.id] && (
+              <div className="mb-5 space-y-1.5">
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Drop Rates</p>
+                {packRarityChances[selectedPack.id].map(({ rarity, chance }) => (
+                  <div key={rarity} className="flex items-center gap-2">
+                    <span className={`w-20 rounded px-1.5 py-0.5 text-[10px] text-center ${rarityBadgeColors[rarity]}`}>
+                      {rarityLabel[rarity] || rarity}
+                    </span>
+                    <div className="h-2 flex-1 rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-zinc-500"
+                        style={{ width: `${Math.max(chance, 1)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-right text-xs text-zinc-400">
+                      {chance < 1 ? chance.toFixed(1) : Math.round(chance)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-2">
               {[1, 5, 10].map((qty) => {

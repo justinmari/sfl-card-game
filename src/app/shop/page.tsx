@@ -12,7 +12,7 @@ export default async function ShopPage() {
 
   const { data: packs } = await supabase
     .from('packs')
-    .select('*, pack_cards(card_id)')
+    .select('*, pack_cards(card_id, pull_percentage, cards(rarity))')
     .eq('is_active', true)
     .order('price')
 
@@ -26,6 +26,7 @@ export default async function ShopPage() {
 
   // Build ownership counts per pack
   const packOwnership: Record<string, { owned: number; total: number }> = {}
+  const packRarityChances: Record<string, { rarity: string; chance: number }[]> = {}
   for (const pack of packs || []) {
     const cardIds = pack.pack_cards.map((pc: { card_id: string }) => pc.card_id)
     const uniqueCardIds = [...new Set(cardIds)] as string[]
@@ -33,6 +34,16 @@ export default async function ShopPage() {
       total: uniqueCardIds.length,
       owned: uniqueCardIds.filter((id) => ownedCardIds.has(id)).length,
     }
+
+    // Aggregate pull percentages by rarity
+    const rarityMap = new Map<string, number>()
+    for (const pc of pack.pack_cards as { pull_percentage: number; cards: { rarity: string } }[]) {
+      const r = pc.cards.rarity
+      rarityMap.set(r, (rarityMap.get(r) || 0) + pc.pull_percentage)
+    }
+    packRarityChances[pack.id] = Array.from(rarityMap.entries())
+      .map(([rarity, chance]) => ({ rarity, chance }))
+      .sort((a, b) => b.chance - a.chance)
   }
 
   return (
@@ -44,6 +55,7 @@ export default async function ShopPage() {
           packs={packs || []}
           gruten={profile.gruten}
           packOwnership={packOwnership}
+          packRarityChances={packRarityChances}
         />
       </main>
     </div>
