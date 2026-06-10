@@ -23,7 +23,7 @@ export default async function AdminPacksPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <AppNavbar backHref="/admin" backLabel="Admin" title="Manage Packs" />
+      <AppNavbar backHref="/dashboard" title="Manage Packs" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <PackCreateForm cards={cards || []} />

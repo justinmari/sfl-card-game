@@ -22,7 +22,7 @@ export default async function AdminCardsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <AppNavbar backHref="/admin" backLabel="Admin" title="Manage Cards" />
+      <AppNavbar backHref="/dashboard" title="Manage Cards" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <CardUploadForm creatures={creatures || []} />

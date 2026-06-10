@@ -16,7 +16,7 @@ export default async function AdminCreaturesPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <AppNavbar backHref="/admin" backLabel="Admin" title="Manage Creatures" />
+      <AppNavbar backHref="/dashboard" title="Manage Creatures" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <CreatureList creatures={creatures || []} />
