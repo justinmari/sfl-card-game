@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import AppNavbar from '@/components/app-navbar'
-import DailyClaim from './daily-claim'
 
 export default async function DashboardPage() {
   const profile = await getProfile()
@@ -27,12 +26,6 @@ export default async function DashboardPage() {
         <p className="mb-8 text-zinc-400">
           {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
         </p>
-
-        {!isAdmin && (
-          <DailyClaim
-            alreadyClaimed={profile.last_daily_claim === new Date().toISOString().split('T')[0]}
-          />
-        )}
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <a

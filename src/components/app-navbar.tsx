@@ -12,11 +12,15 @@ export default async function AppNavbar({
 }) {
   const profile = await getProfile()
 
+  const today = new Date().toISOString().split('T')[0]
+  const canClaimDaily = profile?.role !== 'admin' && profile?.last_daily_claim !== today
+
   return (
     <Navbar
       avatarUrl={profile?.user_metadata?.avatar_url}
       isAdmin={profile?.role === 'admin'}
       gruten={profile?.gruten}
+      canClaimDaily={canClaimDaily}
       backHref={backHref}
       backLabel={backLabel}
       title={title}

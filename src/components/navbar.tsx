@@ -9,13 +9,16 @@ type NavbarProps = {
   avatarUrl?: string | null
   isAdmin?: boolean
   gruten?: number
+  canClaimDaily?: boolean
   backHref?: string
   backLabel?: string
   title?: string
 }
 
-export default function Navbar({ avatarUrl, isAdmin, gruten, backHref, backLabel, title }: NavbarProps) {
+export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, backHref, backLabel, title }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [claimed, setClaimed] = useState(false)
+  const [showReward, setShowReward] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -35,9 +38,21 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, backHref, backLabel
     router.push('/login')
   }
 
+  const handleClaim = async () => {
+    const res = await fetch('/api/daily', { method: 'POST' })
+    if (res.ok) {
+      setClaimed(true)
+      setShowReward(true)
+      setTimeout(() => setShowReward(false), 3000)
+      router.refresh()
+    }
+  }
+
   const grutenDisplay = gruten === undefined ? null : gruten === -1 ? 'Infinite' : gruten.toLocaleString()
+  const showGift = canClaimDaily && !claimed
 
   return (
+    <>
     <nav className="border-b border-zinc-800 px-6 py-4">
       <div className="mx-auto flex max-w-5xl items-center justify-between">
         <div className="flex items-center gap-3">
@@ -53,9 +68,20 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, backHref, backLabel
 
         <div className="flex items-center gap-3">
           {grutenDisplay !== null && (
-            <span className="rounded-lg bg-amber-950/50 px-3 py-1 text-sm font-medium text-amber-400">
-              {grutenDisplay} G
-            </span>
+            <div className="flex items-center gap-2">
+              {showGift && (
+                <button
+                  onClick={handleClaim}
+                  className="animate-bounce cursor-pointer text-lg transition-transform hover:scale-125"
+                  title="Claim 200 daily Gruten!"
+                >
+                  🎁
+                </button>
+              )}
+              <span className="rounded-lg bg-amber-950/50 px-3 py-1 text-sm font-medium text-amber-400">
+                {grutenDisplay} G
+              </span>
+            </div>
           )}
 
           {isAdmin && (
@@ -90,5 +116,19 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, backHref, backLabel
         </div>
       </div>
     </nav>
+
+    {/* Toast */}
+    {showReward && (
+      <div className="fixed bottom-6 right-6 z-50 animate-[slideUp_0.3s_ease-out] rounded-xl border border-amber-700 bg-zinc-900 px-5 py-3 shadow-xl">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
+          <div>
+            <p className="text-sm font-semibold text-white">Daily Reward Claimed!</p>
+            <p className="text-xs text-amber-400">+200 Gruten added to your balance</p>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
