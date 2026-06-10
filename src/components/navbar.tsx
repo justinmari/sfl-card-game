@@ -103,7 +103,14 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-36 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+              <div className="absolute right-0 top-full z-50 mt-2 w-36 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                <Link
+                  href="/profile"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800"
+                >
+                  Profile
+                </Link>
                 <Link
                   href="/settings"
                   onClick={() => setMenuOpen(false)}

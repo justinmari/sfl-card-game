@@ -37,6 +37,14 @@ export default async function DashboardPage() {
           </a>
 
           <a
+            href="/players"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
+          >
+            <span className="text-3xl">👥</span>
+            <span className="text-sm font-medium">Friends</span>
+          </a>
+
+          <a
             href="/collection"
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
           >

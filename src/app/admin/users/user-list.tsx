@@ -10,6 +10,7 @@ type User = {
   avatar_url: string | null
   role: string
   gruten: number
+  hidden: boolean
 }
 
 export default function UserList({ users }: { users: User[] }) {
@@ -26,6 +27,12 @@ export default function UserList({ users }: { users: User[] }) {
   const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null)
 
   const router = useRouter()
+
+  const handleToggleHidden = async (user: User) => {
+    const supabase = createClient()
+    await supabase.rpc('admin_toggle_hidden', { p_user_id: user.id })
+    router.refresh()
+  }
 
   const handleResetPassword = async (user: User) => {
     if (!confirm(`Reset password for ${user.full_name || user.id.slice(0, 8)}?`)) return
@@ -157,6 +164,9 @@ export default function UserList({ users }: { users: User[] }) {
                 {user.role === 'admin' && (
                   <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-medium">Admin</span>
                 )}
+                {user.hidden && (
+                  <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">Hidden</span>
+                )}
               </div>
               <p className="text-xs text-zinc-500 truncate">{user.id.slice(0, 8)}</p>
             </div>
@@ -195,6 +205,12 @@ export default function UserList({ users }: { users: User[] }) {
                     className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
                   >
                     Edit
+                  </button>
+                  <button
+                    onClick={() => handleToggleHidden(user)}
+                    className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                  >
+                    {user.hidden ? 'Show' : 'Hide'}
                   </button>
                   {user.role !== 'admin' && (
                     <button
