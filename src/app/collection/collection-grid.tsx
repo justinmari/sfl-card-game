@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import TradingCard, { rarityStarCount, rarityStarColor } from '@/components/trading-card'
 import { rarityLabel } from '@/lib/rarities'
 
@@ -48,6 +48,19 @@ export default function CollectionGrid({
   const [activePack, setActivePack] = useState<string | null>(null)
   const [activeCreature, setActiveCreature] = useState<string | null>(null)
   const [sort, setSort] = useState<SortOption>('rarity')
+  const [packSearch, setPackSearch] = useState('')
+  const [packDropdownOpen, setPackDropdownOpen] = useState(false)
+  const packRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (packRef.current && !packRef.current.contains(e.target as Node)) {
+        setPackDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const filtered = useMemo(() => {
     let result = cardCounts
@@ -102,38 +115,56 @@ export default function CollectionGrid({
 
   return (
     <>
-      {/* Filters */}
+      {/* Pack filter typeahead */}
       <div className="mb-4">
         <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Pack</div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setActivePack(null)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-              activePack === null
-                ? 'bg-white text-zinc-900 font-medium'
-                : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-            }`}
-          >
-            All
-          </button>
-          {packFilters.map((pack) => {
-            const ownedFromPack = cardCounts.filter(({ card }) =>
-              pack.cardIds.includes(card.id)
-            ).length
-            return (
+        <div ref={packRef} className="relative w-64">
+          <input
+            type="text"
+            value={activePack ? packFilters.find((p) => p.id === activePack)?.name || '' : packSearch}
+            onChange={(e) => {
+              setPackSearch(e.target.value)
+              setActivePack(null)
+              setPackDropdownOpen(true)
+            }}
+            onFocus={() => setPackDropdownOpen(true)}
+            placeholder="All packs"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+          />
+          {activePack && (
+            <button
+              onClick={() => { setActivePack(null); setPackSearch('') }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+            >
+              ×
+            </button>
+          )}
+          {packDropdownOpen && (
+            <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
               <button
-                key={pack.id}
-                onClick={() => setActivePack(activePack === pack.id ? null : pack.id)}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  activePack === pack.id
-                    ? 'bg-white text-zinc-900 font-medium'
-                    : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                }`}
+                onClick={() => { setActivePack(null); setPackSearch(''); setPackDropdownOpen(false) }}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activePack ? 'text-white font-medium' : 'text-zinc-300'}`}
               >
-                {pack.name} ({ownedFromPack}/{pack.cardIds.length})
+                All packs
               </button>
-            )
-          })}
+              {packFilters
+                .filter((p) => !packSearch || p.name.toLowerCase().includes(packSearch.toLowerCase()))
+                .map((pack) => {
+                  const ownedFromPack = cardCounts.filter(({ card }) =>
+                    pack.cardIds.includes(card.id)
+                  ).length
+                  return (
+                    <button
+                      key={pack.id}
+                      onClick={() => { setActivePack(pack.id); setPackSearch(''); setPackDropdownOpen(false) }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activePack === pack.id ? 'text-white font-medium' : 'text-zinc-300'}`}
+                    >
+                      {pack.name} <span className="text-zinc-500">({ownedFromPack}/{pack.cardIds.length})</span>
+                    </button>
+                  )
+                })}
+            </div>
+          )}
         </div>
       </div>
 

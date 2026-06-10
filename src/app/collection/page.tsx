@@ -19,6 +19,7 @@ export default async function CollectionPage() {
   const { data: packs } = await supabase
     .from('packs')
     .select('id, name, pack_cards(card_id)')
+    .eq('is_active', true)
     .order('name')
 
   const { data: creatures } = await supabase
