@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import TradingCard from '@/components/trading-card'
 import FlippableCard from '@/components/flippable-card'
 import PackWrapper from '@/components/pack-wrapper'
+import SwipeableReveal from '@/components/swipeable-reveal'
 
 type Pack = {
   id: string
@@ -98,7 +98,18 @@ export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack
       {/* Pull results modal */}
       {pulledCards && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-zinc-700 bg-zinc-900 p-8" style={{ maxHeight: '85vh' }}>
+          {/* Mobile: swipeable */}
+          <div className="w-full sm:hidden">
+            <SwipeableReveal
+              cards={pulledCards}
+              flipAll={flipAll}
+              onFlipAll={() => setFlipAll(true)}
+              onDone={closeResults}
+            />
+          </div>
+
+          {/* Desktop: grid */}
+          <div className="hidden sm:flex w-full max-w-3xl flex-col rounded-2xl border border-zinc-700 bg-zinc-900 p-8" style={{ maxHeight: '85vh' }}>
             <h2 className="mb-4 text-center text-2xl font-bold">Click to reveal!</h2>
             <div className="mb-6 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '60vh' }}>
               <div className="flex flex-wrap justify-center gap-3">
