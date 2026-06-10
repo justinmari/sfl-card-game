@@ -28,11 +28,13 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [dragging, setDragging] = useState(false)
   const router = useRouter()
 
-  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const newCards: PendingCard[] = files.map((file) => ({
+  const addFiles = (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'))
+    if (imageFiles.length === 0) return
+    const newCards: PendingCard[] = imageFiles.map((file) => ({
       id: crypto.randomUUID(),
       file,
       preview: URL.createObjectURL(file),
@@ -42,6 +44,10 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
       creature_id: '',
     }))
     setPending((prev) => [...prev, ...newCards])
+  }
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files || []))
     e.target.value = ''
   }
 
@@ -114,19 +120,37 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end gap-4">
-        <div>
-          <label className="mb-1 block text-sm text-zinc-400">Select Images</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleFilesSelected}
-            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-zinc-600"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm text-zinc-400">Default Rarity</label>
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragEnter={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragging(false)
+          addFiles(Array.from(e.dataTransfer.files))
+        }}
+        className={`mb-4 flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
+          dragging
+            ? 'border-amber-500 bg-amber-950/20'
+            : 'border-zinc-700 hover:border-zinc-500'
+        }`}
+      >
+        <span className="mb-2 text-3xl">{dragging ? '📥' : '🖼️'}</span>
+        <p className="mb-3 text-sm text-zinc-400">
+          {dragging ? 'Drop images here' : 'Drag & drop images here, or click to browse'}
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer rounded-lg bg-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-600">
+            Browse Files
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFilesSelected}
+              className="hidden"
+            />
+          </label>
           <select
             value={defaultRarity}
             onChange={(e) => setDefaultRarity(e.target.value)}
