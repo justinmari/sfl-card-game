@@ -1,10 +1,10 @@
 const RARITY_BUDGETS: Record<string, number> = {
-  common: 60,
+  common: 65,
   uncommon: 25,
-  rare: 8,
-  ultra_rare: 4,
-  legendary: 2,
-  secret_rare: 1,
+  rare: 6,
+  ultra_rare: 3,
+  legendary: 0.6,
+  secret_rare: 0.1,
 }
 
 export function autoDistribute(
