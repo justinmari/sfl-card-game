@@ -213,10 +213,10 @@ export default function TradingCard({
             <img
               src={card.image_url}
               alt={card.name}
-              className="aspect-[3/4] w-full object-cover"
+              className="aspect-[5/6] w-full object-cover"
             />
           ) : (
-            <div className="aspect-[3/4] w-full flex items-center justify-center bg-zinc-800">
+            <div className="aspect-[5/6] w-full flex items-center justify-center bg-zinc-800">
               <span className="text-3xl opacity-30">🃏</span>
             </div>
           )}
@@ -233,7 +233,7 @@ export default function TradingCard({
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (
-              <p className={`${s.desc} text-zinc-500 leading-snug`}>{card.description}</p>
+              <p className={`${s.desc} text-zinc-500 leading-snug whitespace-pre-wrap`}>{card.description}</p>
             ) : (
               <p className={`${s.desc} text-zinc-700 italic leading-snug`}>No description</p>
             )}
