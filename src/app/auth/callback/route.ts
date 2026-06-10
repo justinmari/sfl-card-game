@@ -14,9 +14,20 @@ export async function GET(request: Request) {
       if (user) {
         await supabase.from('profiles').upsert({
           id: user.id,
-          full_name: user.user_metadata?.full_name,
-          avatar_url: user.user_metadata?.avatar_url,
+          full_name: user.user_metadata?.full_name || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
         }, { onConflict: 'id', ignoreDuplicates: true })
+
+        // Check if profile needs setup
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+
+        if (!profile?.full_name) {
+          return NextResponse.redirect(`${origin}/setup`)
+        }
       }
       return NextResponse.redirect(`${origin}/dashboard`)
     }

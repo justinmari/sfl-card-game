@@ -10,6 +10,10 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
+  if (!profile.full_name) {
+    redirect('/setup')
+  }
+
   const isAdmin = profile.role === 'admin'
 
   return (

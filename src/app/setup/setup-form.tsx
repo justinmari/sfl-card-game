@@ -1,0 +1,121 @@
+'use client'
+
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compress-image'
+import { useRouter } from 'next/navigation'
+
+export default function SetupForm() {
+  const [name, setName] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0]
+    if (selected) {
+      setFile(selected)
+      setPreview(URL.createObjectURL(selected))
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    setSaving(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      let avatarUrl: string | null = null
+
+      if (file) {
+        const compressed = await compressImage(file, 200, 200, 0.9)
+        const fileName = `avatars/${user.id}-${Date.now()}.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from('card-images')
+          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage
+          .from('card-images')
+          .getPublicUrl(fileName)
+        avatarUrl = publicUrl
+      }
+
+      // Update auth user metadata
+      await supabase.auth.updateUser({
+        data: { full_name: name.trim(), avatar_url: avatarUrl },
+      })
+
+      // Update profile via RPC to bypass RLS
+      const { error: rpcError } = await supabase.rpc('setup_profile', {
+        p_full_name: name.trim(),
+        p_avatar_url: avatarUrl,
+      })
+      if (rpcError) throw rpcError
+
+      router.push('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full max-w-sm px-6">
+      <h1 className="mb-2 text-2xl font-bold text-white">Welcome to SFL TCG!</h1>
+      <p className="mb-8 text-sm text-zinc-400">Set up your profile to get started.</p>
+
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="mb-6">
+        <label className="mb-2 block text-sm text-zinc-400">Display Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          placeholder="What should we call you?"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="mb-8">
+        <label className="mb-2 block text-sm text-zinc-400">Avatar (optional)</label>
+        <div className="flex items-center gap-4">
+          {preview ? (
+            <img src={preview} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800 text-2xl text-zinc-600">
+              ?
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-zinc-600"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={saving || !name.trim()}
+        className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+      >
+        {saving ? 'Setting up...' : 'Get Started'}
+      </button>
+    </form>
+  )
+}
