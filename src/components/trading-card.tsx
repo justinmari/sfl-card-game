@@ -251,4 +251,4 @@ export default function TradingCard({
   )
 }
 
-export { rarityColors, rarityBgColors, rarityBadgeColors, rarityGlow, rarityLabel, rarityStarCount, rarityStarColor }
+export { rarityColors, rarityBgColors, rarityBadgeColors, rarityGlow, rarityLabel, rarityStarCount, rarityStarColor, rarityShineColor }

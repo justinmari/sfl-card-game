@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
+import FlippableCard from '@/components/flippable-card'
 import PackWrapper from '@/components/pack-wrapper'
 
 type Pack = {
@@ -28,6 +29,7 @@ export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
   const [buying, setBuying] = useState(false)
   const [pulledCards, setPulledCards] = useState<PulledCard[] | null>(null)
+  const [flipAll, setFlipAll] = useState(false)
   const [currentGruten, setCurrentGruten] = useState(gruten)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -59,6 +61,7 @@ export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack
       setPulledCards(data.cards)
       setCurrentGruten(data.gruten_remaining)
       setSelectedPack(null)
+      setFlipAll(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -94,19 +97,29 @@ export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack
       {/* Pull results modal */}
       {pulledCards && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-3xl rounded-2xl border border-zinc-700 bg-zinc-900 p-8">
-            <h2 className="mb-6 text-center text-2xl font-bold">You pulled:</h2>
-            <div className="mb-6 flex flex-wrap justify-center gap-3">
-              {pulledCards.map((card, i) => (
-                <TradingCard key={i} card={card} size="sm" />
-              ))}
+          <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-zinc-700 bg-zinc-900 p-8" style={{ maxHeight: '85vh' }}>
+            <h2 className="mb-4 text-center text-2xl font-bold">Click to reveal!</h2>
+            <div className="mb-6 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '60vh' }}>
+              <div className="flex flex-wrap justify-center gap-3">
+                {pulledCards.map((card, i) => (
+                  <FlippableCard key={i} card={card} size="sm" forceFlip={flipAll} />
+                ))}
+              </div>
             </div>
-            <div className="text-center">
+            <div className="flex justify-center gap-3">
+              {!flipAll && (
+                <button
+                  onClick={() => setFlipAll(true)}
+                  className="rounded-lg border border-zinc-600 px-6 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  Flip All
+                </button>
+              )}
               <button
                 onClick={closeResults}
                 className="rounded-lg bg-white px-6 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
               >
-                Nice!
+                Done
               </button>
             </div>
           </div>
