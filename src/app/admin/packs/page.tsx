@@ -13,7 +13,7 @@ export default async function AdminPacksPage() {
 
   const { data: packs } = await supabase
     .from('packs')
-    .select('*, pack_cards(*, cards(*))')
+    .select('*, pack_cards(id, card_id, pull_percentage, cards(*))')
     .order('created_at', { ascending: false })
 
   const { data: cards } = await supabase
@@ -36,7 +36,7 @@ export default async function AdminPacksPage() {
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <PackCreateForm cards={cards || []} />
-        <PackList packs={packs || []} />
+        <PackList packs={packs || []} allCards={cards || []} />
       </main>
     </div>
   )

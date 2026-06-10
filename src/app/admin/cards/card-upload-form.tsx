@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
+import { RARITIES, rarityBadgeColors } from '@/lib/rarities'
+import { rarityColors } from '@/components/trading-card'
 
 type PendingCard = {
   id: string
@@ -12,20 +14,6 @@ type PendingCard = {
   name: string
   description: string
   rarity: string
-}
-
-const rarityColors: Record<string, string> = {
-  common: 'border-zinc-500',
-  uncommon: 'border-green-500',
-  rare: 'border-blue-500',
-  legendary: 'border-amber-500',
-}
-
-const rarityBadgeColors: Record<string, string> = {
-  common: 'bg-zinc-600',
-  uncommon: 'bg-green-700',
-  rare: 'bg-blue-700',
-  legendary: 'bg-amber-700',
 }
 
 export default function CardUploadForm() {
@@ -133,10 +121,9 @@ export default function CardUploadForm() {
             onChange={(e) => setDefaultRarity(e.target.value)}
             className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
           >
-            <option value="common">Common</option>
-            <option value="uncommon">Uncommon</option>
-            <option value="rare">Rare</option>
-            <option value="legendary">Legendary</option>
+            {RARITIES.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -171,10 +158,9 @@ export default function CardUploadForm() {
                     onChange={(e) => updateCard(card.id, { rarity: e.target.value })}
                     className="rounded border border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-zinc-500 focus:outline-none"
                   >
-                    <option value="common">Common</option>
-                    <option value="uncommon">Uncommon</option>
-                    <option value="rare">Rare</option>
-                    <option value="legendary">Legendary</option>
+                    {RARITIES.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
                   </select>
                   <span className={`rounded px-1.5 py-0.5 text-xs ${rarityBadgeColors[card.rarity]}`}>
                     {card.rarity}

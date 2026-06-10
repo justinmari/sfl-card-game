@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import TradingCard from '@/components/trading-card'
 
 type Pack = {
   id: string
@@ -20,27 +21,6 @@ type PulledCard = {
   rarity: string
   image_url: string | null
   description: string | null
-}
-
-const rarityColors: Record<string, string> = {
-  common: 'border-zinc-500',
-  uncommon: 'border-green-500',
-  rare: 'border-blue-500',
-  legendary: 'border-amber-500',
-}
-
-const rarityGlow: Record<string, string> = {
-  common: '',
-  uncommon: 'shadow-green-500/20',
-  rare: 'shadow-blue-500/30',
-  legendary: 'shadow-amber-500/40',
-}
-
-const rarityBadgeColors: Record<string, string> = {
-  common: 'bg-zinc-600',
-  uncommon: 'bg-green-700',
-  rare: 'bg-blue-700',
-  legendary: 'bg-amber-700',
 }
 
 export default function PackShop({ packs, gruten }: { packs: Pack[]; gruten: number }) {
@@ -113,24 +93,7 @@ export default function PackShop({ packs, gruten }: { packs: Pack[]; gruten: num
             <h2 className="mb-6 text-center text-2xl font-bold">You pulled:</h2>
             <div className="mb-6 flex flex-wrap justify-center gap-4">
               {pulledCards.map((card, i) => (
-                <div
-                  key={i}
-                  className={`overflow-hidden rounded-xl border-2 ${rarityColors[card.rarity]} bg-zinc-800 shadow-lg ${rarityGlow[card.rarity]}`}
-                >
-                  {card.image_url && (
-                    <img
-                      src={card.image_url}
-                      alt={card.name}
-                      className="h-36 w-24 object-cover"
-                    />
-                  )}
-                  <div className="p-2 text-center">
-                    <p className="text-xs font-semibold">{card.name}</p>
-                    <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] ${rarityBadgeColors[card.rarity]}`}>
-                      {card.rarity}
-                    </span>
-                  </div>
-                </div>
+                <TradingCard key={i} card={card} size="sm" />
               ))}
             </div>
             <div className="text-center">

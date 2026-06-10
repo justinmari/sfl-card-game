@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
+import { rarityBadgeColors } from '@/lib/rarities'
 
 type Card = {
   id: string
@@ -15,13 +16,6 @@ type Card = {
 type CardEntry = {
   card_id: string
   pull_percentage: number
-}
-
-const rarityBadgeColors: Record<string, string> = {
-  common: 'bg-zinc-600',
-  uncommon: 'bg-green-700',
-  rare: 'bg-blue-700',
-  legendary: 'bg-amber-700',
 }
 
 export default function PackCreateForm({ cards }: { cards: Card[] }) {

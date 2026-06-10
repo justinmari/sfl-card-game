@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
+import TradingCard from '@/components/trading-card'
+import { RARITIES } from '@/lib/rarities'
 
 type Card = {
   id: string
@@ -12,20 +14,6 @@ type Card = {
   image_url: string | null
   rarity: string
   created_at: string
-}
-
-const rarityColors: Record<string, string> = {
-  common: 'border-zinc-500',
-  uncommon: 'border-green-500',
-  rare: 'border-blue-500',
-  legendary: 'border-amber-500',
-}
-
-const rarityBadgeColors: Record<string, string> = {
-  common: 'bg-zinc-600',
-  uncommon: 'bg-green-700',
-  rare: 'bg-blue-700',
-  legendary: 'bg-amber-700',
 }
 
 export default function CardList({ cards }: { cards: Card[] }) {
@@ -156,10 +144,9 @@ export default function CardList({ cards }: { cards: Card[] }) {
                   onChange={(e) => setEditRarity(e.target.value)}
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-zinc-500 focus:outline-none"
                 >
-                  <option value="common">Common</option>
-                  <option value="uncommon">Uncommon</option>
-                  <option value="rare">Rare</option>
-                  <option value="legendary">Legendary</option>
+                  {RARITIES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -201,26 +188,10 @@ export default function CardList({ cards }: { cards: Card[] }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="flex flex-wrap gap-4">
         {cards.map((card) => (
-          <div
-            key={card.id}
-            className={`group relative overflow-hidden rounded-xl border-2 ${rarityColors[card.rarity]} bg-zinc-900`}
-          >
-            {card.image_url && (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                className="h-40 w-full object-cover"
-              />
-            )}
-            <div className="p-3">
-              <p className="text-sm font-semibold">{card.name}</p>
-              <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs ${rarityBadgeColors[card.rarity]}`}>
-                {card.rarity}
-              </span>
-            </div>
-            <div className="absolute right-2 top-2 hidden gap-1 group-hover:flex">
+          <TradingCard key={card.id} card={card} size="md" className="group">
+            <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button
                 onClick={() => startEdit(card)}
                 className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600"
@@ -234,7 +205,7 @@ export default function CardList({ cards }: { cards: Card[] }) {
                 Delete
               </button>
             </div>
-          </div>
+          </TradingCard>
         ))}
       </div>
     </div>
