@@ -7,6 +7,11 @@ import { useRouter } from 'next/navigation'
 import { RARITIES, rarityBadgeColors } from '@/lib/rarities'
 import { rarityColors } from '@/components/trading-card'
 
+type Creature = {
+  id: string
+  name: string
+}
+
 type PendingCard = {
   id: string
   file: File
@@ -14,9 +19,10 @@ type PendingCard = {
   name: string
   description: string
   rarity: string
+  creature_id: string
 }
 
-export default function CardUploadForm() {
+export default function CardUploadForm({ creatures }: { creatures: Creature[] }) {
   const [pending, setPending] = useState<PendingCard[]>([])
   const [defaultRarity, setDefaultRarity] = useState('common')
   const [uploading, setUploading] = useState(false)
@@ -33,6 +39,7 @@ export default function CardUploadForm() {
       name: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
       description: '',
       rarity: defaultRarity,
+      creature_id: '',
     }))
     setPending((prev) => [...prev, ...newCards])
     e.target.value = ''
@@ -60,12 +67,15 @@ export default function CardUploadForm() {
         const card = pending[i]
         setProgress(i + 1)
 
-        const compressed = await compressImage(card.file)
-        const fileName = `${Date.now()}-${card.name.toLowerCase().replace(/\s+/g, '-')}.jpg`
+        const isGif = card.file.type === 'image/gif'
+        const uploadBlob = isGif ? card.file : await compressImage(card.file)
+        const ext = isGif ? 'gif' : 'jpg'
+        const contentType = isGif ? 'image/gif' : 'image/jpeg'
+        const fileName = `${Date.now()}-${card.name.toLowerCase().replace(/\s+/g, '-')}.${ext}`
 
         const { error: uploadError } = await supabase.storage
           .from('card-images')
-          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+          .upload(fileName, uploadBlob, { contentType })
 
         if (uploadError) throw new Error(`Failed to upload "${card.name}": ${uploadError.message}`)
 
@@ -78,6 +88,7 @@ export default function CardUploadForm() {
           description: card.description || null,
           rarity: card.rarity,
           image_url: publicUrl,
+          creature_id: card.creature_id || null,
         })
 
         if (insertError) throw new Error(`Failed to save "${card.name}": ${insertError.message}`)
@@ -160,6 +171,16 @@ export default function CardUploadForm() {
                   >
                     {RARITIES.map((r) => (
                       <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={card.creature_id}
+                    onChange={(e) => updateCard(card.id, { creature_id: e.target.value })}
+                    className="rounded border border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-zinc-500 focus:outline-none"
+                  >
+                    <option value="">No creature</option>
+                    {creatures.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                   <span className={`rounded px-1.5 py-0.5 text-xs ${rarityBadgeColors[card.rarity]}`}>

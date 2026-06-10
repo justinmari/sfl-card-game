@@ -35,6 +35,16 @@ export default async function AdminPage() {
               Create packs, add cards, and set pull percentages.
             </p>
           </Link>
+
+          <Link
+            href="/admin/creatures"
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-colors hover:border-zinc-600"
+          >
+            <h3 className="mb-2 text-lg font-semibold">Manage Creatures</h3>
+            <p className="text-sm text-zinc-400">
+              Add and manage creature names for your cards.
+            </p>
+          </Link>
         </div>
       </main>
     </div>

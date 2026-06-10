@@ -12,13 +12,13 @@ export default async function CollectionPage() {
   const supabase = await createClient()
   const { data: userCards } = await supabase
     .from('user_cards')
-    .select('*, cards(*)')
+    .select('*, cards(*, creatures(name))')
     .eq('user_id', profile.id)
     .order('obtained_at', { ascending: false })
 
   const cards = userCards || []
 
-  const cardCounts: { card: typeof cards[0]['cards']; count: number }[] = []
+  const cardCounts: { card: { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null }; count: number }[] = []
   const seen = new Map<string, number>()
   for (const uc of cards) {
     const idx = seen.get(uc.card_id)
@@ -26,7 +26,18 @@ export default async function CollectionPage() {
       cardCounts[idx].count++
     } else {
       seen.set(uc.card_id, cardCounts.length)
-      cardCounts.push({ card: uc.cards, count: 1 })
+      const c = uc.cards
+      cardCounts.push({
+        card: {
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          image_url: c.image_url,
+          rarity: c.rarity,
+          creature_name: c.creatures?.name || null,
+        },
+        count: 1,
+      })
     }
   }
 

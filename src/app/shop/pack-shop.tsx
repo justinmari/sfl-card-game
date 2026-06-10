@@ -23,6 +23,7 @@ type PulledCard = {
   rarity: string
   image_url: string | null
   description: string | null
+  creature_name: string | null
 }
 
 export default function PackShop({ packs, gruten, packOwnership }: { packs: Pack[]; gruten: number; packOwnership: Record<string, { owned: number; total: number }> }) {

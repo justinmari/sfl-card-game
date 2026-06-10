@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   // Get pack with its cards
   const { data: pack, error: packError } = await supabase
     .from('packs')
-    .select('*, pack_cards(*, cards(*))')
+    .select('*, pack_cards(*, cards(*, creatures(name)))')
     .eq('id', pack_id)
     .eq('is_active', true)
     .single()
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   // Roll cards based on pull percentages
   const pulledCards = []
-  const packCards = pack.pack_cards as { pull_percentage: number; cards: { id: string; name: string; rarity: string; image_url: string | null; description: string | null } }[]
+  const packCards = pack.pack_cards as { pull_percentage: number; cards: { id: string; name: string; rarity: string; image_url: string | null; description: string | null; creatures: { name: string } | null } }[]
 
   for (let q = 0; q < quantity; q++) {
     for (let i = 0; i < pack.cards_per_pack; i++) {
@@ -56,7 +56,14 @@ export async function POST(request: Request) {
       for (const pc of packCards) {
         cumulative += pc.pull_percentage
         if (roll < cumulative) {
-          pulledCards.push(pc.cards)
+          pulledCards.push({
+            id: pc.cards.id,
+            name: pc.cards.name,
+            rarity: pc.cards.rarity,
+            image_url: pc.cards.image_url,
+            description: pc.cards.description,
+            creature_name: pc.cards.creatures?.name || null,
+          })
           break
         }
       }

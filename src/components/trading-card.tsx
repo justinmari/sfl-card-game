@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
+import GifImage from './gif-image'
 
 const rarityColors: Record<string, string> = {
   common: 'border-zinc-600',
@@ -89,6 +90,7 @@ type CardData = {
   description?: string | null
   image_url: string | null
   rarity: string
+  creature_name?: string | null
 }
 
 type Size = 'sm' | 'md' | 'lg'
@@ -134,6 +136,7 @@ export default function TradingCard({
   onClick,
   className = '',
   children,
+  animated = false,
 }: {
   card: CardData
   size?: Size
@@ -141,6 +144,7 @@ export default function TradingCard({
   onClick?: () => void
   className?: string
   children?: React.ReactNode
+  animated?: boolean
 }) {
   const s = sizeClasses[size]
   const stars = rarityStarCount[card.rarity] || 1
@@ -172,6 +176,8 @@ export default function TradingCard({
   }, [])
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
+  const isGif = card.image_url?.toLowerCase().endsWith('.gif') ?? false
+  const showAnimated = isGif && (isHovered || animated)
 
   return (
     <div
@@ -210,11 +216,20 @@ export default function TradingCard({
         {/* Image */}
         <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
           {card.image_url ? (
-            <img
-              src={card.image_url}
-              alt={card.name}
-              className="aspect-[5/6] w-full object-cover"
-            />
+            isGif ? (
+              <GifImage
+                src={card.image_url}
+                alt={card.name}
+                className="aspect-[5/6] w-full object-cover"
+                animate={showAnimated}
+              />
+            ) : (
+              <img
+                src={card.image_url}
+                alt={card.name}
+                className="aspect-[5/6] w-full object-cover"
+              />
+            )
           ) : (
             <div className="aspect-[5/6] w-full flex items-center justify-center bg-zinc-800">
               <span className="text-3xl opacity-30">🃏</span>
@@ -231,6 +246,7 @@ export default function TradingCard({
         {/* Card info */}
         <div className="flex flex-1 flex-col px-3 py-2.5">
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
+          <p className={`${s.desc} text-zinc-400 truncate`}>{card.creature_name || 'Unknown'}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (
               <p className={`${s.desc} text-zinc-500 leading-snug whitespace-pre-wrap`}>{card.description}</p>

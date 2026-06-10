@@ -7,20 +7,28 @@ import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
 
+type Creature = {
+  id: string
+  name: string
+}
+
 type Card = {
   id: string
   name: string
   description: string | null
   image_url: string | null
   rarity: string
+  creature_id: string | null
+  creatures: { name: string } | null
   created_at: string
 }
 
-export default function CardList({ cards }: { cards: Card[] }) {
+export default function CardList({ cards, creatures }: { cards: Card[]; creatures: Creature[] }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editRarity, setEditRarity] = useState('')
+  const [editCreatureId, setEditCreatureId] = useState('')
   const [editFile, setEditFile] = useState<File | null>(null)
   const [editPreview, setEditPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -31,6 +39,7 @@ export default function CardList({ cards }: { cards: Card[] }) {
     setEditName(card.name)
     setEditDescription(card.description || '')
     setEditRarity(card.rarity)
+    setEditCreatureId(card.creature_id || '')
     setEditFile(null)
     setEditPreview(null)
   }
@@ -49,16 +58,20 @@ export default function CardList({ cards }: { cards: Card[] }) {
         name: editName,
         description: editDescription || null,
         rarity: editRarity,
+        creature_id: editCreatureId || null,
       }
 
       // Upload new image if selected
       if (editFile) {
-        const compressed = await compressImage(editFile)
-        const fileName = `${Date.now()}-${editName.toLowerCase().replace(/\s+/g, '-')}.jpg`
+        const isGif = editFile.type === 'image/gif'
+        const uploadBlob = isGif ? editFile : await compressImage(editFile)
+        const ext = isGif ? 'gif' : 'jpg'
+        const contentType = isGif ? 'image/gif' : 'image/jpeg'
+        const fileName = `${Date.now()}-${editName.toLowerCase().replace(/\s+/g, '-')}.${ext}`
 
         const { error: uploadError } = await supabase.storage
           .from('card-images')
-          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+          .upload(fileName, uploadBlob, { contentType })
 
         if (uploadError) throw uploadError
 
@@ -146,6 +159,19 @@ export default function CardList({ cards }: { cards: Card[] }) {
                 >
                   {RARITIES.map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-400">Creature</label>
+                <select
+                  value={editCreatureId}
+                  onChange={(e) => setEditCreatureId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-zinc-500 focus:outline-none"
+                >
+                  <option value="">None (Unknown)</option>
+                  {creatures.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
