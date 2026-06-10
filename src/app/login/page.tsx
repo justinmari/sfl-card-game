@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,36 +16,22 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email: email.trim(), password })
-      if (error) {
-        setError(error.message)
-        setLoading(false)
-        return
-      }
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      if (signInError) {
-        setError('Account created! Please sign in.')
-        setIsSignUp(false)
-        setLoading(false)
-        return
-      }
-      window.location.href = '/setup'
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      if (error) {
-        setError(error.message)
-        setLoading(false)
-        return
-      }
-      if (!data.session) {
-        setError('Login failed')
-        setLoading(false)
-        return
-      }
-      window.location.href = '/dashboard'
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
     }
+    if (!data.session) {
+      setError('Login failed')
+      setLoading(false)
+      return
+    }
+    window.location.href = '/dashboard'
   }
 
   return (
@@ -77,7 +62,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
           >
-            {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Loading...' : 'Sign In'}
           </button>
         </form>
 
@@ -85,12 +70,7 @@ export default function LoginPage() {
           <p className="text-sm text-red-400">{error}</p>
         )}
 
-        <button
-          onClick={() => { setIsSignUp(!isSignUp); setError(null) }}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-        </button>
+        <p className="text-xs text-zinc-500">Invite only. Contact the admin to get an account.</p>
       </div>
     </div>
   )

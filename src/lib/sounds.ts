@@ -27,8 +27,9 @@ export function playSwipe() {
   const filter = ctx.createBiquadFilter()
   filter.type = 'bandpass'
   filter.Q.setValueAtTime(2, now)
-  filter.frequency.setValueAtTime(1800, now)
-  filter.frequency.exponentialRampToValueAtTime(900, now + 0.1)
+  const baseHz = 1500 + Math.random() * 600
+  filter.frequency.setValueAtTime(baseHz, now)
+  filter.frequency.exponentialRampToValueAtTime(baseHz * 0.5, now + 0.1)
 
   const gain = ctx.createGain()
   gain.gain.setValueAtTime(0, now)
