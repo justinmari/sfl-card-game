@@ -216,7 +216,7 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
 
       <div className="flex flex-wrap gap-4">
         {cards.map((card) => (
-          <TradingCard key={card.id} card={card} size="md" className="group">
+          <TradingCard key={card.id} card={{ ...card, creature_name: card.creatures?.name || null }} size="md" className="group">
             <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button
                 onClick={() => startEdit(card)}
