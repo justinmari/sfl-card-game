@@ -186,7 +186,7 @@ export default function TradingCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`${s.wrapper} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`${s.wrapper} ${onClick ? 'cursor-pointer' : ''} select-none ${className}`}
       style={{ perspective: '800px' }}
     >
       <div
@@ -236,17 +236,20 @@ export default function TradingCard({
             </div>
           )}
           {/* Rarity label overlay on image */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4">
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-2 pb-1.5 pt-8">
             <span className={`${s.label} font-medium uppercase tracking-wider ${rarityStarColor[card.rarity]}`}>
               {rarityLabel[card.rarity] || card.rarity}
             </span>
+            <p className={`${s.label} truncate mt-0.5`} style={{ fontFamily: 'Georgia, serif' }}>
+              <span className="text-zinc-400 italic">Creature: </span>
+              <span className="text-zinc-200">{card.creature_name || 'Unknown'}</span>
+            </p>
           </div>
         </div>
 
         {/* Card info */}
         <div className="flex flex-1 flex-col px-3 py-2.5">
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
-          <p className={`${s.desc} text-zinc-400 truncate`}>{card.creature_name || 'Unknown'}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (
               <p className={`${s.desc} text-zinc-500 leading-snug whitespace-pre-wrap`}>{card.description}</p>
