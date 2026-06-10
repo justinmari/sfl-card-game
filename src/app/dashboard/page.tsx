@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <nav className="border-b border-zinc-800 px-6 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <h1 className="text-xl font-bold">SFL Card Game</h1>
+          <h1 className="text-xl font-bold">SFL TCG</h1>
           <div className="flex items-center gap-4">
             <span className="rounded-lg bg-amber-950/50 px-3 py-1 text-sm font-medium text-amber-400">
               {grutenDisplay} G

@@ -16,8 +16,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950">
       <div className="flex flex-col items-center gap-8">
-        <h1 className="text-4xl font-bold text-white">SFL Card Game</h1>
-        <p className="text-zinc-400">Sign in to start collecting cards</p>
+        <h1 className="text-4xl font-bold text-white">SFL TCG</h1>
         <button
           onClick={handleGoogleLogin}
           className="flex items-center gap-3 rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
