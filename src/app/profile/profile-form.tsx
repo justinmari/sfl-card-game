@@ -172,13 +172,13 @@ export default function ProfileForm({
           </button>
         </div>
 
-        {/* Current top cards — 2 per row */}
-        <div className="mb-4 grid grid-cols-2 gap-4">
+        {/* Current top cards — single row */}
+        <div className="mb-4 flex justify-center gap-3">
           {[0, 1, 2, 3].map((i) => {
             const card = topCards[i]
             return card ? (
-              <div key={card.id} className="relative flex justify-center">
-                <TradingCard card={card} size="md" />
+              <div key={card.id} className="relative">
+                <TradingCard card={card} size="sm" />
                 {showCardPicker && (
                   <button
                     type="button"
@@ -192,9 +192,10 @@ export default function ProfileForm({
             ) : (
               <div
                 key={i}
-                className="flex items-center justify-center rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-900/50 py-16"
+                className="flex w-[8.5rem] items-center justify-center rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-900/50"
+                style={{ minHeight: '12rem' }}
               >
-                <span className="text-sm text-zinc-600">{showCardPicker ? 'Select a card' : 'Empty'}</span>
+                <span className="text-xs text-zinc-600">{showCardPicker ? 'Select a card' : 'Empty'}</span>
               </div>
             )
           })}
