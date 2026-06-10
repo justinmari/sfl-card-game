@@ -97,6 +97,7 @@ const sizeClasses: Record<Size, {
   wrapper: string
   name: string
   desc: string
+  descHeight: string
   stars: string
   label: string
 }> = {
@@ -104,6 +105,7 @@ const sizeClasses: Record<Size, {
     wrapper: 'w-[8.5rem]',
     name: 'text-[11px]',
     desc: 'text-[9px]',
+    descHeight: 'h-6',
     stars: 'text-[8px]',
     label: 'text-[8px]',
   },
@@ -111,6 +113,7 @@ const sizeClasses: Record<Size, {
     wrapper: 'w-[11.5rem]',
     name: 'text-sm',
     desc: 'text-[11px]',
+    descHeight: 'h-8',
     stars: 'text-[10px]',
     label: 'text-[9px]',
   },
@@ -118,6 +121,7 @@ const sizeClasses: Record<Size, {
     wrapper: 'w-[18rem]',
     name: 'text-lg',
     desc: 'text-sm',
+    descHeight: 'h-12',
     stars: 'text-sm',
     label: 'text-xs',
   },
@@ -227,9 +231,13 @@ export default function TradingCard({
         {/* Card info */}
         <div className="flex flex-1 flex-col px-3 py-2.5">
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
-          {card.description && size !== 'sm' && (
-            <p className={`${s.desc} mt-1 text-zinc-500 line-clamp-2 leading-snug`}>{card.description}</p>
-          )}
+          <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
+            {card.description ? (
+              <p className={`${s.desc} text-zinc-500 leading-snug`}>{card.description}</p>
+            ) : (
+              <p className={`${s.desc} text-zinc-700 italic leading-snug`}>No description</p>
+            )}
+          </div>
 
           {/* Stars */}
           <div className={`mt-auto flex items-center gap-[3px] pt-2 ${s.stars} ${rarityStarColor[card.rarity]}`}>
