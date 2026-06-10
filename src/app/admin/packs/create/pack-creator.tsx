@@ -107,6 +107,11 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
     setSelected(newSelected)
   }
 
+  const deselectAllDay = () => {
+    const dayCardIds = new Set(dayCards.map((c) => c.id))
+    setSelected(selected.filter((s) => !dayCardIds.has(s.card_id)))
+  }
+
   const handleSubmit = async () => {
     if (!name || selected.length === 0) return
     if (Math.abs(totalPercentage - 100) > 0.01) {
@@ -198,12 +203,20 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
         </div>
 
         {dayCards.length > 0 && (
-          <button
-            onClick={selectAllDay}
-            className="mb-4 rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
-          >
-            Select all from this day
-          </button>
+          <div className="mb-4 flex gap-2">
+            <button
+              onClick={selectAllDay}
+              className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+            >
+              Select all from this day
+            </button>
+            <button
+              onClick={deselectAllDay}
+              className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+            >
+              Deselect all from this day
+            </button>
+          </div>
         )}
 
         {/* Cards grouped by rarity */}
