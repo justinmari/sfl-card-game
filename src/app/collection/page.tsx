@@ -21,6 +21,11 @@ export default async function CollectionPage() {
     .select('id, name, pack_cards(card_id)')
     .order('name')
 
+  const { data: creatures } = await supabase
+    .from('creatures')
+    .select('id, name')
+    .order('name')
+
   const cards = userCards || []
 
   const cardCounts: { card: { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null }; count: number }[] = []
@@ -72,7 +77,7 @@ export default async function CollectionPage() {
             </Link>
           </div>
         ) : (
-          <CollectionGrid cardCounts={cardCounts} packFilters={packFilters} />
+          <CollectionGrid cardCounts={cardCounts} packFilters={packFilters} creatures={creatures || []} />
         )}
       </main>
     </div>
