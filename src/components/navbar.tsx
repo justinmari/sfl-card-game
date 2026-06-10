@@ -67,7 +67,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, backHref, backLabel
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-700 transition-colors hover:border-zinc-500"
+              className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-zinc-700 transition-colors hover:border-zinc-500"
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />

@@ -23,10 +23,10 @@ export default async function DashboardPage() {
           {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
         </p>
 
-        <div className="flex flex-wrap gap-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <a
             href="/shop"
-            className="flex flex-col items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-8 py-6 transition-colors hover:border-zinc-600"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
           >
             <span className="text-3xl">🛒</span>
             <span className="text-sm font-medium">Shop</span>
@@ -34,22 +34,35 @@ export default async function DashboardPage() {
 
           <a
             href="/collection"
-            className="flex flex-col items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-8 py-6 transition-colors hover:border-zinc-600"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
           >
             <span className="text-3xl">🃏</span>
             <span className="text-sm font-medium">Collection</span>
           </a>
-
-          {isAdmin && (
-            <a
-              href="/admin"
-              className="flex flex-col items-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 px-8 py-6 transition-colors hover:border-amber-600"
-            >
-              <span className="text-3xl">⚙️</span>
-              <span className="text-sm font-medium">Admin</span>
-            </a>
-          )}
         </div>
+
+        {isAdmin && (
+          <>
+            <h3 className="mb-4 mt-10 text-lg font-semibold text-amber-400">Admin</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <a
+                href="/admin/cards"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">🖼️</span>
+                <span className="text-sm font-medium">Manage Cards</span>
+              </a>
+
+              <a
+                href="/admin/packs"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">📦</span>
+                <span className="text-sm font-medium">Manage Packs</span>
+              </a>
+            </div>
+          </>
+        )}
       </main>
     </div>
   )
