@@ -121,10 +121,15 @@ export default function CollectionGrid({
 
   return (
     <>
+    <div className="flex gap-6">
+      {/* Left sidebar */}
+      <div className="w-56 flex-shrink-0">
+        <div className="sticky top-6 space-y-5">
+
       {/* Pack filter typeahead */}
-      <div className="mb-4">
+      <div>
         <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Pack</div>
-        <div ref={packRef} className="relative w-64">
+        <div ref={packRef} className="relative">
           <input
             type="text"
             value={activePack ? packFilters.find((p) => p.id === activePack)?.name || '' : packSearch}
@@ -176,9 +181,9 @@ export default function CollectionGrid({
 
       {/* Creature filter */}
       {(collectionCreatures.names.length > 0 || collectionCreatures.hasUnknown) && (
-        <div className="mb-4">
+        <div>
           <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Creature</div>
-          <div ref={creatureRef} className="relative w-64">
+          <div ref={creatureRef} className="relative">
             <input
               type="text"
               value={activeCreature ? (activeCreature === '__unknown__' ? 'Unknown' : activeCreature) : creatureSearch}
@@ -232,27 +237,37 @@ export default function CollectionGrid({
         </div>
       )}
 
-      {/* Sort + count */}
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-zinc-500">
-          {totalCards} card{totalCards !== 1 ? 's' : ''} ({sorted.length} unique)
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">Sort:</span>
+      {/* Sort */}
+      <div>
+        <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Sort</div>
+        <div className="flex flex-col gap-1">
           {(['rarity', 'name', 'count'] as SortOption[]).map((opt) => (
             <button
               key={opt}
               onClick={() => setSort(opt)}
-              className={`rounded px-2 py-1 text-xs transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
                 sort === opt
                   ? 'bg-zinc-700 text-white font-medium'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
-              {opt === 'count' ? 'Qty' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+              {opt === 'count' ? 'Quantity' : opt.charAt(0).toUpperCase() + opt.slice(1)}
             </button>
           ))}
         </div>
+      </div>
+
+      <p className="text-xs text-zinc-500">
+        {totalCards} card{totalCards !== 1 ? 's' : ''} ({sorted.length} unique)
+      </p>
+
+        </div>
+      </div>
+
+      {/* Right: card grid */}
+      <div className="flex-1 min-w-0">
+
+      </div>
       </div>
 
       {/* Preview modal */}
