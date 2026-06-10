@@ -16,6 +16,11 @@ export default async function CollectionPage() {
     .eq('user_id', profile.id)
     .order('obtained_at', { ascending: false })
 
+  const { data: packs } = await supabase
+    .from('packs')
+    .select('id, name, pack_cards(card_id)')
+    .order('name')
+
   const cards = userCards || []
 
   const cardCounts: { card: { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null }; count: number }[] = []
@@ -41,17 +46,17 @@ export default async function CollectionPage() {
     }
   }
 
+  const packFilters = (packs || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    cardIds: p.pack_cards.map((pc: { card_id: string }) => pc.card_id),
+  }))
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <AppNavbar backHref="/dashboard" title="My Collection" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        {cards.length > 0 && (
-          <p className="mb-6 text-sm text-zinc-400">
-            {cards.length} card{cards.length !== 1 ? 's' : ''} ({cardCounts.length} unique)
-          </p>
-        )}
-
         {cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <span className="mb-6 text-5xl">📭</span>
@@ -67,7 +72,7 @@ export default async function CollectionPage() {
             </Link>
           </div>
         ) : (
-          <CollectionGrid cardCounts={cardCounts} />
+          <CollectionGrid cardCounts={cardCounts} packFilters={packFilters} />
         )}
       </main>
     </div>
