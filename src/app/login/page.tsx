@@ -1,8 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const handleGoogleLogin = async () => {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
@@ -13,13 +19,34 @@ export default function LoginPage() {
     })
   }
 
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
+    setLoading(true)
+    setError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) {
+      setError(error.message)
+    } else {
+      setSent(true)
+    }
+    setLoading(false)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-      <div className="flex flex-col items-center gap-8">
+      <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6">
         <h1 className="text-4xl font-bold text-white">SFL TCG</h1>
+
         <button
           onClick={handleGoogleLogin}
-          className="flex items-center gap-3 rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+          className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -41,6 +68,41 @@ export default function LoginPage() {
           </svg>
           Sign in with Google
         </button>
+
+        <div className="flex w-full items-center gap-3">
+          <div className="h-px flex-1 bg-zinc-800" />
+          <span className="text-xs text-zinc-500">or</span>
+          <div className="h-px flex-1 bg-zinc-800" />
+        </div>
+
+        {sent ? (
+          <div className="w-full rounded-lg border border-zinc-800 bg-zinc-900 p-4 text-center">
+            <p className="text-sm text-zinc-300">Check your email!</p>
+            <p className="mt-1 text-xs text-zinc-500">We sent a login link to {email}</p>
+          </div>
+        ) : (
+          <form onSubmit={handleEmailLogin} className="flex w-full flex-col gap-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              required
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg border border-zinc-700 px-6 py-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {loading ? 'Sending...' : 'Sign in with Email'}
+            </button>
+          </form>
+        )}
+
+        {error && (
+          <p className="text-sm text-red-400">{error}</p>
+        )}
       </div>
     </div>
   )
