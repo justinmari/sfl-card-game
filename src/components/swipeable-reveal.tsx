@@ -1,7 +1,10 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import FlippableCard from './flippable-card'
+import TradingCard from './trading-card'
+import RarityCelebration from './rarity-celebration'
+import { playSwipe, playFlip, playCelebration } from '@/lib/sounds'
 
 type CardData = {
   id: string
@@ -10,6 +13,16 @@ type CardData = {
   image_url: string | null
   rarity: string
   creature_name?: string | null
+  is_new?: boolean
+}
+
+const rarityAuraColor: Record<string, string> = {
+  common: 'rgba(161,161,170,0.4)',
+  uncommon: 'rgba(34,197,94,0.6)',
+  rare: 'rgba(59,130,246,0.7)',
+  ultra_rare: 'rgba(168,85,247,0.8)',
+  legendary: 'rgba(245,158,11,0.85)',
+  secret_rare: 'rgba(236,72,153,0.9)',
 }
 
 export default function SwipeableReveal({
@@ -24,96 +37,292 @@ export default function SwipeableReveal({
   onDone: () => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchDelta, setTouchDelta] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [showAll, setShowAll] = useState(false)
+  const [hasShownFirst, setHasShownFirst] = useState(false)
+  const [firstFlipped, setFirstFlipped] = useState(false)
+  const [dragX, setDragX] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [animatingOut, setAnimatingOut] = useState(false)
+  const [autoMode, setAutoMode] = useState(false)
+  const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [celebrateRarity, setCelebrateRarity] = useState('')
+  const [celebrateTrigger, setCelebrateTrigger] = useState(0)
+  const dragStartRef = useRef<number | null>(null)
+  const isLast = currentIndex >= cards.length - 1
 
-  const goTo = useCallback((idx: number) => {
-    setCurrentIndex(Math.max(0, Math.min(cards.length - 1, idx)))
-    setTouchDelta(0)
-  }, [cards.length])
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX)
+  // Shared drag logic
+  const startDrag = (x: number) => {
+    if (isLast) return
+    dragStartRef.current = x
+    setIsDragging(true)
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStart === null) return
-    setTouchDelta(e.touches[0].clientX - touchStart)
+  const moveDrag = (x: number) => {
+    if (dragStartRef.current === null) return
+    setDragX(x - dragStartRef.current)
   }
 
-  const handleTouchEnd = () => {
-    if (Math.abs(touchDelta) > 50) {
-      if (touchDelta < 0) goTo(currentIndex + 1)
-      else goTo(currentIndex - 1)
+  const endDrag = () => {
+    if (dragStartRef.current === null) return
+    dragStartRef.current = null
+    setIsDragging(false)
+
+    if (Math.abs(dragX) > 80 && !isLast) {
+      playSwipe()
+      const dir = dragX < 0 ? -1 : 1
+      setAnimatingOut(true)
+      setDragX(dir * 400)
+      const nextCard = cards[currentIndex + 1]
+      if (nextCard) {
+        setCelebrateRarity(nextCard.rarity)
+        setCelebrateTrigger((prev) => prev + 1)
+        playCelebration(nextCard.rarity)
+      }
+      setTimeout(() => {
+        setCurrentIndex((prev) => prev + 1)
+        setDragX(0)
+        setAnimatingOut(false)
+      }, 300)
+    } else {
+      setDragX(0)
     }
-    setTouchStart(null)
-    setTouchDelta(0)
+  }
+
+  const goNext = () => {
+    if (isLast || animatingOut) return
+    playSwipe()
+    setAnimatingOut(true)
+    setDragX(400)
+    const nextCard = cards[currentIndex + 1]
+    if (nextCard) {
+      setCelebrateRarity(nextCard.rarity)
+      setCelebrateTrigger((prev) => prev + 1)
+      playCelebration(nextCard.rarity)
+    }
+    setTimeout(() => {
+      setCurrentIndex((prev) => prev + 1)
+      setDragX(0)
+      setAnimatingOut(false)
+    }, 300)
+  }
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => startDrag(e.touches[0].clientX)
+  const handleTouchMove = (e: React.TouchEvent) => moveDrag(e.touches[0].clientX)
+  const handleTouchEnd = () => endDrag()
+
+  // Mouse handlers
+  const handleMouseDown = (e: React.MouseEvent) => { e.preventDefault(); startDrag(e.clientX) }
+  const handleMouseMove = (e: React.MouseEvent) => moveDrag(e.clientX)
+  const handleMouseUp = () => endDrag()
+  const handleMouseLeave = () => { if (isDragging) endDrag() }
+
+  const handleFlipAll = () => {
+    setShowAll(true)
+    onFlipAll()
+  }
+
+  const rotation = (isDragging || animatingOut) ? dragX * 0.08 : 0
+  const currentTranslateX = dragX
+  const opacity = 1 - Math.abs(dragX) * 0.001
+  const dragProgress = Math.min(Math.abs(dragX) / 200, 1)
+  const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null
+  const auraColor = nextCard ? rarityAuraColor[nextCard.rarity] || 'rgba(255,255,255,0.1)' : 'transparent'
+
+  // Auto swipe mode — stops on new cards
+  useEffect(() => {
+    if (autoMode && !animatingOut && currentIndex < cards.length - 1) {
+      const nextCard = cards[currentIndex + 1]
+      if (nextCard?.is_new) {
+        // Swipe to reveal the new card, then stop
+        autoRef.current = setTimeout(() => {
+          goNext()
+          setAutoMode(false)
+        }, 800)
+      } else {
+        autoRef.current = setTimeout(() => {
+          goNext()
+        }, 800)
+      }
+      return () => { if (autoRef.current) clearTimeout(autoRef.current) }
+    }
+    if (autoMode && currentIndex >= cards.length - 1) {
+      setAutoMode(false)
+    }
+  }, [autoMode, animatingOut, currentIndex, cards.length])
+
+  useEffect(() => {
+    if (!hasShownFirst && cards.length > 0) {
+      const t = setTimeout(() => {
+        setFirstFlipped(true)
+        setHasShownFirst(true)
+        setCelebrateRarity(cards[0].rarity)
+        setCelebrateTrigger((prev) => prev + 1)
+        playCelebration(cards[0].rarity)
+      }, 600)
+      return () => clearTimeout(t)
+    }
+  }, [hasShownFirst, cards])
+
+  // Show all mode
+  if (showAll) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4">
+        <h2 className="mb-3 text-center text-xl font-bold text-white">You pulled:</h2>
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-wrap justify-center gap-2 pb-4">
+            {cards.map((card, i) => (
+              <div key={i} className="relative">
+                <TradingCard card={card} size="sm" />
+                {card.is_new && (
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-green-500 px-2 py-0.5 text-[9px] font-bold text-white shadow">
+                    NEW
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-center pt-3">
+          <button
+            onClick={onDone}
+            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <h2 className="mb-2 text-center text-xl font-bold">Tap to reveal!</h2>
-      <p className="mb-4 text-center text-sm text-zinc-400">
-        {currentIndex + 1} / {cards.length}
-      </p>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
+      <RarityCelebration rarity={celebrateRarity} trigger={celebrateTrigger} />
 
-      {/* Swipeable card area */}
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <p className="text-sm text-zinc-400">
+          {currentIndex + 1} / {cards.length}
+        </p>
+        <p className="text-sm font-medium text-white">
+          {isLast ? 'Last card!' : 'Swipe to see next'}
+        </p>
+        <div className="w-12" />
+      </div>
+
+      {/* Card stack */}
       <div
-        ref={containerRef}
-        className="relative mb-6 w-full overflow-hidden"
-        style={{ height: '320px' }}
+        className="relative flex-1 select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={isDragging ? handleMouseMove : undefined}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
-        <div
-          className="flex transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateX(calc(-${currentIndex * 100}% + ${touchDelta}px))`,
-            transition: touchStart !== null ? 'none' : 'transform 0.3s ease-out',
-          }}
-        >
-          {cards.map((card, i) => (
+        {/* Rarity aura */}
+        {nextCard && isDragging && dragProgress > 0 && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: cards.length - currentIndex - 1 }}
+          >
+            <div
+              style={{
+                width: '350px',
+                height: '450px',
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${auraColor} 0%, transparent 65%)`,
+                opacity: dragProgress,
+                filter: `blur(${20 + dragProgress * 30}px)`,
+                transition: isDragging ? 'none' : 'opacity 0.3s ease-out, filter 0.3s ease-out',
+              }}
+            />
+          </div>
+        )}
+
+        {cards.map((card, i) => {
+          if (i < currentIndex) return null
+          const isCurrent = i === currentIndex
+          const isNext = i === currentIndex + 1
+          const zIndex = cards.length - i
+
+          const scale = isCurrent ? 1 : isNext ? 0.95 + dragProgress * 0.05 : 0.9
+
+          return (
             <div
               key={i}
-              className="flex w-full flex-shrink-0 items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center px-8"
+              style={{
+                zIndex,
+                transform: isCurrent
+                  ? `translateX(${currentTranslateX}px) rotate(${rotation}deg)`
+                  : `scale(${scale})`,
+                opacity: isCurrent ? (animatingOut ? 0 : opacity) : 1,
+                transition: (isDragging && isCurrent && !animatingOut) ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
+              }}
             >
-              <FlippableCard card={card} size="md" forceFlip={flipAll} />
+              <div className="relative">
+                <FlippableCard
+                  card={card}
+                  size="lg"
+                  forceFlip={(i === 0 && firstFlipped) || (i > 0 && i <= currentIndex) || flipAll}
+                />
+                {card.is_new && ((i === 0 && firstFlipped) || (i > 0 && i <= currentIndex) || flipAll) && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white shadow-lg animate-bounce">
+                    NEW!
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )
+        })}
 
-      {/* Dots */}
-      <div className="mb-4 flex gap-1.5">
-        {cards.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            className={`h-2 rounded-full transition-all ${
-              i === currentIndex ? 'w-4 bg-white' : 'w-2 bg-zinc-600'
-            }`}
-          />
-        ))}
+        {/* Desktop: Next button — hidden on mobile */}
+        {!isLast && (
+          <div className="absolute inset-y-0 right-4 hidden sm:flex items-center" style={{ zIndex: cards.length + 10 }}>
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={goNext}
+              className="rounded-full bg-zinc-800/80 p-3 text-white backdrop-blur-sm transition-colors hover:bg-zinc-700 cursor-pointer"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-3">
-        {!flipAll && (
+      <div className="flex justify-center gap-3 px-4 pb-6 pt-3">
+        {isLast ? (
           <button
-            onClick={onFlipAll}
-            className="rounded-lg border border-zinc-600 px-5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+            onClick={handleFlipAll}
+            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
           >
-            Flip All
+            View All
           </button>
+        ) : (
+          <>
+            <button
+              onClick={handleFlipAll}
+              className="rounded-lg border border-zinc-600 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+            >
+              Skip &amp; View All
+            </button>
+            <button
+              onClick={() => setAutoMode(!autoMode)}
+              className={`rounded-lg px-5 py-2.5 text-sm font-medium transition-colors ${
+                autoMode
+                  ? 'bg-amber-600 text-white hover:bg-amber-500'
+                  : 'border border-zinc-600 text-zinc-300 hover:bg-zinc-800'
+              }`}
+            >
+              {autoMode ? 'Stop' : 'Auto'}
+            </button>
+          </>
         )}
-        <button
-          onClick={onDone}
-          className="rounded-lg bg-white px-5 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
-        >
-          Done
-        </button>
       </div>
     </div>
   )

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import FlippableCard from '@/components/flippable-card'
 import PackWrapper from '@/components/pack-wrapper'
 import SwipeableReveal from '@/components/swipeable-reveal'
 import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
@@ -15,6 +14,7 @@ type Pack = {
   cards_per_pack: number
   price: number
   image_url: string | null
+  created_at: string
   pack_cards: { card_id: string }[]
 }
 
@@ -25,6 +25,7 @@ type PulledCard = {
   image_url: string | null
   description: string | null
   creature_name: string | null
+  is_new?: boolean
 }
 
 type RarityChance = { rarity: string; chance: number }
@@ -98,47 +99,14 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
         </div>
       )}
 
-      {/* Pull results modal */}
+      {/* Pull results — shared for mobile and desktop */}
       {pulledCards && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          {/* Mobile: swipeable */}
-          <div className="w-full sm:hidden">
-            <SwipeableReveal
-              cards={pulledCards}
-              flipAll={flipAll}
-              onFlipAll={() => setFlipAll(true)}
-              onDone={closeResults}
-            />
-          </div>
-
-          {/* Desktop: grid */}
-          <div className="hidden sm:flex w-full max-w-3xl flex-col rounded-2xl border border-zinc-700 bg-zinc-900 p-8" style={{ maxHeight: '85vh' }}>
-            <h2 className="mb-4 text-center text-2xl font-bold">Click to reveal!</h2>
-            <div className="mb-6 flex-1 overflow-y-auto pr-1" style={{ maxHeight: '60vh' }}>
-              <div className="flex flex-wrap justify-center gap-3">
-                {pulledCards.map((card, i) => (
-                  <FlippableCard key={i} card={card} size="sm" forceFlip={flipAll} />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-center gap-3">
-              {!flipAll && (
-                <button
-                  onClick={() => setFlipAll(true)}
-                  className="rounded-lg border border-zinc-600 px-6 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
-                >
-                  Flip All
-                </button>
-              )}
-              <button
-                onClick={closeResults}
-                className="rounded-lg bg-white px-6 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
+        <SwipeableReveal
+          cards={pulledCards}
+          flipAll={flipAll}
+          onFlipAll={() => setFlipAll(true)}
+          onDone={closeResults}
+        />
       )}
 
       {/* Buy modal */}
@@ -230,6 +198,8 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
                 name={pack.name}
                 imageUrl={pack.image_url}
                 price={pack.price}
+                isNew={Date.now() - new Date(pack.created_at).getTime() < 7 * 24 * 60 * 60 * 1000}
+                createdAt={pack.created_at}
               />
             </div>
             {(() => {

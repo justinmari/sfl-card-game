@@ -6,9 +6,11 @@ type PackWrapperProps = {
   name: string
   imageUrl: string | null
   price: number
+  isNew?: boolean
+  createdAt?: string
 }
 
-export default function PackWrapper({ name, imageUrl, price }: PackWrapperProps) {
+export default function PackWrapper({ name, imageUrl, price, isNew, createdAt }: PackWrapperProps) {
   const packRef = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 })
   const [shine, setShine] = useState({ x: 50, y: 50 })
@@ -91,10 +93,24 @@ export default function PackWrapper({ name, imageUrl, price }: PackWrapperProps)
               {/* Gradient overlay for text readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
+              {/* NEW tag */}
+              {isNew && (
+                <div className="absolute right-2 top-2 z-20 rounded bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
+                  New!
+                </div>
+              )}
+
               {/* Pack info overlay */}
               <div className="absolute bottom-0 inset-x-0 px-4 pb-3">
                 <h3 className="text-lg font-bold text-white drop-shadow-lg">{name}</h3>
-                <span className="text-sm font-semibold text-amber-400">{price} G</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-amber-400">{price} G</span>
+                  {createdAt && (
+                    <span className="text-[10px] text-zinc-400">
+                      {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

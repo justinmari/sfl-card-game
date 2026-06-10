@@ -39,10 +39,12 @@ export default function CollectionGrid({
   cardCounts,
   packFilters,
   creatures,
+  totalCards,
 }: {
   cardCounts: { card: Card; count: number }[]
   packFilters: PackFilter[]
   creatures: Creature[]
+  totalCards: number
 }) {
   const [selected, setSelected] = useState<{ card: Card; count: number } | null>(null)
   const [activePack, setActivePack] = useState<string | null>(null)
@@ -106,7 +108,7 @@ export default function CollectionGrid({
     return items
   }, [filtered, sort])
 
-  const totalCards = sorted.reduce((sum, { count }) => sum + count, 0)
+  const filteredTotal = sorted.reduce((sum, { count }) => sum + count, 0)
 
   // Get creatures that appear in the user's collection
   const collectionCreatures = useMemo(() => {
@@ -258,7 +260,7 @@ export default function CollectionGrid({
       </div>
 
       <p className="text-xs text-zinc-500">
-        {totalCards} card{totalCards !== 1 ? 's' : ''} ({sorted.length} unique)
+        {filteredTotal} card{filteredTotal !== 1 ? 's' : ''} ({sorted.length} unique)
       </p>
 
         </div>

@@ -130,7 +130,7 @@ export default function FlippableCard({ card, size = 'sm', forceFlip = false }: 
                 transform: 'rotateY(180deg)',
               }}
             >
-              <TradingCard card={card} size={size} />
+              <TradingCard card={card} size={size} animated={isFlipped} />
             </div>
           </div>
         </div>

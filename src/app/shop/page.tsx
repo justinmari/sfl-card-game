@@ -16,11 +16,12 @@ export default async function ShopPage() {
     .eq('is_active', true)
     .order('price')
 
-  // Get user's owned card IDs
+  // Get user's owned card IDs (only count > 0)
   const { data: userCards } = await supabase
     .from('user_cards')
     .select('card_id')
     .eq('user_id', profile.id)
+    .gt('count', 0)
 
   const ownedCardIds = new Set((userCards || []).map((uc) => uc.card_id))
 
@@ -35,7 +36,6 @@ export default async function ShopPage() {
       owned: uniqueCardIds.filter((id) => ownedCardIds.has(id)).length,
     }
 
-    // Aggregate pull percentages by rarity
     const rarityMap = new Map<string, number>()
     for (const pc of pack.pack_cards as { pull_percentage: number; cards: { rarity: string } }[]) {
       const r = pc.cards.rarity

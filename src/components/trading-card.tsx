@@ -220,14 +220,14 @@ export default function TradingCard({
               <GifImage
                 src={card.image_url}
                 alt={card.name}
-                className="aspect-[5/6] w-full object-cover"
+                className="aspect-[5/6] w-full object-cover block"
                 animate={showAnimated}
               />
             ) : (
               <img
                 src={card.image_url}
                 alt={card.name}
-                className="aspect-[5/6] w-full object-cover"
+                className="aspect-[5/6] w-full object-cover block"
               />
             )
           ) : (
@@ -236,7 +236,7 @@ export default function TradingCard({
             </div>
           )}
           {/* Rarity label overlay on image */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-2 pb-1.5 pt-8">
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 via-30% to-transparent px-2 pb-1.5 pt-10">
             <span className={`${s.label} font-medium uppercase tracking-wider ${rarityStarColor[card.rarity]}`}>
               {rarityLabel[card.rarity] || card.rarity}
             </span>

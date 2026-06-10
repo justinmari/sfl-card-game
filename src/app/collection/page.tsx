@@ -12,8 +12,9 @@ export default async function CollectionPage() {
   const supabase = await createClient()
   const { data: userCards } = await supabase
     .from('user_cards')
-    .select('*, cards(*, creatures(name))')
+    .select('card_id, count, obtained_at, cards(*, creatures(name))')
     .eq('user_id', profile.id)
+    .gt('count', 0)
     .order('obtained_at', { ascending: false })
 
   const { data: packs } = await supabase
@@ -27,30 +28,23 @@ export default async function CollectionPage() {
     .select('id, name')
     .order('name')
 
-  const cards = userCards || []
+  const rows = userCards || []
+  const totalCards = rows.reduce((sum, uc) => sum + uc.count, 0)
 
-  const cardCounts: { card: { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null }; count: number }[] = []
-  const seen = new Map<string, number>()
-  for (const uc of cards) {
-    const idx = seen.get(uc.card_id)
-    if (idx !== undefined) {
-      cardCounts[idx].count++
-    } else {
-      seen.set(uc.card_id, cardCounts.length)
-      const c = uc.cards
-      cardCounts.push({
-        card: {
-          id: c.id,
-          name: c.name,
-          description: c.description,
-          image_url: c.image_url,
-          rarity: c.rarity,
-          creature_name: c.creatures?.name || null,
-        },
-        count: 1,
-      })
+  const cardCounts = rows.map((uc) => {
+    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null }
+    return {
+      card: {
+        id: uc.card_id,
+        name: c.name,
+        description: c.description,
+        image_url: c.image_url,
+        rarity: c.rarity,
+        creature_name: c.creatures?.name || null,
+      },
+      count: uc.count,
     }
-  }
+  })
 
   const packFilters = (packs || []).map((p) => ({
     id: p.id,
@@ -63,7 +57,7 @@ export default async function CollectionPage() {
       <AppNavbar backHref="/dashboard" title="My Collection" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        {cards.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <span className="mb-6 text-5xl">📭</span>
             <h2 className="mb-2 text-xl font-bold">No cards yet</h2>
@@ -78,7 +72,7 @@ export default async function CollectionPage() {
             </Link>
           </div>
         ) : (
-          <CollectionGrid cardCounts={cardCounts} packFilters={packFilters} creatures={creatures || []} />
+          <CollectionGrid cardCounts={cardCounts} packFilters={packFilters} creatures={creatures || []} totalCards={totalCards} />
         )}
       </main>
     </div>
