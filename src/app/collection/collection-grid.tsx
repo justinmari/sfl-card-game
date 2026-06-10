@@ -51,11 +51,17 @@ export default function CollectionGrid({
   const [packSearch, setPackSearch] = useState('')
   const [packDropdownOpen, setPackDropdownOpen] = useState(false)
   const packRef = useRef<HTMLDivElement>(null)
+  const [creatureSearch, setCreatureSearch] = useState('')
+  const [creatureDropdownOpen, setCreatureDropdownOpen] = useState(false)
+  const creatureRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (packRef.current && !packRef.current.contains(e.target as Node)) {
         setPackDropdownOpen(false)
+      }
+      if (creatureRef.current && !creatureRef.current.contains(e.target as Node)) {
+        setCreatureDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -172,41 +178,55 @@ export default function CollectionGrid({
       {(collectionCreatures.names.length > 0 || collectionCreatures.hasUnknown) && (
         <div className="mb-4">
           <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Creature</div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveCreature(null)}
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                activeCreature === null
-                  ? 'bg-white text-zinc-900 font-medium'
-                  : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-              }`}
-            >
-              All
-            </button>
-            {collectionCreatures.names.map((name) => (
+          <div ref={creatureRef} className="relative w-64">
+            <input
+              type="text"
+              value={activeCreature ? (activeCreature === '__unknown__' ? 'Unknown' : activeCreature) : creatureSearch}
+              onChange={(e) => {
+                setCreatureSearch(e.target.value)
+                setActiveCreature(null)
+                setCreatureDropdownOpen(true)
+              }}
+              onFocus={() => setCreatureDropdownOpen(true)}
+              placeholder="All creatures"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            />
+            {activeCreature && (
               <button
-                key={name}
-                onClick={() => setActiveCreature(activeCreature === name ? null : name)}
-                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                  activeCreature === name
-                    ? 'bg-white text-zinc-900 font-medium'
-                    : 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                }`}
+                onClick={() => { setActiveCreature(null); setCreatureSearch('') }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
               >
-                {name}
+                ×
               </button>
-            ))}
-            {collectionCreatures.hasUnknown && (
-              <button
-                onClick={() => setActiveCreature(activeCreature === '__unknown__' ? null : '__unknown__')}
-                className={`rounded-lg px-3 py-1.5 text-sm italic transition-colors ${
-                  activeCreature === '__unknown__'
-                    ? 'bg-white text-zinc-900 font-medium'
-                    : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800'
-                }`}
-              >
-                Unknown
-              </button>
+            )}
+            {creatureDropdownOpen && (
+              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                <button
+                  onClick={() => { setActiveCreature(null); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activeCreature ? 'text-white font-medium' : 'text-zinc-300'}`}
+                >
+                  All creatures
+                </button>
+                {collectionCreatures.names
+                  .filter((n) => !creatureSearch || n.toLowerCase().includes(creatureSearch.toLowerCase()))
+                  .map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => { setActiveCreature(name); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activeCreature === name ? 'text-white font-medium' : 'text-zinc-300'}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                {collectionCreatures.hasUnknown && (!creatureSearch || 'unknown'.includes(creatureSearch.toLowerCase())) && (
+                  <button
+                    onClick={() => { setActiveCreature('__unknown__'); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
+                    className={`w-full px-3 py-2 text-left text-sm italic hover:bg-zinc-800 ${activeCreature === '__unknown__' ? 'text-white font-medium' : 'text-zinc-400'}`}
+                  >
+                    Unknown
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
