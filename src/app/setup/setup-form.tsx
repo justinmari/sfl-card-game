@@ -45,6 +45,22 @@ export default function SetupForm() {
           .from('card-images')
           .getPublicUrl(fileName)
         avatarUrl = publicUrl
+      } else {
+        // Generate default avatar from initials
+        const initials = name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        const colors = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899']
+        const color = colors[name.trim().length % colors.length]
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" rx="100" fill="${color}"/><text x="100" y="108" text-anchor="middle" font-family="system-ui,sans-serif" font-size="80" font-weight="bold" fill="white">${initials}</text></svg>`
+        const blob = new Blob([svg], { type: 'image/svg+xml' })
+        const fileName = `avatars/${user.id}-${Date.now()}.svg`
+        const { error: uploadError } = await supabase.storage
+          .from('card-images')
+          .upload(fileName, blob, { contentType: 'image/svg+xml' })
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage
+          .from('card-images')
+          .getPublicUrl(fileName)
+        avatarUrl = publicUrl
       }
 
       // Update auth user metadata
