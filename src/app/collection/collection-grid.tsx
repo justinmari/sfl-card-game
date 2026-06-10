@@ -121,10 +121,10 @@ export default function CollectionGrid({
 
   return (
     <>
-    <div className="flex gap-6">
-      {/* Left sidebar */}
-      <div className="w-56 flex-shrink-0">
-        <div className="sticky top-6 space-y-5">
+    <div className="flex flex-col gap-6 lg:flex-row">
+      {/* Sidebar — horizontal on mobile, vertical on desktop */}
+      <div className="w-full flex-shrink-0 lg:w-56">
+        <div className="space-y-5 lg:sticky lg:top-6">
 
       {/* Pack filter typeahead */}
       <div>
@@ -305,15 +305,27 @@ export default function CollectionGrid({
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-zinc-500">No cards match this filter.</p>
       ) : (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
           {sorted.map(({ card, count }) => (
-            <TradingCard
-              key={card.id}
-              card={card}
-              size="md"
-              count={count}
-              onClick={() => setSelected({ card, count })}
-            />
+            <div key={card.id} className="sm:contents">
+              <div className="sm:hidden">
+                <TradingCard
+                  card={card}
+                  size="sm"
+                  count={count}
+                  onClick={() => setSelected({ card, count })}
+                  className="!w-full"
+                />
+              </div>
+              <div className="hidden sm:block">
+                <TradingCard
+                  card={card}
+                  size="md"
+                  count={count}
+                  onClick={() => setSelected({ card, count })}
+                />
+              </div>
+            </div>
           ))}
         </div>
       )}
