@@ -9,9 +9,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { pack_id } = await request.json()
-  if (!pack_id) {
-    return NextResponse.json({ error: 'Missing pack_id' }, { status: 400 })
+  const { pack_id, quantity = 1 } = await request.json()
+  if (!pack_id || quantity < 1 || quantity > 10) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
   // Get pack with its cards
@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Pack not found' }, { status: 404 })
   }
 
+  const totalCost = pack.price * quantity
+
   // Get user profile
   const { data: profile } = await supabase
     .from('profiles')
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   // Check if user can afford it (-1 = infinite)
-  if (profile.gruten !== -1 && profile.gruten < pack.price) {
+  if (profile.gruten !== -1 && profile.gruten < totalCost) {
     return NextResponse.json({ error: 'Not enough Gruten' }, { status: 400 })
   }
 
@@ -46,15 +48,17 @@ export async function POST(request: Request) {
   const pulledCards = []
   const packCards = pack.pack_cards as { pull_percentage: number; cards: { id: string; name: string; rarity: string; image_url: string | null; description: string | null } }[]
 
-  for (let i = 0; i < pack.cards_per_pack; i++) {
-    const roll = Math.random() * 100
-    let cumulative = 0
+  for (let q = 0; q < quantity; q++) {
+    for (let i = 0; i < pack.cards_per_pack; i++) {
+      const roll = Math.random() * 100
+      let cumulative = 0
 
-    for (const pc of packCards) {
-      cumulative += pc.pull_percentage
-      if (roll < cumulative) {
-        pulledCards.push(pc.cards)
-        break
+      for (const pc of packCards) {
+        cumulative += pc.pull_percentage
+        if (roll < cumulative) {
+          pulledCards.push(pc.cards)
+          break
+        }
       }
     }
   }
@@ -74,12 +78,12 @@ export async function POST(request: Request) {
   if (profile.gruten !== -1) {
     await supabase
       .from('profiles')
-      .update({ gruten: profile.gruten - pack.price })
+      .update({ gruten: profile.gruten - totalCost })
       .eq('id', user.id)
   }
 
   return NextResponse.json({
     cards: pulledCards,
-    gruten_remaining: profile.gruten === -1 ? -1 : profile.gruten - pack.price,
+    gruten_remaining: profile.gruten === -1 ? -1 : profile.gruten - totalCost,
   })
 }

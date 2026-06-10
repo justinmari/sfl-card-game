@@ -3,8 +3,8 @@ export const RARITIES = [
   { value: 'uncommon', label: 'Uncommon' },
   { value: 'rare', label: 'Rare' },
   { value: 'ultra_rare', label: 'Ultra Rare' },
-  { value: 'secret_rare', label: 'Secret Rare' },
   { value: 'legendary', label: 'Legendary' },
+  { value: 'secret_rare', label: 'Secret Rare' },
 ] as const
 
 export const rarityBadgeColors: Record<string, string> = {

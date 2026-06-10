@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import { rarityBadgeColors } from '@/lib/rarities'
+import { autoDistribute } from '@/lib/auto-distribute'
 
 type Card = {
   id: string
@@ -218,7 +219,16 @@ export default function PackCreateForm({ cards }: { cards: Card[] }) {
       {entries.length > 0 && (
         <div className="mb-4">
           <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm text-zinc-400">Pull Percentages</label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-zinc-400">Pull Percentages</label>
+              <button
+                type="button"
+                onClick={() => setEntries(autoDistribute(entries, cards))}
+                className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-700"
+              >
+                Auto
+              </button>
+            </div>
             <span className={`text-sm font-medium ${Math.abs(totalPercentage - 100) < 0.01 ? 'text-green-400' : 'text-amber-400'}`}>
               Total: {totalPercentage.toFixed(2)}%
             </span>

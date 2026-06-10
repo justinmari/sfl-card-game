@@ -52,8 +52,8 @@ const rarityStarCount: Record<string, number> = {
   uncommon: 2,
   rare: 3,
   ultra_rare: 4,
-  secret_rare: 5,
-  legendary: 6,
+  legendary: 5,
+  secret_rare: 6,
 }
 
 const rarityStarColor: Record<string, string> = {
