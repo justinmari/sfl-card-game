@@ -28,10 +28,10 @@ export default async function ShopPage() {
   const packOwnership: Record<string, { owned: number; total: number }> = {}
   for (const pack of packs || []) {
     const cardIds = pack.pack_cards.map((pc: { card_id: string }) => pc.card_id)
-    const uniqueCardIds = [...new Set(cardIds)]
+    const uniqueCardIds = [...new Set(cardIds)] as string[]
     packOwnership[pack.id] = {
       total: uniqueCardIds.length,
-      owned: uniqueCardIds.filter((id: string) => ownedCardIds.has(id)).length,
+      owned: uniqueCardIds.filter((id) => ownedCardIds.has(id)).length,
     }
   }
 
