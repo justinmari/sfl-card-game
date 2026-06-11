@@ -2,6 +2,7 @@ export type { Skill, SkillEffect, ActiveSkill } from '@/lib/skills'
 export { SKILL_REGISTRY, resolveSkills } from '@/lib/skills'
 
 import type { Skill, ActiveSkill } from '@/lib/skills'
+import { seededShuffle } from '@/lib/seeded-random'
 
 export type BattleCard = {
   id: string
@@ -57,7 +58,8 @@ export const starCount: Record<string, number> = {
   secret_rare: 6,
 }
 
-function shuffle<T>(arr: T[]): T[] {
+function shuffle<T>(arr: T[], rng?: () => number): T[] {
+  if (rng) return seededShuffle(arr, rng)
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -77,7 +79,9 @@ export type FaceOffDetail = FaceOff & {
 
 const allRarities = Object.keys(starCount)
 
-export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[]): FaceOffDetail {
+export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[], rng?: () => number): FaceOffDetail {
+  const rand = rng || Math.random
+
   // --- Phase 1: Determine star values (can be modified by skills) ---
   let s1 = starCount[card1.rarity] || 1
   let s2 = starCount[card2.rarity] || 1
@@ -87,8 +91,8 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
       const e = as.skill.effect
       // Scramble: randomize both rarities
       if (e.type === 'scramble-rarities') {
-        const r1 = allRarities[Math.floor(Math.random() * allRarities.length)]
-        const r2 = allRarities[Math.floor(Math.random() * allRarities.length)]
+        const r1 = allRarities[Math.floor(rand() * allRarities.length)]
+        const r2 = allRarities[Math.floor(rand() * allRarities.length)]
         s1 = starCount[r1] || 1
         s2 = starCount[r2] || 1
       }
@@ -120,23 +124,23 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
   } else if (bigDiceRange > 0) {
     // Lower rarity card gets big dice range
     if (s1 < s2) {
-      roll1 = Math.floor(Math.random() * (bigDiceRange + 1))
+      roll1 = Math.floor(rand() * (bigDiceRange + 1))
     } else if (s2 < s1) {
-      roll2 = Math.floor(Math.random() * (bigDiceRange + 1))
+      roll2 = Math.floor(rand() * (bigDiceRange + 1))
     } else {
       // Equal: both get big dice
-      roll1 = Math.floor(Math.random() * (bigDiceRange + 1))
-      roll2 = Math.floor(Math.random() * (bigDiceRange + 1))
+      roll1 = Math.floor(rand() * (bigDiceRange + 1))
+      roll2 = Math.floor(rand() * (bigDiceRange + 1))
     }
   } else {
     const diff = Math.abs(s1 - s2)
     if (s1 === s2) {
-      roll1 = Math.floor(Math.random() * 2)
-      roll2 = Math.floor(Math.random() * 2)
+      roll1 = Math.floor(rand() * 2)
+      roll2 = Math.floor(rand() * 2)
     } else if (s1 < s2) {
-      roll1 = Math.floor(Math.random() * (diff + 2))
+      roll1 = Math.floor(rand() * (diff + 2))
     } else {
-      roll2 = Math.floor(Math.random() * (diff + 2))
+      roll2 = Math.floor(rand() * (diff + 2))
     }
   }
 
@@ -202,8 +206,8 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
   }
 }
 
-export function randomPair(players: BattlePlayer[]): { pairs: [string, string][]; byeId: string | null } {
-  const alive = shuffle(players.filter((p) => !p.eliminated))
+export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs: [string, string][]; byeId: string | null } {
+  const alive = shuffle(players.filter((p) => !p.eliminated), rng)
   const pairs: [string, string][] = []
   let byeId: string | null = null
 
@@ -224,21 +228,22 @@ export function precomputeRound(
   roundNum: number,
   fixedPairings?: { pairs: [string, string][]; byeId: string | null },
   activeSkills?: ActiveSkill[],
+  rng?: () => number,
 ): RoundResult {
-  const { pairs, byeId } = fixedPairings || randomPair(players)
+  const { pairs, byeId } = fixedPairings || randomPair(players, rng)
 
   const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
     const p2 = players.find((p) => p.id === id2)!
-    const deck1 = shuffle(p1.deck)
-    const deck2 = shuffle(p2.deck)
+    const deck1 = shuffle(p1.deck, rng)
+    const deck2 = shuffle(p2.deck, rng)
     const faceOffs: FaceOff[] = []
 
     // Filter skills relevant to this match
     const matchSkills = activeSkills?.filter((s) => s.activatedBy === id1 || s.activatedBy === id2)
 
     for (let i = 0; i < 5; i++) {
-      faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills))
+      faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills, rng))
     }
 
     // Simulate to find winner
@@ -253,7 +258,7 @@ export function precomputeRound(
     let winnerId: string | null = null
     if (hp1 > hp2) winnerId = id1
     else if (hp2 > hp1) winnerId = id2
-    else winnerId = Math.random() > 0.5 ? id1 : id2
+    else winnerId = (rng || Math.random)() > 0.5 ? id1 : id2
 
     return { player1Id: id1, player2Id: id2, faceOffs, winnerId }
   })
