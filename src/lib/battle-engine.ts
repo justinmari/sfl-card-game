@@ -18,15 +18,15 @@ export type BattlePlayer = {
 export type FaceOff = {
   card1: BattleCard
   card2: BattleCard
-  damage1: number // damage dealt TO player 1
-  damage2: number // damage dealt TO player 2
+  damage1: number
+  damage2: number
 }
 
 export type MatchResult = {
   player1Id: string
   player2Id: string
   faceOffs: FaceOff[]
-  winnerId: string | null // null = tie (shouldn't happen with coinflip)
+  winnerId: string | null
 }
 
 export type RoundResult = {
@@ -66,100 +66,56 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOff {
   }
 }
 
-export function resolveMatch(player1: BattlePlayer, player2: BattlePlayer): MatchResult {
-  const deck1 = shuffle(player1.deck)
-  const deck2 = shuffle(player2.deck)
-  const faceOffs: FaceOff[] = []
-
-  let hp1 = player1.hp
-  let hp2 = player2.hp
-
-  for (let i = 0; i < 5; i++) {
-    const fo = resolveFaceOff(deck1[i], deck2[i])
-    faceOffs.push(fo)
-
-    hp1 -= fo.damage1
-    hp2 -= fo.damage2
-
-    // Early KO
-    if (hp1 <= 0 || hp2 <= 0) break
-  }
-
-  // Update player HP
-  player1.hp = Math.max(0, hp1)
-  player2.hp = Math.max(0, hp2)
-
-  if (player1.hp <= 0) player1.eliminated = true
-  if (player2.hp <= 0) player2.eliminated = true
-
-  // Determine winner
-  let winnerId: string | null = null
-  if (player1.hp > player2.hp) winnerId = player1.id
-  else if (player2.hp > player1.hp) winnerId = player2.id
-  else winnerId = Math.random() > 0.5 ? player1.id : player2.id // coinflip
-
-  return { player1Id: player1.id, player2Id: player2.id, faceOffs, winnerId }
-}
-
-export function pairPlayers(players: BattlePlayer[], previousPairs: Set<string>): { pairs: [string, string][]; byeId: string | null } {
-  const active = players.filter((p) => !p.eliminated)
-  // Sort by HP descending for Swiss pairing
-  active.sort((a, b) => b.hp - a.hp)
-
+export function randomPair(players: BattlePlayer[]): { pairs: [string, string][]; byeId: string | null } {
+  const alive = shuffle(players.filter((p) => !p.eliminated))
   const pairs: [string, string][] = []
-  const paired = new Set<string>()
   let byeId: string | null = null
 
-  for (let i = 0; i < active.length; i++) {
-    if (paired.has(active[i].id)) continue
-    let found = false
-    for (let j = i + 1; j < active.length; j++) {
-      if (paired.has(active[j].id)) continue
-      const pairKey = [active[i].id, active[j].id].sort().join('-')
-      // Prefer no rematches, but allow if necessary
-      if (!previousPairs.has(pairKey)) {
-        pairs.push([active[i].id, active[j].id])
-        paired.add(active[i].id)
-        paired.add(active[j].id)
-        found = true
-        break
-      }
-    }
-    // If no non-rematch found, pair with next available
-    if (!found && !paired.has(active[i].id)) {
-      for (let j = i + 1; j < active.length; j++) {
-        if (!paired.has(active[j].id)) {
-          pairs.push([active[i].id, active[j].id])
-          paired.add(active[i].id)
-          paired.add(active[j].id)
-          found = true
-          break
-        }
-      }
-    }
-    if (!found && !paired.has(active[i].id)) {
-      byeId = active[i].id
-    }
+  for (let i = 0; i < alive.length - 1; i += 2) {
+    pairs.push([alive[i].id, alive[i + 1].id])
+  }
+
+  if (alive.length % 2 === 1) {
+    byeId = alive[alive.length - 1].id
   }
 
   return { pairs, byeId }
 }
 
-export function runRound(
+export function precomputeRound(
   players: BattlePlayer[],
-  roundNum: number,
-  previousPairs: Set<string>
+  currentHp: Record<string, number>,
+  roundNum: number
 ): RoundResult {
-  const { pairs, byeId } = pairPlayers(players, previousPairs)
-  const matches: MatchResult[] = []
+  const { pairs, byeId } = randomPair(players)
 
-  for (const [id1, id2] of pairs) {
+  const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
     const p2 = players.find((p) => p.id === id2)!
-    const result = resolveMatch(p1, p2)
-    matches.push(result)
-    previousPairs.add([id1, id2].sort().join('-'))
-  }
+    const deck1 = shuffle(p1.deck)
+    const deck2 = shuffle(p2.deck)
+    const faceOffs: FaceOff[] = []
+
+    for (let i = 0; i < 5; i++) {
+      faceOffs.push(resolveFaceOff(deck1[i], deck2[i]))
+    }
+
+    // Simulate to find winner
+    let hp1 = currentHp[id1] || 0
+    let hp2 = currentHp[id2] || 0
+    for (const fo of faceOffs) {
+      hp1 -= fo.damage1
+      hp2 -= fo.damage2
+      if (hp1 <= 0 || hp2 <= 0) break
+    }
+
+    let winnerId: string | null = null
+    if (hp1 > hp2) winnerId = id1
+    else if (hp2 > hp1) winnerId = id2
+    else winnerId = Math.random() > 0.5 ? id1 : id2
+
+    return { player1Id: id1, player2Id: id2, faceOffs, winnerId }
+  })
 
   return { round: roundNum, matches, byePlayerId: byeId }
 }
