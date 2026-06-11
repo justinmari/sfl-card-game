@@ -264,9 +264,10 @@ export default function TestArena({
                 {myMatchIdx >= 0 && !matchKo.has(myMatchIdx) && (() => {
                   const myMatch = precomputed.matches[myMatchIdx]
                   const fo = myMatch.faceOffs[cardIdx] as FaceOffDetail
-                  const imPlayer2 = myMatch.player2Id === userId
-                  // Swap so opponent is card1 (top), user is card2 (bottom)
-                  const displayFo: FaceOffDetail = imPlayer2 ? fo : {
+                  const imPlayer1 = myMatch.player1Id === userId
+                  const opponentId = imPlayer1 ? myMatch.player2Id : myMatch.player1Id
+                  // Ensure user is always on the left (card1)
+                  const displayFo: FaceOffDetail = imPlayer1 ? fo : {
                     ...fo,
                     card1: fo.card2,
                     card2: fo.card1,
@@ -279,23 +280,21 @@ export default function TestArena({
                     damage1: fo.damage2,
                     damage2: fo.damage1,
                   }
-                  const opponentId = imPlayer2 ? myMatch.player1Id : myMatch.player2Id
 
                   return (
                     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                      <div className="mb-3 text-center text-xs text-zinc-500">
-                        {getPlayer(opponentId)?.name} ({displayHp[opponentId] ?? 0} HP)
+                      <div className="mb-3 flex items-center justify-between text-xs">
+                        <span className="text-amber-400 font-medium">You ({displayHp[userId] ?? 0} HP)</span>
+                        <span className="text-zinc-500">{getPlayer(opponentId)?.name} ({displayHp[opponentId] ?? 0} HP)</span>
                       </div>
                       <BattleFaceoff
                         key={`large-${faceoffKey}`}
                         faceOff={displayFo}
                         onComplete={onFaceoffComplete}
                         large
-                        vertical
+                        p1Name="You"
+                        p2Name={getPlayer(opponentId)?.name || 'Opponent'}
                       />
-                      <div className="mt-3 text-center text-xs text-zinc-500">
-                        You ({displayHp[userId] ?? 0} HP)
-                      </div>
                     </div>
                   )
                 })()}

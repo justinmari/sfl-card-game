@@ -11,11 +11,15 @@ export default function BattleFaceoff({
   onComplete,
   large,
   vertical,
+  p1Name,
+  p2Name,
 }: {
   faceOff: FaceOffDetail
   onComplete: () => void
   large: boolean
   vertical?: boolean
+  p1Name?: string
+  p2Name?: string
 }) {
   const [phase, setPhase] = useState<Phase>('enter')
   const canvas1Ref = useRef<HTMLCanvasElement>(null)
@@ -239,6 +243,7 @@ export default function BattleFaceoff({
   const knockP2 = vertical ? 'opacity-40 scale-90 translate-y-3' : 'opacity-40 scale-90 -translate-x-3'
 
   return (
+    <div className={`flex flex-col items-center gap-2`}>
     <div className={`flex items-center justify-center ${vertical ? 'flex-col gap-4' : 'gap-3 sm:gap-6'}`}>
       {/* Player 1 (opponent on top in vertical) */}
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
@@ -249,21 +254,13 @@ export default function BattleFaceoff({
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />
-
-          {(phase === 'result' || phase === 'done') && (
-            <div className="animate-[fadeIn_0.3s_ease-out]">
-              {p2Won && <span className={`${large ? 'text-lg' : 'text-sm'} font-black text-red-400`}>-{fo.damage1} HP</span>}
-              {p1Won && <span className={`${large ? 'text-sm' : 'text-xs'} font-bold text-green-400`}>WIN</span>}
-              {tie && <span className="text-xs text-zinc-500">TIE</span>}
-            </div>
-          )}
         </div>
       </div>
 
       {/* VS */}
       <span className={`${large ? 'text-xl' : 'text-sm'} font-black text-zinc-700`}>⚔️</span>
 
-      {/* Player 2 (you on bottom in vertical) */}
+      {/* Player 2 */}
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
@@ -272,16 +269,24 @@ export default function BattleFaceoff({
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />
-
-          {(phase === 'result' || phase === 'done') && (
-            <div className="animate-[fadeIn_0.3s_ease-out]">
-              {p1Won && <span className={`${large ? 'text-lg' : 'text-sm'} font-black text-red-400`}>-{fo.damage2} HP</span>}
-              {p2Won && <span className={`${large ? 'text-sm' : 'text-xs'} font-bold text-green-400`}>WIN</span>}
-              {tie && <span className="text-xs text-zinc-500">TIE</span>}
-            </div>
-          )}
         </div>
       </div>
+
+      </div>
+      {/* Result text */}
+      {(phase === 'result' || phase === 'done') && large && (
+        <div className="w-full text-center animate-[fadeIn_0.3s_ease-out]">
+          {(() => {
+            const winnerName = p1Won ? (p1Name || 'Player 1') : p2Won ? (p2Name || 'Player 2') : null
+            const loserName = p1Won ? (p2Name || 'Player 2') : p2Won ? (p1Name || 'Player 1') : null
+            const damage = p1Won ? fo.damage2 : p2Won ? fo.damage1 : 0
+
+            if (tie) return <span className="text-sm text-zinc-500">It&apos;s a tie!</span>
+            if (damage >= 4) return <span className="text-sm font-bold text-red-400">{winnerName} did a massive {damage} damage to {loserName}!</span>
+            return <span className="text-sm text-zinc-300">{winnerName} did {damage} damage to {loserName}</span>
+          })()}
+        </div>
+      )}
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
