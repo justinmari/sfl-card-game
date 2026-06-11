@@ -4,6 +4,15 @@ import { useRef } from 'react'
 import CompactCard from './compact-card'
 import type { FaceOffDetail } from '@/lib/battle-engine'
 
+const rarityTextColor: Record<string, string> = {
+  common: 'text-zinc-400',
+  uncommon: 'text-green-400',
+  rare: 'text-blue-400',
+  ultra_rare: 'text-purple-400',
+  legendary: 'text-amber-400',
+  secret_rare: 'text-pink-400',
+}
+
 type Phase = 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'
 
 type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
@@ -46,7 +55,7 @@ export default function BattleFaceoff({
   const p2Won = fo.damage1 > 0
   const tie = fo.damage1 === 0 && fo.damage2 === 0
 
-  const cardSize = large ? 'w-20 sm:w-24' : 'w-16'
+  const cardSize = large ? 'w-28 sm:w-32' : 'w-16'
   const canvasW = large ? 180 : 120
   const canvasH = large ? 44 : 30
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
@@ -179,6 +188,12 @@ export default function BattleFaceoff({
     })
   }
 
+  // Reset spawn flag when entering a new faceoff
+  if (phase === 'enter') {
+    spawnedRef.current = false
+    setupRef.current.clear()
+  }
+
   // Spawn particles on result (once)
   if ((phase === 'result') && large && !spawnedRef.current) {
     spawnedRef.current = true
@@ -197,7 +212,7 @@ export default function BattleFaceoff({
           cy = containerRect.height * 0.4
         }
         const emoji = isWinner ? '🎉' : '💥'
-        const count = Math.min(3 + damage * 2, 12)
+        const count = Math.min(damage * 3, 18)
         for (let i = 0; i < count; i++) {
           const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
           const speed = 0.8 + Math.random() * 1.2
@@ -280,16 +295,18 @@ export default function BattleFaceoff({
           {(phase === 'result' || phase === 'done') && (
             <div className="animate-[fadeIn_0.3s_ease-out]">
               {(() => {
-                const winnerName = p1Won ? (p1Name || 'Player 1') : p2Won ? (p2Name || 'Player 2') : null
+                const winnerCard = p1Won ? fo.card1 : p2Won ? fo.card2 : null
                 const loserName = p1Won ? (p2Name || 'Player 2') : p2Won ? (p1Name || 'Player 1') : null
                 const damage = p1Won ? fo.damage2 : p2Won ? fo.damage1 : 0
-                const loserHpAfter = p1Won ? Math.max(0, (p2Hp ?? 10) - fo.damage2) : p2Won ? Math.max(0, (p1Hp ?? 10) - fo.damage1) : null
+                // p1Hp/p2Hp already include current face-off damage (React batches the state updates)
+                const loserHpAfter = p1Won ? (p2Hp ?? 10) : p2Won ? (p1Hp ?? 10) : null
                 const isKo = loserHpAfter !== null && loserHpAfter <= 0
+                const cardNameEl = winnerCard ? <span className={`font-bold ${rarityTextColor[winnerCard.rarity] || 'text-zinc-300'}`}>{winnerCard.name}</span> : null
 
                 if (tie) return <span className="text-sm text-zinc-500">It&apos;s a tie!</span>
-                if (isKo) return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> <span className="font-black text-red-400">KO&apos;d</span> <span className="font-bold text-white">{loserName}</span>! 💀</span>
-                if (damage >= 4) return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did a massive <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span>!</span>
-                return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span></span>
+                if (isKo) return <span className="text-base">{cardNameEl} <span className="font-black text-red-400">KO&apos;d</span> <span className="font-bold text-white">{loserName}</span>! 💀</span>
+                if (damage >= 4) return <span className="text-base">{cardNameEl}<span className="text-zinc-500"> did a massive </span><span className="font-black text-red-400">{damage}</span><span className="text-zinc-500"> damage to </span><span className="font-bold text-white">{loserName}</span>!</span>
+                return <span className="text-base">{cardNameEl}<span className="text-zinc-500"> did </span><span className="font-black text-red-400">{damage}</span><span className="text-zinc-500"> damage to </span><span className="font-bold text-white">{loserName}</span></span>
               })()}
             </div>
           )}

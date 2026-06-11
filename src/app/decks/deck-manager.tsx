@@ -47,10 +47,15 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     setError(null)
   }
 
+  const secretRareCount = (ids: string[]) =>
+    ids.filter((id) => ownedCards.find((c) => c.id === id)?.rarity === 'secret_rare').length
+
   const toggleCard = (cardId: string) => {
     if (editCardIds.includes(cardId)) {
       setEditCardIds(editCardIds.filter((id) => id !== cardId))
     } else if (editCardIds.length < 5) {
+      const card = ownedCards.find((c) => c.id === cardId)
+      if (card?.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1) return
       setEditCardIds([...editCardIds, cardId])
     }
   }
@@ -123,7 +128,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
 
             {/* Selected cards */}
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-zinc-400">Your Lineup</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-sm text-zinc-400">Your Lineup</label>
+                {secretRareCount(editCardIds) >= 1 && <span className="text-[10px] text-pink-400">1/1 Secret Rare</span>}
+              </div>
               <div className="flex gap-2">
                 {[0, 1, 2, 3, 4].map((i) => {
                   const card = selectedCards[i]
@@ -164,15 +172,17 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
                   {filteredCards.map((card) => {
                     const isSelected = editCardIds.includes(card.id)
+                    const atSecretLimit = !isSelected && card.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1
+                    const isDisabled = !isSelected && (editCardIds.length >= 5 || atSecretLimit)
                     return (
                       <button
                         key={card.id}
                         onClick={() => toggleCard(card.id)}
-                        disabled={!isSelected && editCardIds.length >= 5}
+                        disabled={isDisabled}
                         className={`relative rounded-lg transition-all ${
                           isSelected
                             ? 'ring-2 ring-green-500 ring-offset-1 ring-offset-zinc-900'
-                            : editCardIds.length >= 5
+                            : isDisabled
                               ? 'opacity-30'
                               : 'hover:opacity-80'
                         }`}

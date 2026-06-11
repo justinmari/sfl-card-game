@@ -16,14 +16,17 @@ type CardData = {
 export default function CompactCard({ card, showNew }: { card: CardData; showNew?: boolean }) {
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-lg border ${rarityColors[card.rarity]} ${rarityGlow[card.rarity]} transition-transform duration-200 hover:scale-105`}
+      className={`relative w-full overflow-hidden rounded-lg border ${rarityColors[card.rarity]} ${rarityGlow[card.rarity]} transition-transform duration-200 hover:scale-105 flex flex-col`}
+      style={{ aspectRatio: '3/4' }}
     >
-      {card.image_url ? (
-        <img src={card.image_url} alt={card.name} className="aspect-square w-full object-cover" />
-      ) : (
-        <div className="flex aspect-square w-full items-center justify-center bg-zinc-800 text-lg">🃏</div>
-      )}
-      <div className="bg-zinc-900 px-1.5 py-1 text-center">
+      <div className="flex-1 overflow-hidden">
+        {card.image_url ? (
+          <img src={card.image_url} alt={card.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-lg">🃏</div>
+        )}
+      </div>
+      <div className="bg-zinc-900 px-1.5 py-1 text-center flex-shrink-0">
         <p className="truncate text-[9px] font-semibold text-white">{card.name}</p>
         <span className={`inline-block rounded px-1 py-0.5 text-[7px] ${rarityBadgeColors[card.rarity]}`}>
           {rarityLabel[card.rarity] || card.rarity}

@@ -1,9 +1,42 @@
+// ===== Skills =====
+
+export type SkillEffect =
+  | { type: 'multiply-totals'; factor: number; target: 'both' }
+  // Future effects:
+  // | { type: 'swap-totals' }
+  // | { type: 'dice-bonus'; bonus: number; target: 'self' | 'opponent' | 'both' }
+  // | { type: 'randomize-rarities'; target: 'both' }
+
+export type Skill = {
+  id: string
+  name: string
+  description: string
+  usesPerBattle: number
+  effect: SkillEffect
+}
+
+export type ActiveSkill = {
+  skill: Skill
+  activatedBy: string // player id
+  roundActivated: number
+}
+
+// Built-in skills
+export const SKILL_DOUBLE_EDGE: Skill = {
+  id: 'double-edge',
+  name: 'Double Edge',
+  description: 'All totals are doubled this round — for both players',
+  usesPerBattle: 1,
+  effect: { type: 'multiply-totals', factor: 2, target: 'both' },
+}
+
 export type BattleCard = {
   id: string
   name: string
   image_url: string | null
   rarity: string
   creature_name: string | null
+  skills?: Skill[]
 }
 
 export type BattlePlayer = {
@@ -35,7 +68,7 @@ export type RoundResult = {
   byePlayerId: string | null
 }
 
-const starCount: Record<string, number> = {
+export const starCount: Record<string, number> = {
   common: 1,
   uncommon: 2,
   rare: 3,
@@ -62,7 +95,7 @@ export type FaceOffDetail = FaceOff & {
   effective2: number
 }
 
-export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOffDetail {
+export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[]): FaceOffDetail {
   const s1 = starCount[card1.rarity] || 1
   const s2 = starCount[card2.rarity] || 1
   const diff = Math.abs(s1 - s2)
@@ -82,8 +115,19 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOffDet
     roll2 = Math.floor(Math.random() * (diff + 2))
   }
 
-  const effective1 = s1 + roll1
-  const effective2 = s2 + roll2
+  let effective1 = s1 + roll1
+  let effective2 = s2 + roll2
+
+  // Apply skill modifiers
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      const e = as.skill.effect
+      if (e.type === 'multiply-totals' && e.target === 'both') {
+        effective1 = Math.round(effective1 * e.factor)
+        effective2 = Math.round(effective2 * e.factor)
+      }
+    }
+  }
 
   const finalDiff = Math.abs(effective1 - effective2)
 
@@ -120,9 +164,11 @@ export function randomPair(players: BattlePlayer[]): { pairs: [string, string][]
 export function precomputeRound(
   players: BattlePlayer[],
   currentHp: Record<string, number>,
-  roundNum: number
+  roundNum: number,
+  fixedPairings?: { pairs: [string, string][]; byeId: string | null },
+  activeSkills?: ActiveSkill[],
 ): RoundResult {
-  const { pairs, byeId } = randomPair(players)
+  const { pairs, byeId } = fixedPairings || randomPair(players)
 
   const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
@@ -131,8 +177,11 @@ export function precomputeRound(
     const deck2 = shuffle(p2.deck)
     const faceOffs: FaceOff[] = []
 
+    // Filter skills relevant to this match
+    const matchSkills = activeSkills?.filter((s) => s.activatedBy === id1 || s.activatedBy === id2)
+
     for (let i = 0; i < 5; i++) {
-      faceOffs.push(resolveFaceOff(deck1[i], deck2[i]))
+      faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills))
     }
 
     // Simulate to find winner
