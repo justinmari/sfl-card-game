@@ -77,11 +77,7 @@ export default function ArenaBattle({
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
   const [pendingSkills, setPendingSkills] = useState<ActiveSkill[]>([])
   const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>([])
-  // Compute round 1 matchups synchronously as initial state
-  const [introMatchups, setIntroMatchups] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(() => {
-    const rng = seed != null ? createSeededRng(seed * 1000 + 1) : undefined
-    return randomPair(initialPlayers, rng)
-  })
+  const [introMatchups, setIntroMatchups] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
   const [introCountdown, setIntroCountdown] = useState(5)
   // Multiplayer: track which players are ready between rounds
   const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set())
@@ -133,6 +129,13 @@ export default function ArenaBattle({
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
   }
 
+  // Set initial round 1 preview matchups on mount
+  const initRef = useRef(false)
+  useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
+    setIntroMatchups(randomPair(initialPlayers, getRoundRng(1)))
+  }, [])
 
   const getPlayerSkills = (playerId: string): { skill: Skill; card: BattleCard }[] => {
     const player = players.find((p) => p.id === playerId)
@@ -156,7 +159,6 @@ export default function ArenaBattle({
   const startNextRound = useCallback(() => {
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
     const alive = updated.filter((p) => !p.eliminated)
-    // If only 1 player left, end the battle
     if (alive.length <= 1) {
       setPlayers(updated)
       setPhase('done')
@@ -164,9 +166,9 @@ export default function ArenaBattle({
     }
     const nextRound = roundNum + 1
     setPlayers(updated)
-    // Always compute from seeded RNG for consistency across clients
-    const matchups = randomPair(updated, getRoundRng(nextRound))
-    setIntroMatchups(matchups)
+    // Preview matchups for display — precomputeRound will recompute from same RNG
+    const preview = randomPair(updated, getRoundRng(nextRound))
+    setIntroMatchups(preview)
     setRoundNum(nextRound)
     setCardIdx(0)
     setMatchKo(new Set())
@@ -176,11 +178,16 @@ export default function ArenaBattle({
   }, [roundNum, players, displayHp, seed])
 
   // Step 2: Precompute with skills and start fighting
-  // Use introMatchups as fixed pairings so the fight matches what was shown in intro
+  // precomputeRound computes its own pairings from the seeded RNG
+  // then we update introMatchups to match the actual computed pairings
   const startFighting = useCallback(() => {
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
-    const result = precomputeRound(updated, displayHp, roundNum, introMatchups ?? undefined, pendingSkills.length > 0 ? pendingSkills : undefined, getRoundRng(roundNum))
+    const roundRng = getRoundRng(roundNum)
+    const result = precomputeRound(updated, displayHp, roundNum, undefined, pendingSkills.length > 0 ? pendingSkills : undefined, roundRng)
     setPrecomputed(result)
+    // Update introMatchups to match what was actually computed
+    const actualPairings: [string, string][] = result.matches.map((m) => [m.player1Id, m.player2Id])
+    setIntroMatchups({ pairs: actualPairings, byeId: result.byePlayerId })
     if (pendingSkills.length > 0) {
       setSkillUsage((prev) => {
         const u = { ...prev }
@@ -192,7 +199,7 @@ export default function ArenaBattle({
     setNextRoundPreview(null)
     setPendingSkills([])
     setBattlePhase('fighting')
-  }, [players, displayHp, roundNum, introMatchups, pendingSkills, seed])
+  }, [players, displayHp, roundNum, pendingSkills, seed])
 
   const startFightingRef = useRef(startFighting)
   startFightingRef.current = startFighting
