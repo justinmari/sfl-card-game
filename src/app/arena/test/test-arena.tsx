@@ -311,6 +311,7 @@ export default function TestArena({
                           </div>
                         </div>
                       </div>
+                      <div className="mt-4" />
                       <BattleFaceoff
                         key={`large-${faceoffKey}`}
                         faceOff={displayFo}
@@ -319,14 +320,16 @@ export default function TestArena({
                         large
                         p1Name="You"
                         p2Name={getPlayer(opponentId)?.name || 'Opponent'}
+                        p1Hp={displayHp[userId] ?? 0}
+                        p2Hp={displayHp[opponentId] ?? 0}
                       />
                     </div>
                   )
                 })()}
 
                 {myMatchIdx >= 0 && matchKo.has(myMatchIdx) && (
-                  <div className="rounded-xl border border-red-900 bg-black p-10 text-center animate-[fadeIn_1s_ease-out]">
-                    <p className="text-2xl font-black tracking-widest text-red-600" style={{ fontFamily: 'Georgia, serif' }}>YOU DIED</p>
+                  <div className="rounded-xl border border-red-900 bg-black flex items-center justify-center animate-[fadeIn_1s_ease-out]" style={{ minHeight: '16rem' }}>
+                    <p className="text-3xl font-black tracking-widest text-red-600" style={{ fontFamily: 'Georgia, serif' }}>YOU DIED</p>
                   </div>
                 )}
 
@@ -353,7 +356,11 @@ export default function TestArena({
                               <span><span className={`font-bold ${(displayHp[match.player2Id] ?? 0) <= 3 ? 'text-red-400' : 'text-green-400'}`}>{displayHp[match.player2Id] ?? 0}</span> {getPlayer(match.player2Id)?.name}</span>
                             </div>
                             {ko ? (
-                              <div className="text-center text-sm text-red-400">💀</div>
+                              <div className="text-center text-[10px] text-red-400 font-bold py-1">
+                                {(displayHp[match.player1Id] ?? 0) <= 0
+                                  ? `${getPlayer(match.player2Id)?.name} KO'd ${getPlayer(match.player1Id)?.name} 💀`
+                                  : `${getPlayer(match.player1Id)?.name} KO'd ${getPlayer(match.player2Id)?.name} 💀`}
+                              </div>
                             ) : (
                               <BattleFaceoff
                                 key={`mini-${idx}-${faceoffKey}`}

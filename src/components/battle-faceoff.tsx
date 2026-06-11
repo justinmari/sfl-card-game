@@ -14,6 +14,8 @@ export default function BattleFaceoff({
   vertical,
   p1Name,
   p2Name,
+  p1Hp,
+  p2Hp,
 }: {
   faceOff: FaceOffDetail
   onResult?: () => void
@@ -22,6 +24,8 @@ export default function BattleFaceoff({
   vertical?: boolean
   p1Name?: string
   p2Name?: string
+  p1Hp?: number
+  p2Hp?: number
 }) {
   const [phase, setPhase] = useState<Phase>('enter')
   const canvas1Ref = useRef<HTMLCanvasElement>(null)
@@ -284,8 +288,11 @@ export default function BattleFaceoff({
                 const winnerName = p1Won ? (p1Name || 'Player 1') : p2Won ? (p2Name || 'Player 2') : null
                 const loserName = p1Won ? (p2Name || 'Player 2') : p2Won ? (p1Name || 'Player 1') : null
                 const damage = p1Won ? fo.damage2 : p2Won ? fo.damage1 : 0
+                const loserHpAfter = p1Won ? Math.max(0, (p2Hp ?? 10) - fo.damage2) : p2Won ? Math.max(0, (p1Hp ?? 10) - fo.damage1) : null
+                const isKo = loserHpAfter !== null && loserHpAfter <= 0
 
                 if (tie) return <span className="text-sm text-zinc-500">It&apos;s a tie!</span>
+                if (isKo) return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> <span className="font-black text-red-400">KO&apos;d</span> <span className="font-bold text-white">{loserName}</span>! 💀</span>
                 if (damage >= 4) return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did a massive <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span>!</span>
                 return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span></span>
               })()}
