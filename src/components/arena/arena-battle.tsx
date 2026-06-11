@@ -59,13 +59,17 @@ export default function ArenaBattle({
 }: ArenaBattleProps) {
   const [phase, setPhase] = useState<'battle' | 'done'>('battle')
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers)
-  const [displayHp, setDisplayHp] = useState<Record<string, number>>(() => {
+  const initHp = () => {
     const hpMap: Record<string, number> = {}
     initialPlayers.forEach((p) => { hpMap[p.id] = 10 })
     return hpMap
-  })
+  }
+  const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
+  // Precompute round 1 immediately as initial state
   const [roundNum, setRoundNum] = useState(1)
-  const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
+  const [precomputed, setPrecomputed] = useState<RoundResult | null>(() =>
+    precomputeRound(initialPlayers, initHp(), 1, undefined, undefined, getRoundRng(1))
+  )
   const [battlePhase, setBattlePhase] = useState<'round-intro' | 'precomputing' | 'fighting' | 'round-end'>('round-intro')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
@@ -77,8 +81,13 @@ export default function ArenaBattle({
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
   const [pendingSkills, setPendingSkills] = useState<ActiveSkill[]>([])
   const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>([])
-  const [introMatchups, setIntroMatchups] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
   const [introCountdown, setIntroCountdown] = useState(5)
+
+  // Derive matchups from precomputed result — single source of truth
+  const introMatchups = precomputed ? {
+    pairs: precomputed.matches.map((m): [string, string] => [m.player1Id, m.player2Id]),
+    byeId: precomputed.byePlayerId,
+  } : null
   // Multiplayer: track which players are ready between rounds
   const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set())
   const [heldPlayers, setHeldPlayers] = useState<Set<string>>(new Set())
@@ -129,14 +138,6 @@ export default function ArenaBattle({
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
   }
 
-  // Set initial round 1 preview matchups on mount
-  const initRef = useRef(false)
-  useEffect(() => {
-    if (initRef.current) return
-    initRef.current = true
-    setIntroMatchups(randomPair(initialPlayers, getRoundRng(1)))
-  }, [])
-
   const getPlayerSkills = (playerId: string): { skill: Skill; card: BattleCard }[] => {
     const player = players.find((p) => p.id === playerId)
     if (!player) return []
@@ -155,7 +156,7 @@ export default function ArenaBattle({
     return (skillUsage[skill.id] ?? 0) < skill.usesPerBattle
   }
 
-  // Step 1: Show matchups + skill activation
+  // Step 1: Precompute round + show matchups + skill activation
   const startNextRound = useCallback(() => {
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
     const alive = updated.filter((p) => !p.eliminated)
@@ -166,9 +167,9 @@ export default function ArenaBattle({
     }
     const nextRound = roundNum + 1
     setPlayers(updated)
-    // Preview matchups for display — precomputeRound will recompute from same RNG
-    const preview = randomPair(updated, getRoundRng(nextRound))
-    setIntroMatchups(preview)
+    // Precompute the full round — pairings are derived from this
+    const result = precomputeRound(updated, displayHp, nextRound, undefined, undefined, getRoundRng(nextRound))
+    setPrecomputed(result)
     setRoundNum(nextRound)
     setCardIdx(0)
     setMatchKo(new Set())
@@ -177,18 +178,13 @@ export default function ArenaBattle({
     setBattlePhase('round-intro')
   }, [roundNum, players, displayHp, seed])
 
-  // Step 2: Precompute with skills and start fighting
-  // precomputeRound computes its own pairings from the seeded RNG
-  // then we update introMatchups to match the actual computed pairings
+  // Step 2: Re-precompute with skills if any were activated, then start fighting
   const startFighting = useCallback(() => {
-    const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
-    const roundRng = getRoundRng(roundNum)
-    const result = precomputeRound(updated, displayHp, roundNum, undefined, pendingSkills.length > 0 ? pendingSkills : undefined, roundRng)
-    setPrecomputed(result)
-    // Update introMatchups to match what was actually computed
-    const actualPairings: [string, string][] = result.matches.map((m) => [m.player1Id, m.player2Id])
-    setIntroMatchups({ pairs: actualPairings, byeId: result.byePlayerId })
     if (pendingSkills.length > 0) {
+      // Re-precompute with skills — same RNG produces same pairings
+      const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
+      const result = precomputeRound(updated, displayHp, roundNum, undefined, pendingSkills, getRoundRng(roundNum))
+      setPrecomputed(result)
       setSkillUsage((prev) => {
         const u = { ...prev }
         pendingSkills.forEach((as) => { u[as.skill.id] = (u[as.skill.id] ?? 0) + 1 })
@@ -382,9 +378,7 @@ export default function ArenaBattle({
   const getPlayer = (id: string) => players.find((p) => p.id === id)
   const sortedByHp = [...players].sort((a, b) => (displayHp[b.id] ?? 0) - (displayHp[a.id] ?? 0))
   const fightingIds = new Set<string>()
-  if (battlePhase === 'round-intro' && introMatchups) {
-    introMatchups.pairs.forEach(([a, b]) => { fightingIds.add(a); fightingIds.add(b) })
-  } else if (battlePhase === 'fighting' && precomputed) {
+  if (precomputed && (battlePhase === 'round-intro' || battlePhase === 'fighting')) {
     precomputed.matches.forEach((m) => { fightingIds.add(m.player1Id); fightingIds.add(m.player2Id) })
   }
 
