@@ -384,6 +384,16 @@ export default function ArenaBattle({
 
   return (
     <div suppressHydrationWarning>
+      {/* Debug: remove after fixing sync */}
+      {seed != null && precomputed && (
+        <div className="mb-4 rounded border border-yellow-800 bg-yellow-950/30 p-2 text-[10px] font-mono text-yellow-400 space-y-0.5">
+          <div>seed: {seed} | round: {roundNum} | players: {initialPlayers.length}</div>
+          <div>ids: {initialPlayers.map((p) => p.id.slice(0, 6)).join(', ')}</div>
+          <div>decks: {initialPlayers.map((p) => `${p.id.slice(0, 4)}=[${p.deck.map((c) => c.id.slice(0, 4)).join(',')}]`).join(' ')}</div>
+          <div>matches: {precomputed.matches.map((m) => `${m.player1Id.slice(0, 6)}v${m.player2Id.slice(0, 6)}`).join(', ')} | bye: {precomputed.byePlayerId?.slice(0, 6) || 'none'}</div>
+          <div>faceoffs[0]: {precomputed.matches[0]?.faceOffs.map((f) => `${f.damage1}-${f.damage2}`).join(', ')}</div>
+        </div>
+      )}
       {phase === 'battle' && (
         <div>
           {/* Scoreboard */}
