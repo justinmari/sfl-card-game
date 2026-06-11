@@ -504,8 +504,8 @@ export default function ArenaBattle({
 
                 <div className="text-center pt-2 space-y-2">
                   <p className="text-xs text-zinc-500">Starting in <span className="font-bold text-white">{introCountdown}s</span></p>
-                  {pendingSkills.length > 0 && (
-                    <p className="text-xs text-pink-400 mb-1">{pendingSkills.map((s) => s.skill.name).join(', ')} activated</p>
+                  {pendingSkills.filter((s) => s.activatedBy === userId).length > 0 && (
+                    <p className="text-xs text-pink-400 mb-1">{pendingSkills.filter((s) => s.activatedBy === userId).map((s) => s.skill.name).join(', ')} activated</p>
                   )}
                   {!isMultiplayer && (
                     <button onClick={() => {
