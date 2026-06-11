@@ -165,7 +165,7 @@ export default function TestArena({
   }
 
   return (
-    <div>
+    <div suppressHydrationWarning>
       {/* ===== SETUP ===== */}
       {phase === 'setup' && (
         <div>
@@ -198,7 +198,7 @@ export default function TestArena({
               ))}
             </div>
           </div>
-          <button onClick={startBattle} disabled={selectedDeck === null}
+          <button onClick={startBattle} disabled={selectedDeck == null}
             className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30">
             Start Battle ({botCount + 1} players)
           </button>

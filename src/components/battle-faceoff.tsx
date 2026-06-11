@@ -47,21 +47,19 @@ export default function BattleFaceoff({
     const cx = side === 'left' ? rect.width * 0.25 : rect.width * 0.75
     const cy = rect.height * 0.4
 
-    const winEmojis = ['🎉', '⭐', '✨', '💪', '🔥', '👑', '💫']
-    const loseEmojis = ['💀', '💥', '😵', '☠️', '🫠', '💔']
-    const emojis = isWinner ? winEmojis : loseEmojis
-    const count = Math.min(3 + damage * 2, 15)
+    const emoji = isWinner ? '🎉' : '👊'
+    const count = Math.min(3 + damage * 2, 12)
 
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
-      const speed = 1.5 + Math.random() * 2
+      const speed = 0.8 + Math.random() * 1.2
       particlesRef.current.push({
-        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        emoji,
         x: cx + (Math.random() - 0.5) * 30,
         y: cy + (Math.random() - 0.5) * 20,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1,
-        size: 12 + Math.random() * (8 + damage * 2),
+        vy: Math.sin(angle) * speed - 0.5,
+        size: 20 + Math.random() * (10 + damage * 3),
         age: 0,
         rotation: Math.random() * 360,
         rs: (Math.random() - 0.5) * 4,
@@ -86,8 +84,8 @@ export default function BattleFaceoff({
         const ps = particlesRef.current
         for (let i = ps.length - 1; i >= 0; i--) {
           const p = ps[i]
-          p.x += p.vx; p.y += p.vy; p.vy += 0.03; p.vx *= 0.995; p.age++; p.rotation += p.rs
-          const alpha = p.age < 20 ? 1 : Math.max(0, 1 - (p.age - 20) / 60)
+          p.x += p.vx; p.y += p.vy; p.vy += 0.015; p.vx *= 0.997; p.age++; p.rotation += p.rs
+          const alpha = p.age < 40 ? 1 : Math.max(0, 1 - (p.age - 40) / 80)
           if (alpha <= 0) { ps.splice(i, 1); continue }
           ctx.save()
           ctx.translate(p.x, p.y)
