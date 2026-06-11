@@ -116,8 +116,8 @@ export default function ProfileForm({
       )}
 
       {/* Avatar */}
-      <div className="mb-8 flex items-center gap-6">
-        <div className="relative">
+      <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
+        <div className="flex-shrink-0">
           {preview || avatarUrl ? (
             <img
               src={preview || avatarUrl!}
@@ -172,8 +172,8 @@ export default function ProfileForm({
           </button>
         </div>
 
-        {/* Current top cards — single row */}
-        <div className="mb-4 flex justify-center gap-3">
+        {/* Current top cards */}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:justify-center">
           {[0, 1, 2, 3].map((i) => {
             const card = topCards[i]
             return card ? (
@@ -192,7 +192,7 @@ export default function ProfileForm({
             ) : (
               <div
                 key={i}
-                className="flex w-[8.5rem] items-center justify-center rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-900/50"
+                className="flex items-center justify-center rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-900/50 sm:w-[8.5rem]"
                 style={{ minHeight: '12rem' }}
               >
                 <span className="text-xs text-zinc-600">{showCardPicker ? 'Select a card' : 'Empty'}</span>

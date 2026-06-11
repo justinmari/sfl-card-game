@@ -17,12 +17,12 @@ type CardData = {
 }
 
 const rarityAuraColor: Record<string, string> = {
-  common: 'rgba(161,161,170,0.4)',
-  uncommon: 'rgba(34,197,94,0.6)',
-  rare: 'rgba(59,130,246,0.7)',
-  ultra_rare: 'rgba(168,85,247,0.8)',
-  legendary: 'rgba(245,158,11,0.85)',
-  secret_rare: 'rgba(236,72,153,0.9)',
+  common: 'rgba(161,161,170,0.6)',
+  uncommon: 'rgba(34,197,94,0.85)',
+  rare: 'rgba(59,130,246,0.9)',
+  ultra_rare: 'rgba(168,85,247,1)',
+  legendary: 'rgba(245,158,11,1)',
+  secret_rare: 'rgba(236,72,153,1)',
 }
 
 export default function SwipeableReveal({
@@ -82,7 +82,7 @@ export default function SwipeableReveal({
         setCurrentIndex((prev) => prev + 1)
         setDragX(0)
         setAnimatingOut(false)
-      }, 300)
+      }, 200)
     } else {
       setDragX(0)
     }
@@ -221,7 +221,7 @@ export default function SwipeableReveal({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Rarity aura */}
+        {/* Rarity aura — shows during drag only */}
         {nextCard && isDragging && dragProgress > 0 && (
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -229,13 +229,12 @@ export default function SwipeableReveal({
           >
             <div
               style={{
-                width: '350px',
-                height: '450px',
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${auraColor} 0%, transparent 65%)`,
-                opacity: dragProgress,
-                filter: `blur(${20 + dragProgress * 30}px)`,
-                transition: isDragging ? 'none' : 'opacity 0.3s ease-out, filter 0.3s ease-out',
+                width: '22rem',
+                height: '32rem',
+                borderRadius: '2rem',
+                background: `linear-gradient(135deg, ${auraColor} 0%, transparent 50%), linear-gradient(-135deg, ${auraColor} 0%, transparent 50%), ${auraColor}`,
+                opacity: dragProgress * 0.5,
+                filter: `blur(${30 + dragProgress * 15}px)`,
               }}
             />
           </div>
