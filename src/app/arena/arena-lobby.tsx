@@ -128,6 +128,8 @@ export default function ArenaLobby({
 
   // Start session via server action — ALL clients call this
   const startSession = async () => {
+    // Clean up any stale session first
+    await cleanupArenaSession('arena-lobby').catch(() => {})
     const gamePlayers = lobbyPlayers.map((lp) => ({
       id: lp.id,
       name: lp.name,
@@ -229,7 +231,7 @@ export default function ArenaLobby({
           setCountdown(null)
           setLobbyPlayers((prev) => prev.map((p) => ({ ...p, ready: false, selectedDeckSlot: null })))
           channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: false, deckSlot: null } })
-          cleanupArenaSession('arena-lobby')
+          cleanupArenaSession('arena-lobby').catch(() => {})
         }}
       />
     )

@@ -36,59 +36,61 @@ export async function createArenaSession(lobbyId: string, players: SessionPlayer
   players.forEach((p) => { hp[p.id] = 10 })
 
   // Try to create session (ON CONFLICT returns existing)
-  const { data: existing } = await supabase
+  // Try to insert new session (ON CONFLICT ignores if already exists)
+  await supabase
+    .from('arena_sessions')
+    .insert({ lobby_id: lobbyId, players, hp })
+    .select()
+    .maybeSingle()
+
+  // Always read the current session
+  const { data: session } = await supabase
     .from('arena_sessions')
     .select('id, seed, players, hp')
     .eq('lobby_id', lobbyId)
     .single()
 
-  if (existing) {
-    // Session already exists — return it with round 1
-    const { data: round1 } = await supabase
-      .from('arena_rounds')
-      .select('result, skills_used')
-      .eq('session_id', existing.id)
-      .eq('round_num', 1)
-      .single()
+  if (!session) return null
 
+  // Check if round 1 already exists
+  const { data: existingRound } = await supabase
+    .from('arena_rounds')
+    .select('result')
+    .eq('session_id', session.id)
+    .eq('round_num', 1)
+    .maybeSingle()
+
+  if (existingRound) {
     return {
-      sessionId: existing.id,
-      seed: existing.seed,
-      players: existing.players as SessionPlayer[],
-      hp: existing.hp as Record<string, number>,
-      round: round1?.result as RoundResult | null,
+      sessionId: session.id,
+      seed: session.seed,
+      players: session.players as SessionPlayer[],
+      hp: session.hp as Record<string, number>,
+      round: existingRound.result as RoundResult,
     }
   }
 
-  // Create new session
-  const { data: session, error: sessionErr } = await supabase
-    .from('arena_sessions')
-    .insert({ lobby_id: lobbyId, players, hp })
-    .select('id, seed')
-    .single()
-
-  if (sessionErr || !session) return null
-
   // Compute round 1
-  const battlePlayers = buildBattlePlayers(players)
+  const battlePlayers = buildBattlePlayers(session.players as SessionPlayer[])
   const rng = createSeededRng(session.seed * 1000 + 1)
+  const sessionHp = session.hp as Record<string, number>
   const result = precomputeRound(
     battlePlayers.map((p) => ({ ...p, hp: 10, eliminated: false })),
-    hp, 1, undefined, undefined, rng,
+    sessionHp, 1, undefined, undefined, rng,
   )
 
-  // Store round 1
+  // Store round 1 (ON CONFLICT ignore if another client beat us)
   await supabase.from('arena_rounds').insert({
     session_id: session.id,
     round_num: 1,
     result: result as unknown as Record<string, unknown>,
-  })
+  }).maybeSingle()
 
   return {
     sessionId: session.id,
     seed: session.seed,
-    players,
-    hp,
+    players: session.players as SessionPlayer[],
+    hp: sessionHp,
     round: result,
   }
 }
@@ -151,13 +153,13 @@ export async function submitRoundReady(
   const nextRound = roundNum + 1
   const { data: existingRound } = await supabase
     .from('arena_rounds')
-    .select('result')
+    .select('result, skills_used')
     .eq('session_id', sessionId)
     .eq('round_num', nextRound)
-    .single()
+    .maybeSingle()
 
   if (existingRound) {
-    return { ready: true, allReady: true, round: existingRound.result as RoundResult }
+    return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: existingRound.result as RoundResult, skills: (existingRound.skills_used || []) as ActiveSkill[] }
   }
 
   // Collect all skills from ready players
@@ -196,7 +198,7 @@ export async function submitRoundReady(
     skills_used: allSkills as unknown as Record<string, unknown>[],
   })
 
-  return { ready: true, allReady: true, round: result, skills: allSkills }
+  return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: result, skills: allSkills }
 }
 
 // Update HP in session after a round completes

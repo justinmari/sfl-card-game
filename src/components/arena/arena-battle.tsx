@@ -327,6 +327,10 @@ export default function ArenaBattle({
     const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
     if (result) {
       setReadyInfo({ readyCount: result.readyCount ?? result.aliveCount ?? 0, aliveCount: result.aliveCount ?? 0 })
+      if (result.allReady && result.round) {
+        // Server computed the next round — use it directly
+        handleNewRound(roundNum + 1, result.round, result.skills || [])
+      }
     }
   }
 
@@ -337,6 +341,9 @@ export default function ArenaBattle({
       const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
+        if (result.allReady && result.round) {
+          handleNewRound(roundNum + 1, result.round, result.skills || [])
+        }
       }
     }, 3000)
     return () => clearInterval(interval)
