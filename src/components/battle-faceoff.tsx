@@ -123,15 +123,18 @@ export default function BattleFaceoff({
 
   useEffect(() => {
     setPhase('enter')
-    startTimeRef.current = 0
     particlesRef.current = []
     calledRef.current = { result: false, complete: false }
 
-    const timers = [
-      setTimeout(() => setPhase('power'), 500),
-      setTimeout(() => setPhase('rolling'), 1200),
-      setTimeout(() => setPhase('merge'), 2400),
-      setTimeout(() => {
+    let elapsed = 0
+    let lastTime = performance.now()
+    let rafId = 0
+
+    const phases: [number, () => void][] = [
+      [500, () => setPhase('power')],
+      [1200, () => setPhase('rolling')],
+      [2400, () => setPhase('merge')],
+      [3100, () => {
         setPhase('result')
         if (!calledRef.current.result) {
           calledRef.current.result = true
@@ -141,17 +144,35 @@ export default function BattleFaceoff({
           if (fo.damage2 > 0) { spawnParticles('left', true, fo.damage2); spawnParticles('right', false, fo.damage2) }
           else if (fo.damage1 > 0) { spawnParticles('right', true, fo.damage1); spawnParticles('left', false, fo.damage1) }
         }
-      }, 3100),
-      setTimeout(() => {
+      }],
+      [4500, () => {
         setPhase('done')
         if (!calledRef.current.complete) {
           calledRef.current.complete = true
           onComplete()
         }
-      }, 4500),
+      }],
     ]
+    let nextPhaseIdx = 0
 
-    return () => timers.forEach(clearTimeout)
+    const tick = (now: number) => {
+      const dt = now - lastTime
+      elapsed += dt
+      lastTime = now
+
+      while (nextPhaseIdx < phases.length && elapsed >= phases[nextPhaseIdx][0]) {
+        phases[nextPhaseIdx][1]()
+        nextPhaseIdx++
+      }
+
+      if (nextPhaseIdx < phases.length) {
+        rafId = requestAnimationFrame(tick)
+      }
+    }
+
+    rafId = requestAnimationFrame(tick)
+
+    return () => { if (rafId) cancelAnimationFrame(rafId) }
   }, [faceOff])
 
   // Canvas animation for power, dice rolls, merge, and final
