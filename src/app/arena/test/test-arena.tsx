@@ -30,10 +30,11 @@ export default function TestArena({
   const [battlePhase, setBattlePhase] = useState<'idle' | 'round-intro' | 'fighting' | 'round-end'>('idle')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
-  const [faceoffKey, setFaceoffKey] = useState(0) // force re-mount
+  const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
+  const [rollElapsed, setRollElapsed] = useState(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const appliedRef = useRef<Set<number>>(new Set()) // track which cardIdx damage has been applied
-  const advancedRef = useRef<Set<number>>(new Set()) // track which cardIdx has been advanced past
+  const rafRef = useRef<number>(0)
+  const appliedRef = useRef<Set<number>>(new Set())
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const clearTimer = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null } }
@@ -65,86 +66,88 @@ export default function TestArena({
     setCardIdx(0)
     setMatchKo(new Set())
     appliedRef.current.clear()
-    advancedRef.current.clear()
     setBattlePhase('round-intro')
     // Auto start fighting after intro
     timerRef.current = setTimeout(() => {
       setBattlePhase('fighting')
-      setFaceoffKey((k) => k + 1)
     }, 2000)
   }, [roundNum, players, displayHp])
 
-  // Apply damage when result phase starts — only once per cardIdx
-  const onFaceoffResult = useCallback(() => {
-    if (!precomputed) return
-    if (appliedRef.current.has(cardIdx)) return
-    appliedRef.current.add(cardIdx)
-    setDisplayHp((prev) => {
-      const updated = { ...prev }
-      precomputed.matches.forEach((match, mi) => {
-        if (matchKo.has(mi)) return
-        const fo = match.faceOffs[cardIdx]
-        if (!fo) return
-        updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
-        updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
-      })
-      return updated
-    })
-  }, [precomputed, cardIdx, matchKo])
+  // Single animation driver for faceoff phases
+  const startFaceoffAnimation = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    setFaceoffPhase('enter')
+    setRollElapsed(0)
 
-  // Advance to next card when animation is fully done — only once per cardIdx
-  const onFaceoffComplete = useCallback(() => {
-    if (!precomputed) return
-    if (advancedRef.current.has(cardIdx)) return
-    advancedRef.current.add(cardIdx)
-    if (cardIdx >= 4) {
-      setBattlePhase('round-end')
-    } else {
-      setCardIdx(cardIdx + 1)
-      setFaceoffKey((k) => k + 1)
-    }
-  }, [precomputed, cardIdx])
+    const startTime = performance.now()
+    const phases: [number, 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'][] = [
+      [0, 'enter'], [500, 'power'], [1200, 'rolling'], [2400, 'merge'], [3100, 'result'], [4500, 'done'],
+    ]
+    let currentPhaseIdx = 0
+    let rollingStart = 0
+    let resultApplied = false
 
-  // If player has a bye OR is KO'd, auto-advance other matches
-  useEffect(() => {
-    if (!precomputed || battlePhase !== 'fighting') return
-    const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
-    const hasBye = myMatchIdx < 0
-    const myKo = myMatchIdx >= 0 && matchKo.has(myMatchIdx)
-    const allKo = matchKo.size >= precomputed.matches.length
+    const tick = () => {
+      const elapsed = performance.now() - startTime
 
-    if ((hasBye || myKo) && !allKo) {
-      // Auto-advance remaining matches on a loop
-      clearTimer()
-      const advanceRemaining = () => {
-        if (!appliedRef.current.has(cardIdx)) {
-          appliedRef.current.add(cardIdx)
-          setDisplayHp((prev) => {
-            const updated = { ...prev }
-            precomputed.matches.forEach((match, mi) => {
-              if (matchKo.has(mi)) return
-              const fo = match.faceOffs[cardIdx]
-              if (!fo) return
-              updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
-              updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+      // Advance phases
+      while (currentPhaseIdx < phases.length - 1 && elapsed >= phases[currentPhaseIdx + 1][0]) {
+        currentPhaseIdx++
+        const phaseName = phases[currentPhaseIdx][1]
+        setFaceoffPhase(phaseName)
+
+        if (phaseName === 'rolling') rollingStart = performance.now()
+        if (phaseName === 'merge') rollingStart = performance.now()
+
+        if (phaseName === 'result' && !resultApplied) {
+          resultApplied = true
+          // Apply damage
+          if (!appliedRef.current.has(cardIdx) && precomputed) {
+            appliedRef.current.add(cardIdx)
+            setDisplayHp((prev) => {
+              const updated = { ...prev }
+              precomputed.matches.forEach((match, mi) => {
+                if (matchKo.has(mi)) return
+                const fo = match.faceOffs[cardIdx]
+                if (!fo) return
+                updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
+                updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+              })
+              return updated
             })
-            return updated
-          })
+          }
         }
-        timerRef.current = setTimeout(() => {
-          if (advancedRef.current.has(cardIdx)) return
-          advancedRef.current.add(cardIdx)
+
+        if (phaseName === 'done') {
+          // Advance to next card
           if (cardIdx >= 4) {
             setBattlePhase('round-end')
           } else {
-            setCardIdx(cardIdx + 1)
-            setFaceoffKey((k) => k + 1)
+            setCardIdx((prev) => prev + 1)
           }
-        }, 800)
+          return // stop the loop
+        }
       }
-      timerRef.current = setTimeout(advanceRemaining, 2000)
+
+      // Update roll elapsed for canvas animations
+      const currentPhaseName = phases[currentPhaseIdx][1]
+      if (currentPhaseName === 'rolling' || currentPhaseName === 'merge') {
+        setRollElapsed(performance.now() - rollingStart)
+      }
+
+      rafRef.current = requestAnimationFrame(tick)
     }
-  }, [matchKo, precomputed, battlePhase, cardIdx])
+
+    rafRef.current = requestAnimationFrame(tick)
+  }, [precomputed, cardIdx, matchKo])
+
+  // Start faceoff animation when cardIdx changes
+  useEffect(() => {
+    if (battlePhase === 'fighting' && precomputed) {
+      startFaceoffAnimation()
+    }
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [cardIdx, battlePhase === 'fighting'])
 
   // Detect KOs
   useEffect(() => {
@@ -363,10 +366,9 @@ export default function TestArena({
                       </div>
                       <div className="mt-8" />
                       <BattleFaceoff
-                        key={`large-${faceoffKey}`}
                         faceOff={displayFo}
-                        onResult={onFaceoffResult}
-                        onComplete={onFaceoffComplete}
+                        phase={faceoffPhase}
+                        rollElapsed={rollElapsed}
                         large
                         p1Name="You"
                         p2Name={getPlayer(opponentId)?.name || 'Opponent'}
@@ -430,9 +432,9 @@ export default function TestArena({
                               </div>
                             ) : (
                               <BattleFaceoff
-                                key={`mini-${idx}-${faceoffKey}`}
                                 faceOff={fo}
-                                onComplete={() => {}}
+                                phase={faceoffPhase}
+                                rollElapsed={rollElapsed}
                                 large={false}
                               />
                             )}
