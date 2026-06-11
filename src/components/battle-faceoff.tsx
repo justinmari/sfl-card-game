@@ -273,18 +273,22 @@ export default function BattleFaceoff({
       </div>
 
       </div>
-      {/* Result text */}
-      {(phase === 'result' || phase === 'done') && large && (
-        <div className="w-full text-center animate-[fadeIn_0.3s_ease-out]">
-          {(() => {
-            const winnerName = p1Won ? (p1Name || 'Player 1') : p2Won ? (p2Name || 'Player 2') : null
-            const loserName = p1Won ? (p2Name || 'Player 2') : p2Won ? (p1Name || 'Player 1') : null
-            const damage = p1Won ? fo.damage2 : p2Won ? fo.damage1 : 0
+      {/* Result text — always reserve space */}
+      {large && (
+        <div className="w-full text-center h-8 flex items-center justify-center">
+          {(phase === 'result' || phase === 'done') && (
+            <div className="animate-[fadeIn_0.3s_ease-out]">
+              {(() => {
+                const winnerName = p1Won ? (p1Name || 'Player 1') : p2Won ? (p2Name || 'Player 2') : null
+                const loserName = p1Won ? (p2Name || 'Player 2') : p2Won ? (p1Name || 'Player 1') : null
+                const damage = p1Won ? fo.damage2 : p2Won ? fo.damage1 : 0
 
-            if (tie) return <span className="text-sm text-zinc-500">It&apos;s a tie!</span>
-            if (damage >= 4) return <span className="text-sm font-bold text-red-400">{winnerName} did a massive {damage} damage to {loserName}!</span>
-            return <span className="text-sm text-zinc-300">{winnerName} did {damage} damage to {loserName}</span>
-          })()}
+                if (tie) return <span className="text-sm text-zinc-500">It&apos;s a tie!</span>
+                if (damage >= 4) return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did a massive <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span>!</span>
+                return <span className="text-base"><span className="font-bold text-white">{winnerName}</span> did <span className="font-black text-red-400">{damage}</span> damage to <span className="font-bold text-white">{loserName}</span></span>
+              })()}
+            </div>
+          )}
         </div>
       )}
 

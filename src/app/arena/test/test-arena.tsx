@@ -97,14 +97,15 @@ export default function TestArena({
     }, 800)
   }, [precomputed, cardIdx, matchKo])
 
-  // If my match is KO'd but other matches still going, auto-advance remaining cards
+  // If player has a bye OR is KO'd, auto-advance other matches
   useEffect(() => {
     if (!precomputed || battlePhase !== 'fighting') return
     const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
+    const hasBye = myMatchIdx < 0
     const myKo = myMatchIdx >= 0 && matchKo.has(myMatchIdx)
     const allKo = matchKo.size >= precomputed.matches.length
 
-    if (myKo && !allKo) {
+    if ((hasBye || myKo) && !allKo) {
       // Auto-advance remaining matches on a loop
       clearTimer()
       const advanceRemaining = () => {
@@ -282,11 +283,34 @@ export default function TestArena({
                     damage2: fo.damage1,
                   }
 
+                  const myHp = displayHp[userId] ?? 0
+                  const oppHp = displayHp[opponentId] ?? 0
+
                   return (
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                      <div className="mb-3 flex items-center justify-between text-xs">
-                        <span className="text-amber-400 font-medium">You ({displayHp[userId] ?? 0} HP)</span>
-                        <span className="text-zinc-500">{getPlayer(opponentId)?.name} ({displayHp[opponentId] ?? 0} HP)</span>
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6" style={{ minHeight: '16rem' }}>
+                      {/* HP bars */}
+                      <div className="mb-4 flex items-center gap-4">
+                        <div className="flex-1">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="text-xs font-medium text-amber-400">You</span>
+                            <span className={`text-xs font-bold ${myHp <= 3 ? 'text-red-400' : 'text-green-400'}`}>{myHp} HP</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-zinc-800">
+                            <div className={`h-full rounded-full transition-all duration-700 ease-out ${myHp <= 3 ? 'bg-red-500' : myHp <= 6 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                              style={{ width: `${(myHp / 10) * 100}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-xs text-zinc-600">VS</span>
+                        <div className="flex-1">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className={`text-xs font-bold ${oppHp <= 3 ? 'text-red-400' : 'text-green-400'}`}>{oppHp} HP</span>
+                            <span className="text-xs font-medium text-zinc-400">{getPlayer(opponentId)?.name}</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-zinc-800">
+                            <div className={`h-full rounded-full transition-all duration-700 ease-out ${oppHp <= 3 ? 'bg-red-500' : oppHp <= 6 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                              style={{ width: `${(oppHp / 10) * 100}%` }} />
+                          </div>
+                        </div>
                       </div>
                       <BattleFaceoff
                         key={`large-${faceoffKey}`}
