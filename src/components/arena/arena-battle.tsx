@@ -68,7 +68,7 @@ export default function ArenaBattle({
   })
   const [roundNum, setRoundNum] = useState(0)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
-  const [battlePhase, setBattlePhase] = useState<'idle' | 'round-intro' | 'fighting' | 'round-end'>('idle')
+  const [battlePhase, setBattlePhase] = useState<'round-intro' | 'fighting' | 'round-end'>('round-intro')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
@@ -125,6 +125,18 @@ export default function ArenaBattle({
     if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
   }
+
+  // Auto-start round 1 on mount
+  const initRef = useRef(false)
+  useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
+    const matchups = randomPair(initialPlayers, rng)
+    setIntroMatchups(matchups)
+    setNextRoundPreview(matchups)
+    setRoundNum(1)
+    setIntroCountdown(5)
+  }, [])
 
   const getPlayerSkills = (playerId: string): { skill: Skill; card: BattleCard }[] => {
     const player = players.find((p) => p.id === playerId)
@@ -324,7 +336,6 @@ export default function ArenaBattle({
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
           setPrecomputed(null)
-          setBattlePhase('idle')
           setTimeout(() => startNextRound(), 0)
           return 0
         }
@@ -341,7 +352,6 @@ export default function ArenaBattle({
     if (alive.length > 0 && alive.every((id) => readyPlayers.has(id))) {
       if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
       setPrecomputed(null)
-      setBattlePhase('idle')
       setTimeout(() => startNextRound(), 0)
     }
   }, [readyPlayers, battlePhase])
@@ -480,12 +490,14 @@ export default function ArenaBattle({
                   {pendingSkills.length > 0 && (
                     <p className="text-xs text-pink-400 mb-1">{pendingSkills.map((s) => s.skill.name).join(', ')} activated</p>
                   )}
-                  <button onClick={() => {
-                    if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
-                    startFighting()
-                  }} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">
-                    Fight Now
-                  </button>
+                  {!isMultiplayer && (
+                    <button onClick={() => {
+                      if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
+                      startFighting()
+                    }} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">
+                      Fight Now
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -792,7 +804,6 @@ export default function ArenaBattle({
                           if (!isMultiplayer) {
                             if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
                             setPrecomputed(null)
-                            setBattlePhase('idle')
                             setTimeout(() => startNextRound(), 0)
                           } else {
                             setReadyPlayers((prev) => new Set([...prev, userId]))
@@ -813,12 +824,6 @@ export default function ArenaBattle({
             )
           })()}
 
-          {/* Start first round */}
-          {battlePhase === 'idle' && !precomputed && (
-            <div className="text-center py-8">
-              <button onClick={startNextRound} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">Start Round 1</button>
-            </div>
-          )}
         </div>
       )}
 
