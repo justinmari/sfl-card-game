@@ -300,11 +300,18 @@ export default function ArenaLobby({
           setBattlePlayers([])
           setBattleSeed(null)
           setMyReady(false)
+          setSelectedDeck(null)
           readyMapRef.current = {}
           deckMapRef.current = {}
           deckDataRef.current = {}
           gameInitSentRef.current = false
           setCountdown(null)
+          // Broadcast unready to all players
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'ready-change',
+            payload: { userId, ready: false, deckSlot: null },
+          })
         }}
       />
     )
