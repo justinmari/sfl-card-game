@@ -10,10 +10,12 @@ export default function BattleFaceoff({
   faceOff,
   onComplete,
   large,
+  vertical,
 }: {
   faceOff: FaceOffDetail
   onComplete: () => void
   large: boolean
+  vertical?: boolean
 }) {
   const [phase, setPhase] = useState<Phase>('enter')
   const canvas1Ref = useRef<HTMLCanvasElement>(null)
@@ -85,9 +87,9 @@ export default function BattleFaceoff({
       if (phase === 'rolling') {
         if (maxRoll === 0) {
           // Higher power card — just show base power centered, no dice
-          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.font = `${fontSize * 0.6}px serif`
           ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
-          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
           ctx.fillStyle = '#e4e4e7'
           ctx.fillText(`${baseStar}`, w / 2 + fontSize * 0.5, h / 2)
         } else {
@@ -96,15 +98,15 @@ export default function BattleFaceoff({
           const speed = 1 - Math.pow(progress, 2.5)
 
           // Base power (static, left side)
-          ctx.font = `${fontSize * 0.5}px serif`
+          ctx.font = `${fontSize * 0.6}px serif`
           ctx.fillText('⭐', w * 0.2, h / 2)
-          ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
           ctx.fillStyle = '#a1a1aa'
           ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
 
           // Plus sign
           ctx.fillStyle = '#71717a'
-          ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
+          ctx.font = `bold ${fontSize * 0.6}px system-ui, sans-serif`
           ctx.fillText('+', w * 0.48, h / 2)
 
           // Rolling dice number (right side)
@@ -140,28 +142,27 @@ export default function BattleFaceoff({
       if (phase === 'merge') {
         if (maxRoll === 0) {
           // No dice was rolled — just show final number
-          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.font = `${fontSize * 0.6}px serif`
           ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
-          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
           ctx.fillStyle = '#e4e4e7'
           ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
         } else {
           const mergeProgress = Math.min(elapsed / 600, 1)
           const eased = 1 - Math.pow(1 - mergeProgress, 3)
-          const displayTotal = Math.round(baseStar + finalRoll * eased)
 
           const breakdownAlpha = 1 - eased
           const totalAlpha = eased
 
           if (breakdownAlpha > 0.05) {
             ctx.globalAlpha = breakdownAlpha
-            ctx.font = `${fontSize * 0.5}px serif`
+            ctx.font = `${fontSize * 0.6}px serif`
             ctx.fillText('⭐', w * 0.2, h / 2)
-            ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
+            ctx.font = `bold ${fontSize}px system-ui, sans-serif`
             ctx.fillStyle = '#a1a1aa'
             ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
             ctx.fillStyle = '#71717a'
-            ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
+            ctx.font = `bold ${fontSize * 0.6}px system-ui, sans-serif`
             ctx.fillText('+', w * 0.48, h / 2)
             ctx.font = `bold ${fontSize}px system-ui, sans-serif`
             ctx.fillStyle = finalRoll > 0 ? '#fbbf24' : '#71717a'
@@ -174,11 +175,11 @@ export default function BattleFaceoff({
             ctx.shadowColor = '#fbbf24'
             ctx.shadowBlur = 6 * (1 - eased)
           }
-          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.font = `${fontSize * 0.6}px serif`
           ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
-          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
           ctx.fillStyle = '#e4e4e7'
-          ctx.fillText(`${displayTotal}`, w / 2 + fontSize * 0.5, h / 2)
+          ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
           ctx.shadowBlur = 0
           ctx.globalAlpha = 1
         }
@@ -186,9 +187,9 @@ export default function BattleFaceoff({
 
       if (phase === 'result') {
         // Final number, big and clear
-        ctx.font = `${fontSize * 0.7}px serif`
+        ctx.font = `${fontSize * 0.6}px serif`
         ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
-        ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
         ctx.fillStyle = '#e4e4e7'
         ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
       }
@@ -232,20 +233,22 @@ export default function BattleFaceoff({
     canvas.dataset.scaled = '1'
   }
 
+  const enterAnim1 = vertical ? 'animate-[slideFromTop_0.4s_ease-out]' : 'animate-[slideFromLeft_0.4s_ease-out]'
+  const enterAnim2 = vertical ? 'animate-[slideFromBottom_0.4s_ease-out]' : 'animate-[slideFromRight_0.4s_ease-out]'
+  const knockP1 = vertical ? 'opacity-40 scale-90 -translate-y-3' : 'opacity-40 scale-90 translate-x-3'
+  const knockP2 = vertical ? 'opacity-40 scale-90 translate-y-3' : 'opacity-40 scale-90 -translate-x-3'
+
   return (
-    <div className="flex items-center justify-center gap-3 sm:gap-6">
-      {/* Player 1 */}
+    <div className={`flex items-center justify-center ${vertical ? 'flex-col gap-4' : 'gap-3 sm:gap-6'}`}>
+      {/* Player 1 (opponent on top in vertical) */}
       <div className={`flex flex-col items-center gap-1 transition-all duration-500 ${
-        phase === 'enter' ? 'animate-[slideFromLeft_0.4s_ease-out]' : ''
-      } ${phase === 'result' || phase === 'done' ? (p2Won ? 'opacity-40 scale-90 translate-x-3' : p1Won ? 'scale-105' : '') : ''}`}>
+        phase === 'enter' ? enterAnim1 : ''
+      } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
         <div className={cardSize}><CompactCard card={fo.card1} /></div>
 
-        {/* Canvas for power, roll, merge, result */}
-        {phase !== 'enter' && (
-          <canvas ref={canvas1Ref} className="block" />
-        )}
+        <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
+          style={{ width: canvasW, height: canvasH }} />
 
-        {/* Damage / win text */}
         {(phase === 'result' || phase === 'done') && (
           <div className="animate-[fadeIn_0.3s_ease-out]">
             {p2Won && <span className={`${large ? 'text-lg' : 'text-sm'} font-black text-red-400`}>-{fo.damage1} HP</span>}
@@ -258,15 +261,14 @@ export default function BattleFaceoff({
       {/* VS */}
       <span className={`${large ? 'text-xl' : 'text-sm'} font-black text-zinc-700`}>⚔️</span>
 
-      {/* Player 2 */}
+      {/* Player 2 (you on bottom in vertical) */}
       <div className={`flex flex-col items-center gap-1 transition-all duration-500 ${
-        phase === 'enter' ? 'animate-[slideFromRight_0.4s_ease-out]' : ''
-      } ${phase === 'result' || phase === 'done' ? (p1Won ? 'opacity-40 scale-90 -translate-x-3' : p2Won ? 'scale-105' : '') : ''}`}>
+        phase === 'enter' ? enterAnim2 : ''
+      } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
         <div className={cardSize}><CompactCard card={fo.card2} /></div>
 
-        {phase !== 'enter' && (
-          <canvas ref={canvas2Ref} className="block" />
-        )}
+        <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
+          style={{ width: canvasW, height: canvasH }} />
 
         {(phase === 'result' || phase === 'done') && (
           <div className="animate-[fadeIn_0.3s_ease-out]">
@@ -281,6 +283,8 @@ export default function BattleFaceoff({
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideFromLeft { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideFromRight { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideFromTop { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideFromBottom { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
     </div>
   )

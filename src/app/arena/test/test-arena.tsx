@@ -237,20 +237,44 @@ export default function TestArena({
                 <div className="text-center text-xs text-zinc-500">Card {cardIdx + 1}/5</div>
 
                 {/* Player's match — large */}
-                {myMatchIdx >= 0 && !matchKo.has(myMatchIdx) && (
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                    <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
-                      <span>{getPlayer(precomputed.matches[myMatchIdx].player1Id)?.name} ({displayHp[precomputed.matches[myMatchIdx].player1Id] ?? 0} HP)</span>
-                      <span>{getPlayer(precomputed.matches[myMatchIdx].player2Id)?.name} ({displayHp[precomputed.matches[myMatchIdx].player2Id] ?? 0} HP)</span>
+                {myMatchIdx >= 0 && !matchKo.has(myMatchIdx) && (() => {
+                  const myMatch = precomputed.matches[myMatchIdx]
+                  const fo = myMatch.faceOffs[cardIdx] as FaceOffDetail
+                  const imPlayer2 = myMatch.player2Id === userId
+                  // Swap so opponent is card1 (top), user is card2 (bottom)
+                  const displayFo: FaceOffDetail = imPlayer2 ? fo : {
+                    ...fo,
+                    card1: fo.card2,
+                    card2: fo.card1,
+                    star1: fo.star2,
+                    star2: fo.star1,
+                    roll1: fo.roll2,
+                    roll2: fo.roll1,
+                    effective1: fo.effective2,
+                    effective2: fo.effective1,
+                    damage1: fo.damage2,
+                    damage2: fo.damage1,
+                  }
+                  const opponentId = imPlayer2 ? myMatch.player1Id : myMatch.player2Id
+
+                  return (
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                      <div className="mb-3 text-center text-xs text-zinc-500">
+                        {getPlayer(opponentId)?.name} ({displayHp[opponentId] ?? 0} HP)
+                      </div>
+                      <BattleFaceoff
+                        key={`large-${faceoffKey}`}
+                        faceOff={displayFo}
+                        onComplete={onFaceoffComplete}
+                        large
+                        vertical
+                      />
+                      <div className="mt-3 text-center text-xs text-zinc-500">
+                        You ({displayHp[userId] ?? 0} HP)
+                      </div>
                     </div>
-                    <BattleFaceoff
-                      key={`large-${faceoffKey}`}
-                      faceOff={precomputed.matches[myMatchIdx].faceOffs[cardIdx] as FaceOffDetail}
-                      onComplete={onFaceoffComplete}
-                      large
-                    />
-                  </div>
-                )}
+                  )
+                })()}
 
                 {myMatchIdx >= 0 && matchKo.has(myMatchIdx) && (
                   <div className="rounded-xl border border-red-800 bg-zinc-900 p-6 text-center opacity-60">
