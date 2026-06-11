@@ -252,76 +252,129 @@ export default function TestArena({
           )}
 
           {/* Simultaneous matches */}
-          {precomputed && (autoPhase === 'card-enter' || autoPhase === 'card-result') && (
-            <div className="space-y-4">
-              <div className="text-center text-xs text-zinc-500">Card {cardIdx + 1}/5</div>
-              {precomputed.matches.map((match, mi) => {
-                const ko = matchKo.has(mi)
-                const fo = match.faceOffs[cardIdx] as FaceOffDetail | undefined
-                const showResult = autoPhase === 'card-result'
+          {precomputed && (autoPhase === 'card-enter' || autoPhase === 'card-result') && (() => {
+            const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
+            const otherMatches = precomputed.matches.filter((_, i) => i !== myMatchIdx)
+            const showResult = autoPhase === 'card-result'
 
-                if (!fo) return null
+            const renderMatch = (match: typeof precomputed.matches[0], mi: number, large: boolean) => {
+              const ko = matchKo.has(mi)
+              const fo = match.faceOffs[cardIdx] as FaceOffDetail | undefined
+              if (!fo) return null
 
+              if (!large) {
+                // Mini display
                 return (
-                  <div key={mi} className={`rounded-xl border bg-zinc-900 p-4 transition-opacity duration-300 ${ko && !showResult ? 'border-red-800 opacity-60' : 'border-zinc-800'}`}>
-                    {/* Match header */}
-                    <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
-                      <span>{getPlayer(match.player1Id)?.name} ({displayHp[match.player1Id] ?? 0} HP)</span>
-                      <span>Match {mi + 1}</span>
-                      <span>{getPlayer(match.player2Id)?.name} ({displayHp[match.player2Id] ?? 0} HP)</span>
+                  <div key={mi} className={`rounded-lg border bg-zinc-900 p-3 transition-opacity duration-300 ${ko ? 'border-red-800 opacity-50' : 'border-zinc-800'}`}>
+                    <div className="flex items-center justify-between text-[10px] text-zinc-500 mb-2">
+                      <span>{getPlayer(match.player1Id)?.name} <span className={`font-bold ${(displayHp[match.player1Id] ?? 0) <= 3 ? 'text-red-400' : 'text-green-400'}`}>{displayHp[match.player1Id] ?? 0}</span></span>
+                      <span>vs</span>
+                      <span><span className={`font-bold ${(displayHp[match.player2Id] ?? 0) <= 3 ? 'text-red-400' : 'text-green-400'}`}>{displayHp[match.player2Id] ?? 0}</span> {getPlayer(match.player2Id)?.name}</span>
                     </div>
-
-                    {ko && cardIdx > 0 && !fo ? (
-                      <div className="text-center text-sm text-red-400 font-bold py-2">💀 KO</div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-3 sm:gap-6">
-                        {/* P1 card */}
-                        <div className={`flex flex-col items-center gap-1 ${autoPhase === 'card-enter' ? 'animate-[slideFromLeft_0.4s_ease-out]' : ''}`}>
-                          <div className="w-16 sm:w-20"><CompactCard card={fo.card1} /></div>
-                          <span className="text-[10px] text-zinc-400">
-                            ⭐{fo.star1}
-                            <span className={fo.roll1 > 0 ? 'text-amber-400' : 'text-zinc-600'}> +{fo.roll1}🎲</span>
-                            <span className="text-zinc-300"> ={fo.effective1}</span>
-                          </span>
-                          {showResult && (
-                            <span className="text-xs font-bold animate-[fadeIn_0.3s_ease-out]">
-                              {fo.damage1 > 0 && <span className="text-red-400">-{fo.damage1}</span>}
-                              {fo.damage2 > 0 && <span className="text-green-400">WIN</span>}
-                              {fo.damage1 === 0 && fo.damage2 === 0 && <span className="text-zinc-500">TIE</span>}
-                            </span>
-                          )}
-                        </div>
-
-                        <span className="text-sm font-black text-zinc-700">⚔️</span>
-
-                        {/* P2 card */}
-                        <div className={`flex flex-col items-center gap-1 ${autoPhase === 'card-enter' ? 'animate-[slideFromRight_0.4s_ease-out]' : ''}`}>
-                          <div className="w-16 sm:w-20"><CompactCard card={fo.card2} /></div>
-                          <span className="text-[10px] text-zinc-400">
-                            ⭐{fo.star2}
-                            <span className={fo.roll2 > 0 ? 'text-amber-400' : 'text-zinc-600'}> +{fo.roll2}🎲</span>
-                            <span className="text-zinc-300"> ={fo.effective2}</span>
-                          </span>
-                          {showResult && (
-                            <span className="text-xs font-bold animate-[fadeIn_0.3s_ease-out]">
-                              {fo.damage2 > 0 && <span className="text-red-400">-{fo.damage2}</span>}
-                              {fo.damage1 > 0 && <span className="text-green-400">WIN</span>}
-                              {fo.damage2 === 0 && fo.damage1 === 0 && <span className="text-zinc-500">TIE</span>}
-                            </span>
-                          )}
-                        </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-8 h-10 overflow-hidden rounded border border-zinc-700">
+                        {fo.card1.image_url ? <img src={fo.card1.image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-[6px]">🃏</div>}
                       </div>
-                    )}
-
-                    {/* KO this card */}
-                    {showResult && ko && (
-                      <div className="mt-2 text-center text-sm font-bold text-red-400 animate-[scaleIn_0.3s_ease-out]">💀 KO!</div>
-                    )}
+                      <div className="text-center">
+                        <div className="text-[9px] text-zinc-400">{fo.effective1} vs {fo.effective2}</div>
+                        {showResult && (
+                          <div className="text-[9px] font-bold">
+                            {fo.damage1 > 0 && <span className="text-red-400">-{fo.damage1}</span>}
+                            {fo.damage2 > 0 && <span className="text-green-400">-{fo.damage2}</span>}
+                            {fo.damage1 === 0 && fo.damage2 === 0 && <span className="text-zinc-500">TIE</span>}
+                          </div>
+                        )}
+                        {ko && showResult && <div className="text-[9px] text-red-400">💀</div>}
+                      </div>
+                      <div className="w-8 h-10 overflow-hidden rounded border border-zinc-700">
+                        {fo.card2.image_url ? <img src={fo.card2.image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-[6px]">🃏</div>}
+                      </div>
+                    </div>
                   </div>
                 )
-              })}
-            </div>
-          )}
+              }
+
+              // Large display (player's match)
+              return (
+                <div key={mi} className={`rounded-xl border bg-zinc-900 p-6 transition-opacity duration-300 ${ko ? 'border-red-800' : 'border-zinc-800'}`}>
+                  <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
+                    <span>{getPlayer(match.player1Id)?.name} ({displayHp[match.player1Id] ?? 0} HP)</span>
+                    <span>Card {cardIdx + 1}/5</span>
+                    <span>{getPlayer(match.player2Id)?.name} ({displayHp[match.player2Id] ?? 0} HP)</span>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-4 sm:gap-8">
+                    <div className={`flex flex-col items-center gap-2 ${autoPhase === 'card-enter' ? 'animate-[slideFromLeft_0.4s_ease-out]' : ''}`}>
+                      <div className="w-20 sm:w-24"><CompactCard card={fo.card1} /></div>
+                      <span className="text-xs text-zinc-400">
+                        ⭐{fo.star1}
+                        <span className={fo.roll1 > 0 ? 'text-amber-400' : 'text-zinc-600'}> +{fo.roll1}🎲</span>
+                        <span className="text-zinc-300"> ={fo.effective1}</span>
+                      </span>
+                      {showResult && (
+                        <span className="text-sm font-bold animate-[fadeIn_0.3s_ease-out]">
+                          {fo.damage1 > 0 && <span className="text-red-400">-{fo.damage1} HP</span>}
+                          {fo.damage2 > 0 && <span className="text-green-400">WIN</span>}
+                          {fo.damage1 === 0 && fo.damage2 === 0 && <span className="text-zinc-500">TIE</span>}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-xl font-black text-zinc-700">⚔️</span>
+
+                    <div className={`flex flex-col items-center gap-2 ${autoPhase === 'card-enter' ? 'animate-[slideFromRight_0.4s_ease-out]' : ''}`}>
+                      <div className="w-20 sm:w-24"><CompactCard card={fo.card2} /></div>
+                      <span className="text-xs text-zinc-400">
+                        ⭐{fo.star2}
+                        <span className={fo.roll2 > 0 ? 'text-amber-400' : 'text-zinc-600'}> +{fo.roll2}🎲</span>
+                        <span className="text-zinc-300"> ={fo.effective2}</span>
+                      </span>
+                      {showResult && (
+                        <span className="text-sm font-bold animate-[fadeIn_0.3s_ease-out]">
+                          {fo.damage2 > 0 && <span className="text-red-400">-{fo.damage2} HP</span>}
+                          {fo.damage1 > 0 && <span className="text-green-400">WIN</span>}
+                          {fo.damage2 === 0 && fo.damage1 === 0 && <span className="text-zinc-500">TIE</span>}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {showResult && ko && (
+                    <div className="mt-3 text-center text-2xl font-black text-red-400 animate-[scaleIn_0.3s_ease-out]">💀 KO!</div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <div className="space-y-4">
+                <div className="text-center text-xs text-zinc-500">Card {cardIdx + 1}/5</div>
+
+                {/* Player's match — large */}
+                {myMatchIdx >= 0 && renderMatch(precomputed.matches[myMatchIdx], myMatchIdx, true)}
+
+                {/* Player has a bye */}
+                {myMatchIdx < 0 && (
+                  <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-6 text-center">
+                    <span className="text-sm text-amber-400">You have a bye this round — watch the action below!</span>
+                  </div>
+                )}
+
+                {/* Other matches — mini grid */}
+                {otherMatches.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs text-zinc-500">Other matches</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {otherMatches.map((match) => {
+                        const originalIdx = precomputed.matches.indexOf(match)
+                        return renderMatch(match, originalIdx, false)
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Round end */}
           {autoPhase === 'round-end' && precomputed && (
