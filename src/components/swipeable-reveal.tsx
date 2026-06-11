@@ -16,14 +16,6 @@ type CardData = {
   is_new?: boolean
 }
 
-const rarityAuraColor: Record<string, string> = {
-  common: 'rgba(161,161,170,0.6)',
-  uncommon: 'rgba(34,197,94,0.85)',
-  rare: 'rgba(59,130,246,0.9)',
-  ultra_rare: 'rgba(168,85,247,1)',
-  legendary: 'rgba(245,158,11,1)',
-  secret_rare: 'rgba(236,72,153,1)',
-}
 
 export default function SwipeableReveal({
   cards,
@@ -72,16 +64,19 @@ export default function SwipeableReveal({
       const dir = dragX < 0 ? -1 : 1
       setAnimatingOut(true)
       setDragX(dir * 400)
-      const nextCard = cards[currentIndex + 1]
-      if (nextCard) {
-        setCelebrateRarity(nextCard.rarity)
-        setCelebrateTrigger((prev) => prev + 1)
-        playCelebration(nextCard.rarity)
-      }
       setTimeout(() => {
         setCurrentIndex((prev) => prev + 1)
         setDragX(0)
         setAnimatingOut(false)
+        // Delay celebration so flip gets priority
+        const nextCard = cards[currentIndex + 1]
+        if (nextCard) {
+          requestAnimationFrame(() => {
+            setCelebrateRarity(nextCard.rarity)
+            setCelebrateTrigger((prev) => prev + 1)
+            playCelebration(nextCard.rarity)
+          })
+        }
       }, 200)
     } else {
       setDragX(0)
@@ -93,16 +88,18 @@ export default function SwipeableReveal({
     playSwipe()
     setAnimatingOut(true)
     setDragX(400)
-    const nextCard = cards[currentIndex + 1]
-    if (nextCard) {
-      setCelebrateRarity(nextCard.rarity)
-      setCelebrateTrigger((prev) => prev + 1)
-      playCelebration(nextCard.rarity)
-    }
     setTimeout(() => {
       setCurrentIndex((prev) => prev + 1)
       setDragX(0)
       setAnimatingOut(false)
+      const nextCard = cards[currentIndex + 1]
+      if (nextCard) {
+        requestAnimationFrame(() => {
+          setCelebrateRarity(nextCard.rarity)
+          setCelebrateTrigger((prev) => prev + 1)
+          playCelebration(nextCard.rarity)
+        })
+      }
     }, 300)
   }
 
@@ -127,7 +124,6 @@ export default function SwipeableReveal({
   const opacity = 1 - Math.abs(dragX) * 0.001
   const dragProgress = Math.min(Math.abs(dragX) / 200, 1)
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null
-  const auraColor = nextCard ? rarityAuraColor[nextCard.rarity] || 'rgba(255,255,255,0.1)' : 'transparent'
 
   // Auto swipe mode — stops on new cards
   useEffect(() => {
@@ -190,7 +186,12 @@ export default function SwipeableReveal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
-      <RarityCelebration rarity={celebrateRarity} trigger={celebrateTrigger} />
+      <RarityCelebration
+        rarity={celebrateRarity}
+        trigger={celebrateTrigger}
+        auraRarity={nextCard?.rarity}
+        auraIntensity={isDragging ? dragProgress : 0}
+      />
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -214,25 +215,6 @@ export default function SwipeableReveal({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Rarity aura — shows during drag only */}
-        {nextCard && isDragging && dragProgress > 0 && (
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ zIndex: cards.length - currentIndex - 1 }}
-          >
-            <div
-              style={{
-                width: '22rem',
-                height: '32rem',
-                borderRadius: '2rem',
-                background: `linear-gradient(135deg, ${auraColor} 0%, transparent 50%), linear-gradient(-135deg, ${auraColor} 0%, transparent 50%), ${auraColor}`,
-                opacity: dragProgress * 0.5,
-                filter: `blur(${30 + dragProgress * 15}px)`,
-              }}
-            />
-          </div>
-        )}
-
         {cards.map((card, i) => {
           if (i < currentIndex) return null
           const isCurrent = i === currentIndex

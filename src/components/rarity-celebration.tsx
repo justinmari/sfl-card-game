@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 const rarityEmojis: Record<string, string[]> = {
   common: [],
-  uncommon: ['✨', '✨', '⭐', '✨', '⭐', '✨'],
-  rare: ['✨', '⭐', '💫', '✨', '⭐', '💎', '✨', '💫', '⭐', '✨', '💎', '⭐'],
-  ultra_rare: ['✨', '⭐', '💫', '💜', '🔮', '✨', '⭐', '💫', '💜', '✨', '🌟', '💎', '🔮', '💜', '✨', '⭐', '💫', '🔮', '💜', '✨', '🌟', '💎', '💜', '✨', '⭐'],
-  legendary: ['🔥', '⭐', '💛', '✨', '🌟', '💫', '🔥', '⭐', '💛', '✨', '🌟', '💫', '🔥', '⭐', '🏆', '👑', '🔥', '✨', '💛', '🌟', '🔥', '⭐', '💛', '✨', '🌟', '💫', '🔥', '👑', '🏆', '💛', '✨', '🌟', '🔥', '⭐', '💫'],
-  secret_rare: ['🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '💖', '✨', '🌟', '🎆', '💫', '🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '🏆', '💖', '✨', '🌟', '🎆', '💫', '🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '💖', '✨', '🌟', '🎆', '💫', '🎉', '🏆', '💖', '✨', '🌟', '🎆', '💫', '⭐'],
+  uncommon: ['✨', '⭐', '✨', '⭐', '✨', '⭐', '✨', '⭐'],
+  rare: ['✨', '⭐', '💫', '💎', '✨', '⭐', '💫', '💎', '✨', '⭐', '💫', '💎', '✨', '⭐', '💫'],
+  ultra_rare: ['✨', '⭐', '💫', '💜', '🔮', '🌟', '💎', '✨', '💜', '⭐', '💫', '🔮', '💜', '🌟', '💎', '✨', '💜', '⭐', '🔮', '💫'],
+  legendary: ['🔥', '⭐', '💛', '✨', '🌟', '💫', '🔥', '⭐', '💛', '✨', '🌟', '💫', '🔥', '⭐', '🏆', '👑', '🔥', '✨', '💛', '🌟', '🔥', '⭐', '💛', '🌟', '💫', '👑'],
+  secret_rare: ['🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '💖', '✨', '🌟', '🎆', '💫', '🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '🏆', '💖', '✨', '🌟', '🎆', '💫', '🎉', '💖', '✨', '🌟', '🎆', '💫', '⭐', '🏆', '💖', '✨'],
 }
 
 const raritySizeRange: Record<string, [number, number]> = {
@@ -20,161 +20,242 @@ const raritySizeRange: Record<string, [number, number]> = {
   secret_rare: [28, 44],
 }
 
-const rarityFlashColor: Record<string, string> = {
-  common: 'transparent',
-  uncommon: 'rgba(34,197,94,0.2)',
-  rare: 'rgba(59,130,246,0.3)',
-  ultra_rare: 'rgba(168,85,247,0.35)',
-  legendary: 'rgba(245,158,11,0.4)',
-  secret_rare: 'rgba(236,72,153,0.45)',
-}
-
-const rarityShake: Record<string, boolean> = {
-  ultra_rare: true,
-  legendary: true,
-  secret_rare: true,
+const rarityRGB: Record<string, [number, number, number]> = {
+  common: [161, 161, 170],
+  uncommon: [34, 197, 94],
+  rare: [59, 130, 246],
+  ultra_rare: [168, 85, 247],
+  legendary: [245, 158, 11],
+  secret_rare: [236, 72, 153],
 }
 
 type Particle = {
-  id: number
   emoji: string
-  startX: number
-  startY: number
-  endX: number
-  endY: number
+  x: number
+  y: number
+  vx: number
+  vy: number
   size: number
-  duration: number
-  delay: number
-  spin: number
+  age: number
+  rotation: number
+  rotationSpeed: number
 }
 
-export default function RarityCelebration({ rarity, trigger }: { rarity: string; trigger: number }) {
-  const [particles, setParticles] = useState<Particle[]>([])
-  const [flash, setFlash] = useState(false)
-  const [shaking, setShaking] = useState(false)
+const emojiCache = new Map<string, HTMLCanvasElement>()
 
+function getEmojiCanvas(emoji: string, size: number): HTMLCanvasElement {
+  const key = `${emoji}_${size}`
+  if (emojiCache.has(key)) return emojiCache.get(key)!
+  const c = document.createElement('canvas')
+  c.width = size * 2
+  c.height = size * 2
+  const ctx = c.getContext('2d')!
+  ctx.font = `${size}px serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(emoji, size, size)
+  emojiCache.set(key, c)
+  return c
+}
+
+export default function RarityCelebration({
+  rarity,
+  trigger,
+  auraRarity,
+  auraIntensity,
+}: {
+  rarity: string
+  trigger: number
+  auraRarity?: string | null
+  auraIntensity?: number
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const particlesRef = useRef<Particle[]>([])
+  const animFrameRef = useRef<number>(0)
+  const flashRef = useRef<{ age: number; color: [number, number, number] } | null>(null)
+  const sizedRef = useRef(false)
+  // Store latest props in refs so the loop always reads current values
+  const auraRarityRef = useRef(auraRarity)
+  const auraIntensityRef = useRef(auraIntensity || 0)
+  const fadingAuraRef = useRef<{ color: [number, number, number]; opacity: number } | null>(null)
+  const prevIntensityRef = useRef(0)
+
+  auraRarityRef.current = auraRarity
+  auraIntensityRef.current = auraIntensity || 0
+
+  // Detect drag end — snapshot the aura for fading
+  if (prevIntensityRef.current > 0 && auraIntensityRef.current === 0 && auraRarityRef.current) {
+    fadingAuraRef.current = {
+      color: rarityRGB[auraRarityRef.current] || [161, 161, 170],
+      opacity: prevIntensityRef.current,
+    }
+  }
+  prevIntensityRef.current = auraIntensityRef.current
+
+  function ensureCanvasSize() {
+    const canvas = canvasRef.current
+    if (canvas && !sizedRef.current) {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      sizedRef.current = true
+    }
+  }
+
+  function drawAura(ctx: CanvasRenderingContext2D, w: number, h: number) {
+    const intensity = auraIntensityRef.current
+    const fading = fadingAuraRef.current
+
+    // Active drag aura
+    if (intensity > 0 && auraRarityRef.current) {
+      const [r, g, b] = rarityRGB[auraRarityRef.current] || [161, 161, 170]
+      const cx = w / 2
+      const cy = h / 2
+      const radius = Math.max(w, h) * 0.4
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
+      gradient.addColorStop(0, `rgba(${r},${g},${b},${intensity * 0.5})`)
+      gradient.addColorStop(0.5, `rgba(${r},${g},${b},${intensity * 0.2})`)
+      gradient.addColorStop(1, `rgba(${r},${g},${b},0)`)
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, w, h)
+    }
+
+    // Fading aura after release
+    if (fading && fading.opacity > 0) {
+      const [r, g, b] = fading.color
+      const cx = w / 2
+      const cy = h / 2
+      const radius = Math.max(w, h) * 0.4
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
+      gradient.addColorStop(0, `rgba(${r},${g},${b},${fading.opacity * 0.5})`)
+      gradient.addColorStop(0.5, `rgba(${r},${g},${b},${fading.opacity * 0.2})`)
+      gradient.addColorStop(1, `rgba(${r},${g},${b},0)`)
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, w, h)
+      fading.opacity -= 0.02
+      if (fading.opacity <= 0) fadingAuraRef.current = null
+    }
+  }
+
+  function drawParticles(ctx: CanvasRenderingContext2D) {
+    const particles = particlesRef.current
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]
+      p.x += p.vx
+      p.y += p.vy
+      p.vy += 0.02
+      p.vx *= 0.997
+      p.age++
+      p.rotation += p.rotationSpeed
+      const alpha = p.age < 30 ? 1 : Math.max(0, 1 - (p.age - 30) / 100)
+      if (alpha <= 0) { particles.splice(i, 1); continue }
+      const cached = getEmojiCanvas(p.emoji, p.size)
+      ctx.save()
+      ctx.translate(p.x, p.y)
+      ctx.rotate((p.rotation * Math.PI) / 180)
+      ctx.globalAlpha = alpha
+      ctx.drawImage(cached, -p.size, -p.size)
+      ctx.restore()
+    }
+  }
+
+  function startLoop() {
+    if (animFrameRef.current) return
+    const animate = () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Flash
+      const flash = flashRef.current
+      if (flash && flash.age < 30) {
+        const [r, g, b] = flash.color
+        const a = Math.max(0, 0.3 - flash.age * 0.01)
+        ctx.fillStyle = `rgba(${r},${g},${b},${a})`
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        flash.age++
+        if (flash.age >= 30) flashRef.current = null
+      }
+
+      drawAura(ctx, canvas.width, canvas.height)
+      drawParticles(ctx)
+
+      const hasWork =
+        particlesRef.current.length > 0 ||
+        flashRef.current !== null ||
+        auraIntensityRef.current > 0 ||
+        (fadingAuraRef.current && fadingAuraRef.current.opacity > 0)
+
+      if (hasWork) {
+        animFrameRef.current = requestAnimationFrame(animate)
+      } else {
+        animFrameRef.current = 0
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    }
+    animFrameRef.current = requestAnimationFrame(animate)
+  }
+
+  // Start loop when aura is active
+  useEffect(() => {
+    if ((auraIntensity && auraIntensity > 0) || (fadingAuraRef.current && fadingAuraRef.current.opacity > 0)) {
+      ensureCanvasSize()
+      startLoop()
+    }
+  })
+
+  // Spawn particles on trigger
   useEffect(() => {
     if (trigger === 0) return
-
     const emojis = rarityEmojis[rarity] || []
     if (emojis.length === 0) return
 
-    // Flash
-    setFlash(true)
-    setTimeout(() => setFlash(false), 500)
+    ensureCanvasSize()
+    flashRef.current = { age: 0, color: rarityRGB[rarity] || [0, 0, 0] }
 
-    // Shake
-    if (rarityShake[rarity]) {
-      setShaking(true)
-      setTimeout(() => setShaking(false), 600)
-    }
-
-    // Create particles exploding from center to all edges
+    const sizeRange = raritySizeRange[rarity] || [14, 24]
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
     const newParticles: Particle[] = emojis.map((emoji, i) => {
       const angle = (i / emojis.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
-      const distance = 120 + Math.random() * 150
-      // Spawn scattered around center, not dead center
-      const spawnRadius = 8 + Math.random() * 12
-      const spawnAngle = Math.random() * Math.PI * 2
+      const speed = 3 + Math.random() * 3
+      const spawnR = 40 + Math.random() * 60
+      const spawnA = Math.random() * Math.PI * 2
+      const size = Math.round(sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]))
+      getEmojiCanvas(emoji, size)
       return {
-        id: Date.now() + i,
         emoji,
-        startX: 50 + Math.cos(spawnAngle) * spawnRadius,
-        startY: 45 + Math.sin(spawnAngle) * spawnRadius * 0.6,
-        endX: 50 + Math.cos(angle) * (distance / 4),
-        endY: 50 + Math.sin(angle) * (distance / 5),
-        size: (raritySizeRange[rarity]?.[0] || 14) + Math.random() * ((raritySizeRange[rarity]?.[1] || 24) - (raritySizeRange[rarity]?.[0] || 14)),
-        duration: 2000 + Math.random() * 500,
-        delay: Math.random() * 100,
-        spin: (Math.random() - 0.5) * 720,
+        x: cx + Math.cos(spawnA) * spawnR,
+        y: cy + Math.sin(spawnA) * spawnR * 0.6,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size,
+        age: 0,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 3,
       }
     })
 
-    setParticles((prev) => [...prev, ...newParticles])
-    const ids = newParticles.map((p) => p.id)
-    setTimeout(() => {
-      setParticles((prev) => prev.filter((p) => !ids.includes(p.id)))
-    }, 2500)
+    particlesRef.current = [...particlesRef.current, ...newParticles]
+    startLoop()
   }, [trigger, rarity])
 
+  useEffect(() => {
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current)
+        animFrameRef.current = 0
+      }
+    }
+  }, [])
+
   return (
-    <>
-      {/* Screen flash — behind cards (z-40, cards are z-50) */}
-      {flash && (
-        <div
-          className="fixed inset-0 pointer-events-none"
-          style={{
-            zIndex: 45,
-            background: `radial-gradient(circle at 50% 50%, ${rarityFlashColor[rarity] || 'transparent'} 0%, transparent 70%)`,
-            animation: 'celebFlash 0.5s ease-out forwards',
-          }}
-        />
-      )}
-
-      {/* Screen shake */}
-      {shaking && (
-        <style>{`
-          body { animation: celebShake ${rarity === 'secret_rare' ? '0.6s' : '0.4s'} ease-in-out; }
-        `}</style>
-      )}
-
-      {/* Emoji particles — on top of everything */}
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="fixed pointer-events-none"
-          style={{
-            zIndex: 200,
-            left: `${p.startX}%`,
-            top: `${p.startY}%`,
-            fontSize: `${p.size}px`,
-            animation: `celebParticle ${p.duration}ms cubic-bezier(0.2, 0.8, 0.3, 1) ${p.delay}ms forwards`,
-            '--end-x': `${p.endX - p.startX}vw`,
-            '--end-y': `${p.endY - p.startY}vh`,
-            '--spin': `${p.spin}deg`,
-          } as React.CSSProperties}
-        >
-          {p.emoji}
-        </div>
-      ))}
-
-      <style>{`
-        @keyframes celebFlash {
-          0% { opacity: 0; }
-          15% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-        @keyframes celebParticle {
-          0% {
-            transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
-            opacity: 1;
-          }
-          15% {
-            transform: translate(calc(-50% + var(--end-x) * 0.6), calc(-50% + var(--end-y) * 0.6)) scale(1.4) rotate(calc(var(--spin) * 0.4));
-            opacity: 1;
-          }
-          40% {
-            transform: translate(calc(-50% + var(--end-x) * 0.85), calc(-50% + var(--end-y) * 0.85)) scale(1.8) rotate(calc(var(--spin) * 0.7));
-            opacity: 0.7;
-          }
-          100% {
-            transform: translate(calc(-50% + var(--end-x)), calc(-50% + var(--end-y))) scale(2) rotate(var(--spin));
-            opacity: 0;
-          }
-        }
-        @keyframes celebShake {
-          0%, 100% { transform: translate(0, 0) rotate(0); }
-          10% { transform: translate(-6px, -2px) rotate(-0.5deg); }
-          20% { transform: translate(6px, 2px) rotate(0.5deg); }
-          30% { transform: translate(-5px, 1px) rotate(-0.4deg); }
-          40% { transform: translate(5px, -1px) rotate(0.4deg); }
-          50% { transform: translate(-4px, 2px) rotate(-0.3deg); }
-          60% { transform: translate(4px, -2px) rotate(0.3deg); }
-          70% { transform: translate(-2px, 1px) rotate(-0.1deg); }
-          80% { transform: translate(2px, -1px) rotate(0.1deg); }
-          90% { transform: translate(-1px, 0px) rotate(0); }
-        }
-      `}</style>
-    </>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 z-[100] pointer-events-none"
+      style={{ width: '100%', height: '100%' }}
+    />
   )
 }

@@ -19,6 +19,7 @@ function createNoise(ctx: AudioContext, duration: number): AudioBufferSourceNode
 }
 
 export function playSwipe() {
+  try {
   const ctx = getCtx()
   const now = ctx.currentTime
 
@@ -42,9 +43,11 @@ export function playSwipe() {
 
   noise.start(now)
   noise.stop(now + 0.1)
+  } catch {}
 }
 
 export function playFlip() {
+  try {
   const ctx = getCtx()
   const now = ctx.currentTime
 
@@ -69,6 +72,7 @@ export function playFlip() {
 
   noise.start(now)
   noise.stop(now + 0.12)
+  } catch {}
 }
 
 const rarityCelebrationConfig: Record<string, { notes: number[]; duration: number; volume: number }> = {
@@ -81,48 +85,33 @@ const rarityCelebrationConfig: Record<string, { notes: number[]; duration: numbe
 }
 
 export function playCelebration(rarity: string) {
-  const ctx = getCtx()
-  const now = ctx.currentTime
-  const config = rarityCelebrationConfig[rarity] || rarityCelebrationConfig.common
+  try {
+    const ctx = getCtx()
+    const now = ctx.currentTime
+    const config = rarityCelebrationConfig[rarity] || rarityCelebrationConfig.common
+    if (config.notes.length === 0) return
 
-  config.notes.forEach((freq, i) => {
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
+    // Limit to max 3 notes on mobile to prevent crashes
+    const notes = config.notes.slice(0, 3)
 
-    osc.type = 'sine'
-    const startTime = now + i * 0.1
-    osc.frequency.setValueAtTime(freq, startTime)
-
-    gain.gain.setValueAtTime(0, startTime)
-    gain.gain.linearRampToValueAtTime(config.volume, startTime + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + config.duration)
-
-    osc.start(startTime)
-    osc.stop(startTime + config.duration)
-  })
-
-  // Shimmer for ultra rare and above
-  if (['ultra_rare', 'legendary', 'secret_rare'].includes(rarity)) {
-    for (let i = 0; i < 3; i++) {
+    notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
 
       osc.type = 'sine'
-      const startTime = now + 0.2 + i * 0.08
-      const freq = 2000 + Math.random() * 2000
+      const startTime = now + i * 0.12
       osc.frequency.setValueAtTime(freq, startTime)
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.5, startTime + 0.15)
 
       gain.gain.setValueAtTime(0, startTime)
-      gain.gain.linearRampToValueAtTime(0.04, startTime + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2)
+      gain.gain.linearRampToValueAtTime(config.volume, startTime + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + config.duration)
 
       osc.start(startTime)
-      osc.stop(startTime + 0.2)
-    }
+      osc.stop(startTime + config.duration + 0.1)
+    })
+  } catch {
+    // Silently fail on mobile if audio context is unavailable
   }
 }
