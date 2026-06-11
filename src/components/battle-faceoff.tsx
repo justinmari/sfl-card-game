@@ -41,13 +41,24 @@ export default function BattleFaceoff({
   type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
   const particlesRef = useRef<EmojiParticle[]>([])
 
+  const card1DivRef = useRef<HTMLDivElement>(null)
+  const card2DivRef = useRef<HTMLDivElement>(null)
+
   const spawnParticles = (side: 'left' | 'right', isWinner: boolean, damage: number) => {
     if (!containerRef.current) return
-    const rect = containerRef.current.getBoundingClientRect()
-    const cx = side === 'left' ? rect.width * 0.25 : rect.width * 0.75
-    const cy = rect.height * 0.4
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const cardRef = side === 'left' ? card1DivRef.current : card2DivRef.current
+    let cx: number, cy: number
+    if (cardRef) {
+      const cardRect = cardRef.getBoundingClientRect()
+      cx = cardRect.left - containerRect.left + cardRect.width / 2
+      cy = cardRect.top - containerRect.top + cardRect.height / 2
+    } else {
+      cx = side === 'left' ? containerRect.width * 0.25 : containerRect.width * 0.75
+      cy = containerRect.height * 0.4
+    }
 
-    const emoji = isWinner ? '🎉' : '👊'
+    const emoji = isWinner ? '🎉' : '💥'
     const count = Math.min(3 + damage * 2, 12)
 
     for (let i = 0; i < count; i++) {
@@ -339,7 +350,7 @@ export default function BattleFaceoff({
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim1 : ''
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
-        <div className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(2deg)' } : undefined}><CompactCard card={fo.card1} /></div>
+        <div ref={card1DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(2deg)' } : undefined}><CompactCard card={fo.card1} /></div>
 
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
@@ -354,7 +365,7 @@ export default function BattleFaceoff({
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
-        <div className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(-2deg)' } : undefined}><CompactCard card={fo.card2} /></div>
+        <div ref={card2DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(-2deg)' } : undefined}><CompactCard card={fo.card2} /></div>
 
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
