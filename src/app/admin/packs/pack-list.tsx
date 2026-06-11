@@ -175,7 +175,7 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
       {/* Edit modal */}
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
             <h3 className="mb-4 text-lg font-semibold">Edit Pack</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -334,49 +334,49 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
 
       <div className="space-y-6">
         {packs.map((pack) => (
-          <div key={pack.id} className="flex gap-6 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            {/* Pack visual */}
-            <div className="flex-shrink-0 scale-[0.65] origin-top-left -mr-12 -mb-28">
-              <PackWrapper
-                name={pack.name}
-                imageUrl={pack.image_url}
-                price={pack.price}
-              />
-            </div>
-
-            {/* Pack details */}
-            <div className="flex-1 min-w-0">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold">{pack.name}</h3>
-                    <span className={`rounded px-2 py-0.5 text-xs ${pack.is_active ? 'bg-green-700' : 'bg-zinc-700'}`}>
-                      {pack.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-zinc-400">
-                    <span>{pack.cards_per_pack} cards/pack</span>
-                    <span className="font-medium text-amber-400">{pack.price} G</span>
-                  </div>
-                  {pack.description && (
-                    <p className="mt-1 text-sm text-zinc-500">{pack.description}</p>
-                  )}
+          <div key={pack.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            {/* Pack visual + details */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+              <div className="flex-shrink-0 self-center scale-[0.75] origin-top -mb-20 sm:scale-[0.55] sm:origin-top-left sm:-mb-32 sm:-mr-14">
+                <PackWrapper
+                  name={pack.name}
+                  imageUrl={pack.image_url}
+                  price={pack.price}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+            {/* Header: name + buttons */}
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold">{pack.name}</h3>
+                  <span className={`rounded px-2 py-0.5 text-xs ${pack.is_active ? 'bg-green-700' : 'bg-zinc-700'}`}>
+                    {pack.is_active ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startEdit(pack)}
-                    className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => toggleActive(pack.id, pack.is_active)}
-                    className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-                  >
-                    {pack.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(pack.id, pack.image_url)}
+                <div className="flex items-center gap-3 text-sm text-zinc-400">
+                  <span>{pack.cards_per_pack} cards/pack</span>
+                  <span className="font-medium text-amber-400">{pack.price} G</span>
+                </div>
+                {pack.description && (
+                  <p className="mt-1 text-sm text-zinc-500">{pack.description}</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => startEdit(pack)}
+                  className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => toggleActive(pack.id, pack.is_active)}
+                  className="rounded border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                >
+                  {pack.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  onClick={() => handleDelete(pack.id, pack.image_url)}
                     className="rounded border border-red-800 px-3 py-1 text-xs text-red-400 hover:bg-red-900/30"
                   >
                     Delete
@@ -384,27 +384,30 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
                 </div>
               </div>
 
-              <div className="space-y-1">
-                {pack.pack_cards
-                  .sort((a, b) => b.pull_percentage - a.pull_percentage)
-                  .map((pc) => (
-                    <div key={pc.cards.id} className="flex items-center gap-2 text-sm">
-                      <div className="h-1.5 rounded-full bg-zinc-700" style={{ width: '120px' }}>
-                        <div
-                          className="h-full rounded-full bg-white/30"
-                          style={{ width: `${Math.min(pc.pull_percentage, 100)}%` }}
-                        />
-                      </div>
-                      <span className="w-16 text-right text-zinc-400">
-                        {pc.pull_percentage}%
-                      </span>
-                      <span>{pc.cards.name}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-xs ${rarityBadgeColors[pc.cards.rarity]}`}>
-                        {pc.cards.rarity}
-                      </span>
-                    </div>
-                  ))}
               </div>
+            </div>
+
+            {/* Pull rates */}
+            <div className="space-y-1 overflow-x-auto">
+              {pack.pack_cards
+                .sort((a, b) => b.pull_percentage - a.pull_percentage)
+                .map((pc) => (
+                  <div key={pc.cards.id} className="flex items-center gap-2 text-sm">
+                    <div className="h-1.5 flex-shrink-0 rounded-full bg-zinc-700" style={{ width: '80px' }}>
+                      <div
+                        className="h-full rounded-full bg-white/30"
+                        style={{ width: `${Math.min(pc.pull_percentage, 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 flex-shrink-0 text-right text-xs text-zinc-400">
+                      {pc.pull_percentage}%
+                    </span>
+                    <span className="truncate text-xs">{pc.cards.name}</span>
+                    <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] ${rarityBadgeColors[pc.cards.rarity]}`}>
+                      {pc.cards.rarity}
+                    </span>
+                  </div>
+                ))}
             </div>
           </div>
         ))}

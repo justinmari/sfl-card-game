@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import FlippableCard from './flippable-card'
-import TradingCard from './trading-card'
+import CompactCard from './compact-card'
 import RarityCelebration from './rarity-celebration'
 import { playSwipe, playFlip, playCelebration } from '@/lib/sounds'
 
@@ -170,16 +170,9 @@ export default function SwipeableReveal({
       <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4">
         <h2 className="mb-3 text-center text-xl font-bold text-white">You pulled:</h2>
         <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-wrap justify-center gap-2 pb-4">
+          <div className="grid grid-cols-4 gap-2 pb-4 sm:grid-cols-6 md:grid-cols-8">
             {cards.map((card, i) => (
-              <div key={i} className="relative">
-                <TradingCard card={card} size="sm" />
-                {card.is_new && (
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-green-500 px-2 py-0.5 text-[9px] font-bold text-white shadow">
-                    NEW
-                  </div>
-                )}
-              </div>
+              <CompactCard key={i} card={card} showNew />
             ))}
           </div>
         </div>

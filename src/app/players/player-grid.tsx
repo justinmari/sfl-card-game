@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import TradingCard, { rarityColors, rarityGlow } from '@/components/trading-card'
-import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
+import TradingCard from '@/components/trading-card'
+import CompactCard from '@/components/compact-card'
 
 type Card = {
   id: string
@@ -53,18 +53,24 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
               </div>
             </div>
 
-            <div className="flex justify-center gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-center">
               {[0, 1, 2, 3].map((i) => {
                 const card = selectedPlayer.top_cards[i]
                 return card ? (
-                  <TradingCard key={card.id} card={card} size="sm" />
+                  <div key={card.id} className="flex justify-center">
+                    <TradingCard card={card} size="sm" />
+                  </div>
                 ) : (
                   <div
                     key={i}
-                    className="w-[8.5rem] rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/50 flex items-center justify-center"
-                    style={{ minHeight: '12rem' }}
+                    className="flex justify-center"
                   >
-                    <span className="text-xs text-zinc-700">—</span>
+                    <div
+                      className="w-[8.5rem] flex items-center justify-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/50"
+                      style={{ aspectRatio: '5/8' }}
+                    >
+                      <span className="text-xs text-zinc-700">—</span>
+                    </div>
                   </div>
                 )
               })}
@@ -107,31 +113,16 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
             </div>
 
             {/* Top 4 cards — always 4 slots */}
-            <div className="flex justify-center gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {[0, 1, 2, 3].map((i) => {
                 const card = player.top_cards[i]
                 return card ? (
-                  <div
-                    key={card.id}
-                    className={`w-[4.5rem] overflow-hidden rounded-lg border ${rarityColors[card.rarity]} ${rarityGlow[card.rarity]} transition-transform duration-200 hover:scale-105`}
-                  >
-                    {card.image_url ? (
-                      <img src={card.image_url} alt={card.name} className="aspect-square w-full object-cover" />
-                    ) : (
-                      <div className="flex aspect-square w-full items-center justify-center bg-zinc-800 text-lg">🃏</div>
-                    )}
-                    <div className="bg-zinc-900 px-1 py-1 text-center">
-                      <p className="truncate text-[8px] font-semibold text-white">{card.name}</p>
-                      <span className={`inline-block rounded px-1 py-0.5 text-[7px] ${rarityBadgeColors[card.rarity]}`}>
-                        {rarityLabel[card.rarity] || card.rarity}
-                      </span>
-                    </div>
-                  </div>
+                  <CompactCard key={card.id} card={card} />
                 ) : (
                   <div
                     key={i}
-                    className="flex w-[4.5rem] items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-900/50"
-                    style={{ aspectRatio: '3/5' }}
+                    className="flex items-center justify-center rounded-lg border border-dashed border-zinc-800 bg-zinc-900/50"
+                    style={{ aspectRatio: '3/4' }}
                   >
                     <span className="text-[10px] text-zinc-700">—</span>
                   </div>

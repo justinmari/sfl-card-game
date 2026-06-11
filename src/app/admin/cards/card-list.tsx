@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
+import { CardFilterBar, useCardFilters, type SortOption } from '@/components/card-filters'
 
 type Creature = {
   id: string
@@ -32,7 +33,15 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
   const [editFile, setEditFile] = useState<File | null>(null)
   const [editPreview, setEditPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterRarity, setFilterRarity] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortOption>('date')
   const router = useRouter()
+  const { sortCards, filterCards } = useCardFilters(cards)
+
+  const filteredCards = useMemo(() => {
+    return sortCards(filterCards(cards, search, filterRarity), sort)
+  }, [cards, search, filterRarity, sort])
 
   const startEdit = (card: Card) => {
     setEditingId(card.id)
@@ -125,6 +134,15 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
   return (
     <div>
       <h2 className="mb-4 text-lg font-semibold">All Cards ({cards.length})</h2>
+      <CardFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        rarity={filterRarity}
+        onRarityChange={setFilterRarity}
+        sort={sort}
+        onSortChange={setSort}
+        count={filteredCards.length}
+      />
 
       {/* Edit modal */}
       {editingId && (
@@ -215,7 +233,7 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
       )}
 
       <div className="flex flex-wrap gap-4">
-        {cards.map((card) => (
+        {filteredCards.map((card) => (
           <TradingCard key={card.id} card={{ ...card, creature_name: card.creatures?.name || null }} size="md" className="group">
             <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button

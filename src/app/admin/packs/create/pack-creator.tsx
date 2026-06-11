@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES, rarityBadgeColors } from '@/lib/rarities'
 import { autoDistribute } from '@/lib/auto-distribute'
+import { CardFilterBar, useCardFilters, type SortOption } from '@/components/card-filters'
 
 type Card = {
   id: string
@@ -43,7 +44,11 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
   const [selected, setSelected] = useState<SelectedCard[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cardSearch, setCardSearch] = useState('')
+  const [cardFilterRarity, setCardFilterRarity] = useState<string | null>(null)
+  const [cardSort, setCardSort] = useState<SortOption>('rarity')
   const router = useRouter()
+  const { sortCards, filterCards } = useCardFilters(cards)
 
   // Get unique dates from cards
   const dates = useMemo(() => {
@@ -56,12 +61,11 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
 
   const [selectedDate, setSelectedDate] = useState(dates[0] || '')
 
-  // Cards for the selected date, sorted by rarity
+  // Cards for the selected date, with search/rarity filters and sort
   const dayCards = useMemo(() => {
-    return cards
-      .filter((c) => c.created_at.split('T')[0] === selectedDate)
-      .sort((a, b) => (rarityOrder[a.rarity] ?? 99) - (rarityOrder[b.rarity] ?? 99))
-  }, [cards, selectedDate])
+    const dateFiltered = cards.filter((c) => c.created_at.split('T')[0] === selectedDate)
+    return sortCards(filterCards(dateFiltered, cardSearch, cardFilterRarity), cardSort)
+  }, [cards, selectedDate, cardSearch, cardFilterRarity, cardSort])
 
   // Group day cards by rarity
   const groupedDayCards = useMemo(() => {
@@ -171,9 +175,19 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
   }
 
   return (
-    <div className="flex gap-6">
-      {/* Left: Card browser */}
+    <div className="flex flex-col gap-6 lg:flex-row">
+      {/* Card browser */}
       <div className="flex-1 min-w-0">
+        <CardFilterBar
+          search={cardSearch}
+          onSearchChange={setCardSearch}
+          rarity={cardFilterRarity}
+          onRarityChange={setCardFilterRarity}
+          sort={cardSort}
+          onSortChange={setCardSort}
+          count={dayCards.length}
+        />
+
         {/* Date selector */}
         <div className="mb-6 flex items-center gap-3">
           <button
@@ -256,9 +270,9 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
         )}
       </div>
 
-      {/* Right: Pack builder sidebar */}
-      <div className="w-80 flex-shrink-0">
-        <div className="sticky top-6 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      {/* Pack builder sidebar */}
+      <div className="w-full lg:w-80 lg:flex-shrink-0">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 lg:sticky lg:top-6">
           <h2 className="mb-4 text-lg font-semibold">New Pack</h2>
 
           {error && (
