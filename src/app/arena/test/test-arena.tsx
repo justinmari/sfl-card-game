@@ -97,18 +97,17 @@ export default function TestArena({
     }, 800)
   }, [precomputed, cardIdx, matchKo])
 
-  // If my match is KO'd but other matches are still going, auto-advance via timer
+  // If my match is KO'd but other matches still going, auto-advance remaining cards
   useEffect(() => {
     if (!precomputed || battlePhase !== 'fighting') return
     const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
     const myKo = myMatchIdx >= 0 && matchKo.has(myMatchIdx)
     const allKo = matchKo.size >= precomputed.matches.length
 
-    if (myKo && !allKo && cardIdx < 4) {
-      // My match is done but others aren't — auto advance on a timer
+    if (myKo && !allKo) {
+      // Auto-advance remaining matches on a loop
       clearTimer()
-      timerRef.current = setTimeout(() => {
-        // Apply damage for remaining matches
+      const advanceRemaining = () => {
         setDisplayHp((prev) => {
           const updated = { ...prev }
           precomputed.matches.forEach((match, mi) => {
@@ -120,7 +119,7 @@ export default function TestArena({
           })
           return updated
         })
-        setTimeout(() => {
+        timerRef.current = setTimeout(() => {
           if (cardIdx >= 4) {
             setBattlePhase('round-end')
           } else {
@@ -128,7 +127,8 @@ export default function TestArena({
             setFaceoffKey((k) => k + 1)
           }
         }, 800)
-      }, 3500) // match the faceoff animation duration
+      }
+      timerRef.current = setTimeout(advanceRemaining, 2000)
     }
   }, [matchKo, precomputed, battlePhase, cardIdx])
 
@@ -146,10 +146,11 @@ export default function TestArena({
     })
     if (changed) {
       setMatchKo(newKos)
-      // If all KO'd, end round
-      if (newKos.size === precomputed.matches.length) {
+      // If all matches KO'd, end round after a delay
+      if (newKos.size >= precomputed.matches.length) {
         clearTimer()
-        timerRef.current = setTimeout(() => setBattlePhase('round-end'), 1200)
+        timerRef.current = setTimeout(() => setBattlePhase('round-end'), 2000)
+        return
       }
     }
   }, [displayHp, precomputed, battlePhase])
@@ -300,9 +301,8 @@ export default function TestArena({
                 })()}
 
                 {myMatchIdx >= 0 && matchKo.has(myMatchIdx) && (
-                  <div className="rounded-xl border border-red-800 bg-zinc-900 p-6 text-center opacity-60">
-                    <span className="text-2xl">💀</span>
-                    <p className="text-sm text-red-400 font-bold">KO!</p>
+                  <div className="rounded-xl border border-red-900 bg-black p-10 text-center animate-[fadeIn_1s_ease-out]">
+                    <p className="text-2xl font-black tracking-widest text-red-600" style={{ fontFamily: 'Georgia, serif' }}>YOU DIED</p>
                   </div>
                 )}
 
