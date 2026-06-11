@@ -72,16 +72,6 @@ export default async function DashboardPage() {
             <span className="text-3xl">📋</span>
             <span className="text-sm font-medium">Decks</span>
           </a>
-
-          {isAdmin && (
-            <a
-              href="/arena/test"
-              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
-            >
-              <span className="text-3xl">🧪</span>
-              <span className="text-sm font-medium">Test Arena</span>
-            </a>
-          )}
         </div>
 
         {isAdmin && (
@@ -118,6 +108,14 @@ export default async function DashboardPage() {
               >
                 <span className="text-3xl">👥</span>
                 <span className="text-sm font-medium">Users</span>
+              </a>
+
+              <a
+                href="/arena/test"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">🧪</span>
+                <span className="text-sm font-medium">Test Arena</span>
               </a>
             </div>
           </>
