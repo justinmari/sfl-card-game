@@ -272,7 +272,13 @@ export default function TestArena({
                   <div className="flex items-center justify-center gap-6">
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-20"><CompactCard card={activeFo.card1} /></div>
-                      <span className="text-xs text-zinc-400">⭐ {starCount[activeFo.card1.rarity]}</span>
+                      <span className="text-xs text-zinc-400">
+                        ⭐ {('star1' in activeFo) ? (activeFo as any).star1 : starCount[activeFo.card1.rarity]}
+                        {('roll1' in activeFo) && (activeFo as any).roll1 > 0 && (
+                          <span className="text-amber-400"> +{(activeFo as any).roll1} 🎲</span>
+                        )}
+                        {(' = ' + (('effective1' in activeFo) ? (activeFo as any).effective1 : ''))}
+                      </span>
                       {activeFo.damage1 > 0 && <span className="text-sm font-bold text-red-400 animate-pulse">-{activeFo.damage1}</span>}
                       {activeFo.damage2 > 0 && <span className="text-xs font-bold text-green-400">Wins!</span>}
                       {activeFo.damage1 === 0 && activeFo.damage2 === 0 && <span className="text-xs text-zinc-500">Tie</span>}
@@ -280,7 +286,13 @@ export default function TestArena({
                     <span className="text-xl font-black text-zinc-700">VS</span>
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-20"><CompactCard card={activeFo.card2} /></div>
-                      <span className="text-xs text-zinc-400">⭐ {starCount[activeFo.card2.rarity]}</span>
+                      <span className="text-xs text-zinc-400">
+                        ⭐ {('star2' in activeFo) ? (activeFo as any).star2 : starCount[activeFo.card2.rarity]}
+                        {('roll2' in activeFo) && (activeFo as any).roll2 > 0 && (
+                          <span className="text-amber-400"> +{(activeFo as any).roll2} 🎲</span>
+                        )}
+                        {(' = ' + (('effective2' in activeFo) ? (activeFo as any).effective2 : ''))}
+                      </span>
                       {activeFo.damage2 > 0 && <span className="text-sm font-bold text-red-400 animate-pulse">-{activeFo.damage2}</span>}
                       {activeFo.damage1 > 0 && <span className="text-xs font-bold text-green-400">Wins!</span>}
                       {activeFo.damage2 === 0 && activeFo.damage1 === 0 && <span className="text-xs text-zinc-500">Tie</span>}

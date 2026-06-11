@@ -53,16 +53,51 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOff {
+export type FaceOffDetail = FaceOff & {
+  star1: number
+  star2: number
+  roll1: number
+  roll2: number
+  effective1: number
+  effective2: number
+}
+
+export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOffDetail {
   const s1 = starCount[card1.rarity] || 1
   const s2 = starCount[card2.rarity] || 1
   const diff = Math.abs(s1 - s2)
 
+  let roll1 = 0
+  let roll2 = 0
+
+  if (s1 === s2) {
+    // Tie: both roll 0 or 1
+    roll1 = Math.floor(Math.random() * 2)
+    roll2 = Math.floor(Math.random() * 2)
+  } else if (s1 < s2) {
+    // Card1 is weaker: rolls 0 to diff (can tie but not beat)
+    roll1 = Math.floor(Math.random() * (diff + 1))
+  } else {
+    // Card2 is weaker: rolls 0 to diff (can tie but not beat)
+    roll2 = Math.floor(Math.random() * (diff + 1))
+  }
+
+  const effective1 = s1 + roll1
+  const effective2 = s2 + roll2
+
+  const finalDiff = Math.abs(effective1 - effective2)
+
   return {
     card1,
     card2,
-    damage1: s2 > s1 ? diff : 0,
-    damage2: s1 > s2 ? diff : 0,
+    star1: s1,
+    star2: s2,
+    roll1,
+    roll2,
+    effective1,
+    effective2,
+    damage1: effective2 > effective1 ? finalDiff : 0,
+    damage2: effective1 > effective2 ? finalDiff : 0,
   }
 }
 
