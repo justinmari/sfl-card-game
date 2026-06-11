@@ -8,6 +8,7 @@ import {
   type FaceOffDetail,
   createBot,
   precomputeRound,
+  randomPair,
 } from '@/lib/battle-engine'
 import BattleFaceoff from '@/components/battle-faceoff'
 
@@ -198,7 +199,7 @@ export default function TestArena({
               ))}
             </div>
           </div>
-          <button onClick={startBattle} disabled={selectedDeck == null}
+          <button suppressHydrationWarning onClick={startBattle} disabled={selectedDeck == null}
             className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30">
             Start Battle ({botCount + 1} players)
           </button>
@@ -327,11 +328,28 @@ export default function TestArena({
                   )
                 })()}
 
-                {myMatchIdx >= 0 && matchKo.has(myMatchIdx) && (
-                  <div className="rounded-xl border border-red-900 bg-black flex items-center justify-center animate-[fadeIn_1s_ease-out]" style={{ minHeight: '16rem' }}>
-                    <p className="text-3xl font-black tracking-widest text-red-600" style={{ fontFamily: 'Georgia, serif' }}>YOU DIED</p>
-                  </div>
-                )}
+                {myMatchIdx >= 0 && matchKo.has(myMatchIdx) && (() => {
+                  const myMatch = precomputed.matches[myMatchIdx]
+                  const myHp = displayHp[userId] ?? 0
+                  const iDied = myHp <= 0
+                  const opponentId = myMatch.player1Id === userId ? myMatch.player2Id : myMatch.player1Id
+                  const opponentName = getPlayer(opponentId)?.name || 'Opponent'
+                  return (
+                    <div className={`rounded-xl border ${iDied ? 'border-red-900 bg-black' : 'border-green-900 bg-black'} flex flex-col items-center justify-center gap-2 animate-[fadeIn_1s_ease-out]`} style={{ minHeight: '16rem' }}>
+                      {iDied ? (
+                        <>
+                          <p className="text-3xl font-black tracking-widest text-red-600" style={{ fontFamily: 'Georgia, serif' }}>YOU DIED</p>
+                          <p className="text-sm text-zinc-500">Killed by {opponentName}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-3xl font-black tracking-widest text-green-500" style={{ fontFamily: 'Georgia, serif' }}>KNOCKOUT!</p>
+                          <p className="text-sm text-zinc-400">You eliminated <span className="font-bold text-white">{opponentName}</span> 💀</p>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {myMatchIdx < 0 && (
                   <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-6 text-center">
@@ -380,27 +398,61 @@ export default function TestArena({
           })()}
 
           {/* Round end */}
-          {battlePhase === 'round-end' && precomputed && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center animate-[fadeIn_0.5s_ease-out]">
-              <h3 className="mb-4 text-lg font-bold">Round {roundNum} Complete</h3>
-              {precomputed.matches.map((m, i) => (
-                <div key={i} className="mb-2 text-sm">
-                  <span className={m.winnerId === m.player1Id ? 'text-green-400 font-medium' : 'text-zinc-400'}>{getPlayer(m.player1Id)?.name}</span>
-                  <span className="text-zinc-600"> vs </span>
-                  <span className={m.winnerId === m.player2Id ? 'text-green-400 font-medium' : 'text-zinc-400'}>{getPlayer(m.player2Id)?.name}</span>
-                  <span className="text-zinc-500"> — {getPlayer(m.winnerId || '')?.name} wins</span>
+          {battlePhase === 'round-end' && precomputed && (() => {
+            // Preview next round matchups
+            const alive = players.filter((p) => (displayHp[p.id] ?? 0) > 0)
+            const nextPairs = alive.length > 1 ? randomPair(alive.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: false }))) : null
+
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 animate-[fadeIn_0.5s_ease-out]">
+                <h3 className="mb-4 text-lg font-bold text-center">Round {roundNum} Complete</h3>
+
+                {/* Results */}
+                <div className="mb-6">
+                  {precomputed.matches.map((m, i) => (
+                    <div key={i} className="mb-2 text-sm text-center">
+                      <span className={m.winnerId === m.player1Id ? 'text-green-400 font-medium' : 'text-zinc-400'}>{getPlayer(m.player1Id)?.name}</span>
+                      <span className="text-zinc-600"> vs </span>
+                      <span className={m.winnerId === m.player2Id ? 'text-green-400 font-medium' : 'text-zinc-400'}>{getPlayer(m.player2Id)?.name}</span>
+                      <span className="text-zinc-500"> — {getPlayer(m.winnerId || '')?.name} wins</span>
+                    </div>
+                  ))}
+                  {precomputed.byePlayerId && (
+                    <div className="mt-2 text-xs text-zinc-500 text-center">{getPlayer(precomputed.byePlayerId)?.name} got a bye</div>
+                  )}
                 </div>
-              ))}
-              {precomputed.byePlayerId && (
-                <div className="mt-2 text-xs text-zinc-500">{getPlayer(precomputed.byePlayerId)?.name} got a bye</div>
-              )}
-              {aliveCount() <= 1 ? (
-                <button onClick={() => setPhase('done')} className="mt-4 rounded-lg bg-white px-6 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200">Final Results</button>
-              ) : (
-                <button onClick={() => { setPrecomputed(null); setBattlePhase('idle'); startNextRound() }} className="mt-4 rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500">Next Round</button>
-              )}
-            </div>
-          )}
+
+                {/* Next round preview */}
+                {nextPairs && nextPairs.pairs.length > 0 && (
+                  <div className="mb-6 border-t border-zinc-800 pt-4">
+                    <h4 className="mb-3 text-sm font-medium text-zinc-400 text-center">Next Round Matchups</h4>
+                    {nextPairs.pairs.map(([id1, id2], i) => (
+                      <div key={i} className="mb-2 flex items-center justify-center gap-3 text-sm">
+                        <span className={id1 === userId ? 'text-amber-400 font-medium' : 'text-white'}>
+                          {getPlayer(id1)?.name} <span className="text-zinc-500">({displayHp[id1] ?? 0} HP)</span>
+                        </span>
+                        <span className="text-zinc-600 font-bold">VS</span>
+                        <span className={id2 === userId ? 'text-amber-400 font-medium' : 'text-white'}>
+                          {getPlayer(id2)?.name} <span className="text-zinc-500">({displayHp[id2] ?? 0} HP)</span>
+                        </span>
+                      </div>
+                    ))}
+                    {nextPairs.byeId && (
+                      <div className="mt-2 text-xs text-zinc-500 text-center">{getPlayer(nextPairs.byeId)?.name} gets a bye</div>
+                    )}
+                  </div>
+                )}
+
+                <div className="text-center">
+                  {aliveCount() <= 1 ? (
+                    <button onClick={() => setPhase('done')} className="rounded-lg bg-white px-6 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200">Final Results</button>
+                  ) : (
+                    <button onClick={() => { setPrecomputed(null); setBattlePhase('idle'); startNextRound() }} className="rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500">Next Round</button>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Start first round */}
           {battlePhase === 'idle' && !precomputed && (
