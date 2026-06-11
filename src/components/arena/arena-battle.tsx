@@ -68,7 +68,7 @@ export default function ArenaBattle({
   // Precompute round 1 immediately as initial state
   const [roundNum, setRoundNum] = useState(1)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(() =>
-    precomputeRound(initialPlayers, initHp(), 1, undefined, undefined, getRoundRng(1))
+    precomputeRound(initialPlayers, initHp(), 1, undefined, undefined, seed != null ? createSeededRng(seed * 1000 + 1) : undefined)
   )
   const [battlePhase, setBattlePhase] = useState<'round-intro' | 'precomputing' | 'fighting' | 'round-end'>('round-intro')
   const [cardIdx, setCardIdx] = useState(0)
