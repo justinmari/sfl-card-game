@@ -37,6 +37,7 @@ export default function BattleFaceoff({
   const containerRef = useRef<HTMLDivElement>(null)
 
   const fo = faceOff
+  const calledRef = useRef({ result: false, complete: false })
 
   type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
   const particlesRef = useRef<EmojiParticle[]>([])
@@ -124,6 +125,7 @@ export default function BattleFaceoff({
     setPhase('enter')
     startTimeRef.current = 0
     particlesRef.current = []
+    calledRef.current = { result: false, complete: false }
 
     const timers = [
       setTimeout(() => setPhase('power'), 500),
@@ -131,14 +133,22 @@ export default function BattleFaceoff({
       setTimeout(() => setPhase('merge'), 2400),
       setTimeout(() => {
         setPhase('result')
-        onResult?.()
-        // Spawn effects (large only)
+        if (!calledRef.current.result) {
+          calledRef.current.result = true
+          onResult?.()
+        }
         if (large) {
           if (fo.damage2 > 0) { spawnParticles('left', true, fo.damage2); spawnParticles('right', false, fo.damage2) }
           else if (fo.damage1 > 0) { spawnParticles('right', true, fo.damage1); spawnParticles('left', false, fo.damage1) }
         }
       }, 3100),
-      setTimeout(() => { setPhase('done'); onComplete() }, 4500),
+      setTimeout(() => {
+        setPhase('done')
+        if (!calledRef.current.complete) {
+          calledRef.current.complete = true
+          onComplete()
+        }
+      }, 4500),
     ]
 
     return () => timers.forEach(clearTimeout)

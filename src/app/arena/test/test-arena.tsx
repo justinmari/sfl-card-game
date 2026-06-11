@@ -243,22 +243,58 @@ export default function TestArena({
             </div>
           </div>
 
-          {/* Round intro */}
-          {battlePhase === 'round-intro' && precomputed && (
-            <div className="space-y-3 animate-[fadeIn_0.5s_ease-out]">
-              <div className="text-center text-xs text-zinc-500 mb-2">
-                {precomputed.matches.length} match{precomputed.matches.length !== 1 ? 'es' : ''} this round
-                {precomputed.byePlayerId && ` · ${getPlayer(precomputed.byePlayerId)?.name} has a bye`}
+          {/* Round intro — show matchups in battle layout */}
+          {battlePhase === 'round-intro' && precomputed && (() => {
+            const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
+            const otherMatches = precomputed.matches.map((m, i) => ({ match: m, idx: i })).filter((_, i) => i !== myMatchIdx)
+
+            return (
+              <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
+                {/* Main matchup */}
+                {myMatchIdx >= 0 && (() => {
+                  const myMatch = precomputed.matches[myMatchIdx]
+                  const opponentId = myMatch.player1Id === userId ? myMatch.player2Id : myMatch.player1Id
+                  return (
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '16rem' }}>
+                      <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
+                      <div className="text-2xl font-black">
+                        <span className="text-amber-400">You</span>
+                        <span className="mx-3 text-zinc-600">VS</span>
+                        <span className="text-white">{getPlayer(opponentId)?.name}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {myMatchIdx < 0 && (
+                  <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-8 text-center" style={{ minHeight: '16rem' }}>
+                    <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
+                    <span className="text-lg text-amber-400">You have a bye this round</span>
+                  </div>
+                )}
+
+                {/* Other matchups */}
+                {otherMatches.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs text-zinc-500">Other matches</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {otherMatches.map(({ match, idx }) => (
+                        <div key={idx} className="rounded-lg border border-zinc-800 bg-zinc-900 py-3 px-4 text-center text-sm">
+                          <span className="text-white font-medium">{getPlayer(match.player1Id)?.name}</span>
+                          <span className="mx-2 text-zinc-600 font-bold">vs</span>
+                          <span className="text-white font-medium">{getPlayer(match.player2Id)?.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {precomputed.byePlayerId && precomputed.byePlayerId !== userId && (
+                  <div className="text-xs text-zinc-500 text-center">{getPlayer(precomputed.byePlayerId)?.name} gets a bye</div>
+                )}
               </div>
-              {precomputed.matches.map((m, i) => (
-                <div key={i} className="rounded-lg border border-zinc-800 bg-zinc-900 py-3 text-center">
-                  <span className={m.player1Id === userId ? 'text-amber-400 font-bold' : 'text-white font-bold'}>{getPlayer(m.player1Id)?.name}</span>
-                  <span className="mx-3 text-zinc-600 font-black">VS</span>
-                  <span className={m.player2Id === userId ? 'text-amber-400 font-bold' : 'text-white font-bold'}>{getPlayer(m.player2Id)?.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
+            )
+          })()}
 
           {/* Fighting */}
           {battlePhase === 'fighting' && precomputed && (() => {
