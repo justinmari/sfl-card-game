@@ -6,7 +6,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
 import { resolveSkills } from '@/lib/battle-engine'
 import { createSeededRng } from '@/lib/seeded-random'
-import ArenaBattle from '@/components/arena/arena-battle'
+import ArenaBattle, { type BattleSyncHandle, type BattleSyncCallbacks } from '@/components/arena/arena-battle'
+import type { Skill } from '@/lib/skills'
 import CompactCard from '@/components/compact-card'
 import { starCount } from '@/lib/battle-engine'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -71,6 +72,7 @@ export default function ArenaLobby({
   const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
   const [battleRng, setBattleRng] = useState<(() => number) | null>(null)
+  const battleSyncRef = useRef<BattleSyncHandle | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -124,6 +126,18 @@ export default function ArenaLobby({
       })
       .on('broadcast', { event: 'game-init' }, ({ payload }) => {
         handleGameInit(payload as GameInitPayload)
+      })
+      .on('broadcast', { event: 'battle-skill' }, ({ payload }) => {
+        if (payload.userId === userId) return // ignore own broadcasts
+        battleSyncRef.current?.receiveRemoteSkill(payload.userId, payload.skillId, payload.activated, payload.skill, payload.card)
+      })
+      .on('broadcast', { event: 'battle-ready' }, ({ payload }) => {
+        if (payload.userId === userId) return
+        battleSyncRef.current?.receiveRemoteReady(payload.userId)
+      })
+      .on('broadcast', { event: 'battle-hold' }, ({ payload }) => {
+        if (payload.userId === userId) return
+        battleSyncRef.current?.receiveRemoteHold(payload.userId)
       })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number }>()
@@ -254,6 +268,35 @@ export default function ArenaLobby({
         userId={userId}
         players={battlePlayers}
         rng={battleRng}
+        syncRef={battleSyncRef}
+        sync={{
+          onSkillToggle: (skillId, activated) => {
+            // Find the skill and card to send full data
+            const player = battlePlayers.find((p) => p.id === userId)
+            let skill: Skill | undefined
+            let card: BattleCard | undefined
+            for (const c of player?.deck || []) {
+              const s = c.skills?.find((sk) => sk.id === skillId)
+              if (s) { skill = s; card = c; break }
+            }
+            channelRef.current?.send({
+              type: 'broadcast', event: 'battle-skill',
+              payload: { userId, skillId, activated, skill, card },
+            })
+          },
+          onReadyUp: () => {
+            channelRef.current?.send({
+              type: 'broadcast', event: 'battle-ready',
+              payload: { userId },
+            })
+          },
+          onHoldOn: () => {
+            channelRef.current?.send({
+              type: 'broadcast', event: 'battle-hold',
+              payload: { userId },
+            })
+          },
+        }}
         onBattleEnd={() => {
           setBattleStarted(false)
           setBattlePlayers([])
