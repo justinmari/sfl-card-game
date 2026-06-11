@@ -125,9 +125,6 @@ export default function ArenaLobby({
           p.id === payload.userId ? { ...p, ready: payload.ready, selectedDeckSlot: payload.deckSlot, deck: payload.deck || p.deck } : p
         ))
       })
-      .on('broadcast', { event: 'game-init' }, ({ payload }) => {
-        handleGameInit(payload as GameInitPayload)
-      })
       .on('broadcast', { event: 'battle-skill' }, ({ payload }) => {
         if (payload.userId === userId) return // ignore own broadcasts
         battleSyncRef.current?.receiveRemoteSkill(payload.userId, payload.skillId, payload.activated, payload.skill, payload.card)
@@ -180,6 +177,29 @@ export default function ArenaLobby({
   }, [userId, userName, avatarUrl])
 
   // Watch for all ready → countdown → game-init
+  // Start arena session via DB RPC — all clients call it, all get the same seed
+  const startSession = async () => {
+    if (gameInitReceivedRef.current) return
+    const supabase = createClient()
+
+    // Build player list with deck data
+    const gamePlayers = lobbyPlayers.map((lp) => ({
+      id: lp.id,
+      name: lp.name,
+      avatar_url: lp.avatar_url,
+      deck: deckDataRef.current[lp.id] || [],
+    }))
+
+    const { data, error } = await supabase.rpc('start_arena_session', {
+      p_lobby_id: 'arena-lobby',
+      p_players: gamePlayers,
+    })
+
+    if (error || !data) return
+    const session = data as { id: string; seed: number; players: GameInitPayload['players'] }
+    handleGameInit({ players: session.players, seed: session.seed })
+  }
+
   useEffect(() => {
     if (battleStarted || countdown !== null) return
     if (lobbyPlayers.length >= 2 && lobbyPlayers.every((p) => p.ready)) {
@@ -191,26 +211,7 @@ export default function ArenaLobby({
           if (countdownRef.current) clearInterval(countdownRef.current)
           countdownRef.current = null
           setCountdown(null)
-
-          // Only the player with the lowest ID sends game-init (deterministic leader)
-          const sortedIds = [...lobbyPlayers].sort((a, b) => a.id.localeCompare(b.id))
-          const isLeader = sortedIds[0]?.id === userId
-          if (!gameInitSentRef.current && isLeader) {
-            gameInitSentRef.current = true
-            const seed = Math.floor(Math.random() * 2147483647)
-
-            // Build player list with deck data from all players
-            const gamePlayers = lobbyPlayers.map((lp) => ({
-              id: lp.id,
-              name: lp.name,
-              avatar_url: lp.avatar_url,
-              deck: deckDataRef.current[lp.id] || [],
-            }))
-
-            const payload: GameInitPayload = { players: gamePlayers, seed }
-            channelRef.current?.send({ type: 'broadcast', event: 'game-init', payload })
-            handleGameInit(payload)
-          }
+          startSession()
         } else {
           setCountdown(count)
         }
@@ -320,6 +321,9 @@ export default function ArenaLobby({
             event: 'ready-change',
             payload: { userId, ready: false, deckSlot: null },
           })
+          // Clean up arena session
+          const supabase = createClient()
+          supabase.rpc('cleanup_arena_session', { p_lobby_id: 'arena-lobby' })
         }}
       />
     )
