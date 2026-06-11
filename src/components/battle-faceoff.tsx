@@ -80,90 +80,105 @@ export default function BattleFaceoff({
       }
 
       if (phase === 'rolling') {
-        const rollDuration = 1200
-        const progress = Math.min(elapsed / rollDuration, 1)
-        const speed = 1 - Math.pow(progress, 2.5)
-
-        // Base power (static, left side)
-        ctx.font = `${fontSize * 0.5}px serif`
-        ctx.fillText('⭐', w * 0.2, h / 2)
-        ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
-        ctx.fillStyle = '#a1a1aa'
-        ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
-
-        // Plus sign
-        ctx.fillStyle = '#71717a'
-        ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
-        ctx.fillText('+', w * 0.48, h / 2)
-
-        // Rolling dice number (right side)
-        let displayRoll: number
-        if (progress >= 0.95) {
-          displayRoll = finalRoll
-        } else if (speed > 0.02) {
-          displayRoll = Math.floor(Math.random() * (maxRoll + 1))
+        if (maxRoll === 0) {
+          // Higher power card — just show base power centered, no dice
+          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
+          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.fillStyle = '#e4e4e7'
+          ctx.fillText(`${baseStar}`, w / 2 + fontSize * 0.5, h / 2)
         } else {
-          displayRoll = finalRoll
-        }
+          const rollDuration = 1200
+          const progress = Math.min(elapsed / rollDuration, 1)
+          const speed = 1 - Math.pow(progress, 2.5)
 
-        const shakeX = speed * (Math.random() - 0.5) * 3
-        const shakeY = speed * (Math.random() - 0.5) * 3
-
-        if (speed > 0.3) {
-          ctx.shadowColor = '#fbbf24'
-          ctx.shadowBlur = 8 * speed
-        } else {
-          ctx.shadowBlur = 0
-        }
-
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = progress >= 0.95 ? (displayRoll > 0 ? '#fbbf24' : '#71717a') : '#fde68a'
-        ctx.fillText(`${displayRoll}`, w * 0.65 + shakeX, h / 2 + shakeY)
-
-        ctx.shadowBlur = 0
-        ctx.font = `${fontSize * 0.45}px serif`
-        ctx.fillText('🎲', w * 0.82 + shakeX, h / 2 + shakeY)
-      }
-
-      if (phase === 'merge') {
-        const mergeProgress = Math.min(elapsed / 600, 1)
-        const eased = 1 - Math.pow(1 - mergeProgress, 3)
-        const displayTotal = Math.round(baseStar + finalRoll * eased)
-
-        // Fade out the breakdown, fade in the total
-        const breakdownAlpha = 1 - eased
-        const totalAlpha = eased
-
-        // Fading breakdown
-        if (breakdownAlpha > 0.05) {
-          ctx.globalAlpha = breakdownAlpha
+          // Base power (static, left side)
           ctx.font = `${fontSize * 0.5}px serif`
           ctx.fillText('⭐', w * 0.2, h / 2)
           ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
           ctx.fillStyle = '#a1a1aa'
           ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
+
+          // Plus sign
           ctx.fillStyle = '#71717a'
           ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
           ctx.fillText('+', w * 0.48, h / 2)
+
+          // Rolling dice number (right side)
+          let displayRoll: number
+          if (progress >= 0.95) {
+            displayRoll = finalRoll
+          } else if (speed > 0.02) {
+            displayRoll = Math.floor(Math.random() * (maxRoll + 1))
+          } else {
+            displayRoll = finalRoll
+          }
+
+          const shakeX = speed * (Math.random() - 0.5) * 3
+          const shakeY = speed * (Math.random() - 0.5) * 3
+
+          if (speed > 0.3) {
+            ctx.shadowColor = '#fbbf24'
+            ctx.shadowBlur = 8 * speed
+          } else {
+            ctx.shadowBlur = 0
+          }
+
           ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-          ctx.fillStyle = finalRoll > 0 ? '#fbbf24' : '#71717a'
-          ctx.fillText(`${finalRoll}`, w * 0.65, h / 2)
+          ctx.fillStyle = progress >= 0.95 ? (displayRoll > 0 ? '#fbbf24' : '#71717a') : '#fde68a'
+          ctx.fillText(`${displayRoll}`, w * 0.65 + shakeX, h / 2 + shakeY)
+
+          ctx.shadowBlur = 0
+          ctx.font = `${fontSize * 0.45}px serif`
+          ctx.fillText('🎲', w * 0.82 + shakeX, h / 2 + shakeY)
+        }
+      }
+
+      if (phase === 'merge') {
+        if (maxRoll === 0) {
+          // No dice was rolled — just show final number
+          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
+          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.fillStyle = '#e4e4e7'
+          ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
+        } else {
+          const mergeProgress = Math.min(elapsed / 600, 1)
+          const eased = 1 - Math.pow(1 - mergeProgress, 3)
+          const displayTotal = Math.round(baseStar + finalRoll * eased)
+
+          const breakdownAlpha = 1 - eased
+          const totalAlpha = eased
+
+          if (breakdownAlpha > 0.05) {
+            ctx.globalAlpha = breakdownAlpha
+            ctx.font = `${fontSize * 0.5}px serif`
+            ctx.fillText('⭐', w * 0.2, h / 2)
+            ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
+            ctx.fillStyle = '#a1a1aa'
+            ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
+            ctx.fillStyle = '#71717a'
+            ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
+            ctx.fillText('+', w * 0.48, h / 2)
+            ctx.font = `bold ${fontSize}px system-ui, sans-serif`
+            ctx.fillStyle = finalRoll > 0 ? '#fbbf24' : '#71717a'
+            ctx.fillText(`${finalRoll}`, w * 0.65, h / 2)
+            ctx.globalAlpha = 1
+          }
+
+          ctx.globalAlpha = totalAlpha
+          if (finalRoll > 0) {
+            ctx.shadowColor = '#fbbf24'
+            ctx.shadowBlur = 6 * (1 - eased)
+          }
+          ctx.font = `${fontSize * 0.7}px serif`
+          ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
+          ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+          ctx.fillStyle = '#e4e4e7'
+          ctx.fillText(`${displayTotal}`, w / 2 + fontSize * 0.5, h / 2)
+          ctx.shadowBlur = 0
           ctx.globalAlpha = 1
         }
-
-        // Growing total
-        ctx.globalAlpha = totalAlpha
-        if (finalRoll > 0) {
-          ctx.shadowColor = '#fbbf24'
-          ctx.shadowBlur = 6 * (1 - eased)
-        }
-        ctx.font = `${fontSize * 0.7}px serif`
-        ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
-        ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
-        ctx.fillStyle = '#e4e4e7'
-        ctx.fillText(`${displayTotal}`, w / 2 + fontSize * 0.5, h / 2)
-        ctx.shadowBlur = 0
-        ctx.globalAlpha = 1
       }
 
       if (phase === 'result') {
