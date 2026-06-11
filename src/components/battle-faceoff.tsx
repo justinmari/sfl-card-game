@@ -48,6 +48,9 @@ export default function BattleFaceoff({
     const startTime = performance.now()
     startTimeRef.current = startTime
 
+    setupCanvas(canvas1Ref.current)
+    setupCanvas(canvas2Ref.current)
+
     const drawSide = (
       canvas: HTMLCanvasElement | null,
       finalRoll: number,
@@ -60,8 +63,8 @@ export default function BattleFaceoff({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      const w = canvas.width
-      const h = canvas.height
+      const w = canvasW
+      const h = canvasH
       ctx.clearRect(0, 0, w, h)
 
       const fontSize = isLarge ? 24 : 16
@@ -214,6 +217,20 @@ export default function BattleFaceoff({
   const cardSize = large ? 'w-20 sm:w-24' : 'w-16'
   const canvasW = large ? 180 : 120
   const canvasH = large ? 44 : 30
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+
+  // Setup canvas for high DPI
+  const setupCanvas = (canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return
+    if (canvas.dataset.scaled === '1') return
+    canvas.width = canvasW * dpr
+    canvas.height = canvasH * dpr
+    canvas.style.width = `${canvasW}px`
+    canvas.style.height = `${canvasH}px`
+    const ctx = canvas.getContext('2d')
+    if (ctx) ctx.scale(dpr, dpr)
+    canvas.dataset.scaled = '1'
+  }
 
   return (
     <div className="flex items-center justify-center gap-3 sm:gap-6">
@@ -225,7 +242,7 @@ export default function BattleFaceoff({
 
         {/* Canvas for power, roll, merge, result */}
         {phase !== 'enter' && (
-          <canvas ref={canvas1Ref} width={canvasW} height={canvasH} className="block" />
+          <canvas ref={canvas1Ref} className="block" />
         )}
 
         {/* Damage / win text */}
@@ -248,7 +265,7 @@ export default function BattleFaceoff({
         <div className={cardSize}><CompactCard card={fo.card2} /></div>
 
         {phase !== 'enter' && (
-          <canvas ref={canvas2Ref} width={canvasW} height={canvasH} className="block" />
+          <canvas ref={canvas2Ref} className="block" />
         )}
 
         {(phase === 'result' || phase === 'done') && (
