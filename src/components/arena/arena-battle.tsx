@@ -308,11 +308,8 @@ export default function ArenaBattle({
   useEffect(() => {
     if (battlePhase !== 'round-end') return
 
-    if (aliveCount() <= 1) {
-      if (isServerMode) endArenaSession(sessionId!)
-      timerRef.current = setTimeout(() => setPhase('done'), 2000)
-      return
-    }
+    const gameOver = aliveCount() <= 1
+    if (gameOver && isServerMode) endArenaSession(sessionId!)
 
     setRoundEndCountdown(20)
     setMyReady(false)
@@ -323,9 +320,12 @@ export default function ArenaBattle({
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
           setTimeout(() => {
-            // Move to skill-select for the next round
-            setRoundNum((r) => r + 1)
-            setBattlePhase('skill-select')
+            if (gameOver) {
+              setPhase('done')
+            } else {
+              setRoundNum((r) => r + 1)
+              setBattlePhase('skill-select')
+            }
           }, 0)
           return 0
         }
@@ -834,7 +834,13 @@ export default function ArenaBattle({
 
                 <div className="text-center">
                   {aliveCount() <= 1 ? (
-                    <button onClick={() => setPhase('done')} className="rounded-lg bg-white px-6 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200">Final Results</button>
+                    <div className="space-y-2">
+                      <p className="text-xs text-zinc-500">Final results in <span className="font-bold text-white">{roundEndCountdown}s</span></p>
+                      <button onClick={() => {
+                        if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+                        setPhase('done')
+                      }} className="rounded-lg bg-white px-6 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200">View Results Now</button>
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       <p className="text-xs text-zinc-500">Next round in <span className="font-bold text-white">{roundEndCountdown}s</span></p>
