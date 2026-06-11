@@ -29,31 +29,31 @@ export default function BattleFaceoff({
 
     const timers = [
       setTimeout(() => setPhase('power'), 500),
-      setTimeout(() => setPhase('rolling'), 1000),
-      setTimeout(() => setPhase('merge'), 2200),
-      setTimeout(() => setPhase('result'), 2800),
-      setTimeout(() => { setPhase('done'); onComplete() }, 4200),
+      setTimeout(() => setPhase('rolling'), 1200),
+      setTimeout(() => setPhase('merge'), 2400),
+      setTimeout(() => setPhase('result'), 3100),
+      setTimeout(() => { setPhase('done'); onComplete() }, 4500),
     ]
 
     return () => timers.forEach(clearTimeout)
   }, [faceOff])
 
-  // Canvas animation for dice rolls
+  // Canvas animation for power, dice rolls, merge, and final
   useEffect(() => {
-    if (phase !== 'rolling' && phase !== 'merge') {
+    if (phase === 'enter' || phase === 'done') {
       if (animRef.current) cancelAnimationFrame(animRef.current)
       return
     }
 
     const startTime = performance.now()
     startTimeRef.current = startTime
-    const rollDuration = phase === 'rolling' ? 1200 : 0
 
-    const drawNumber = (
+    const drawSide = (
       canvas: HTMLCanvasElement | null,
       finalRoll: number,
       maxRoll: number,
       baseStar: number,
+      effective: number,
       isLarge: boolean,
     ) => {
       if (!canvas) return
@@ -64,84 +64,126 @@ export default function BattleFaceoff({
       const h = canvas.height
       ctx.clearRect(0, 0, w, h)
 
+      const fontSize = isLarge ? 24 : 16
       const elapsed = performance.now() - startTime
-      const fontSize = isLarge ? 28 : 18
+
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      if (phase === 'power') {
+        // Show base power: ⭐ 3
+        ctx.font = `${fontSize * 0.6}px serif`
+        ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
+        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
+        ctx.fillStyle = '#d4d4d8'
+        ctx.fillText(`${baseStar}`, w / 2 + fontSize * 0.5, h / 2)
+      }
 
       if (phase === 'rolling') {
-        // Dice roll: starts fast, slows down, lands on final
+        const rollDuration = 1200
         const progress = Math.min(elapsed / rollDuration, 1)
-        // Easing: slow down toward end
         const speed = 1 - Math.pow(progress, 2.5)
-        const shouldChange = speed > 0.02
 
+        // Base power (static, left side)
+        ctx.font = `${fontSize * 0.5}px serif`
+        ctx.fillText('⭐', w * 0.2, h / 2)
+        ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
+        ctx.fillStyle = '#a1a1aa'
+        ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
+
+        // Plus sign
+        ctx.fillStyle = '#71717a'
+        ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
+        ctx.fillText('+', w * 0.48, h / 2)
+
+        // Rolling dice number (right side)
         let displayRoll: number
         if (progress >= 0.95) {
           displayRoll = finalRoll
-        } else if (shouldChange) {
+        } else if (speed > 0.02) {
           displayRoll = Math.floor(Math.random() * (maxRoll + 1))
         } else {
           displayRoll = finalRoll
         }
 
-        // Draw roll number
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
+        const shakeX = speed * (Math.random() - 0.5) * 3
+        const shakeY = speed * (Math.random() - 0.5) * 3
 
-        // Shake effect based on speed
-        const shakeX = speed * (Math.random() - 0.5) * 4
-        const shakeY = speed * (Math.random() - 0.5) * 4
-
-        // Glow when rolling fast
         if (speed > 0.3) {
           ctx.shadowColor = '#fbbf24'
-          ctx.shadowBlur = 10 * speed
+          ctx.shadowBlur = 8 * speed
         } else {
           ctx.shadowBlur = 0
         }
 
+        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
         ctx.fillStyle = progress >= 0.95 ? (displayRoll > 0 ? '#fbbf24' : '#71717a') : '#fde68a'
-        ctx.fillText(`+${displayRoll}`, w / 2 + shakeX, h / 2 + shakeY)
+        ctx.fillText(`${displayRoll}`, w * 0.65 + shakeX, h / 2 + shakeY)
 
-        // Draw dice emoji
         ctx.shadowBlur = 0
-        ctx.font = `${fontSize * 0.5}px serif`
-        ctx.fillText('🎲', w / 2 + fontSize * 1.2 + shakeX, h / 2 + shakeY)
+        ctx.font = `${fontSize * 0.45}px serif`
+        ctx.fillText('🎲', w * 0.82 + shakeX, h / 2 + shakeY)
+      }
 
-      } else if (phase === 'merge') {
-        // Merge: roll number shrinks and moves up into power, power increases
+      if (phase === 'merge') {
         const mergeProgress = Math.min(elapsed / 600, 1)
         const eased = 1 - Math.pow(1 - mergeProgress, 3)
-
-        // Final combined number
-        const finalTotal = baseStar + finalRoll
         const displayTotal = Math.round(baseStar + finalRoll * eased)
 
-        ctx.font = `bold ${fontSize * 1.2}px system-ui, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
+        // Fade out the breakdown, fade in the total
+        const breakdownAlpha = 1 - eased
+        const totalAlpha = eased
 
-        // Glow on the final number
-        if (finalRoll > 0) {
-          ctx.shadowColor = '#fbbf24'
-          ctx.shadowBlur = 8 * (1 - eased) + 2
+        // Fading breakdown
+        if (breakdownAlpha > 0.05) {
+          ctx.globalAlpha = breakdownAlpha
+          ctx.font = `${fontSize * 0.5}px serif`
+          ctx.fillText('⭐', w * 0.2, h / 2)
+          ctx.font = `bold ${fontSize * 0.85}px system-ui, sans-serif`
+          ctx.fillStyle = '#a1a1aa'
+          ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
+          ctx.fillStyle = '#71717a'
+          ctx.font = `bold ${fontSize * 0.7}px system-ui, sans-serif`
+          ctx.fillText('+', w * 0.48, h / 2)
+          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
+          ctx.fillStyle = finalRoll > 0 ? '#fbbf24' : '#71717a'
+          ctx.fillText(`${finalRoll}`, w * 0.65, h / 2)
+          ctx.globalAlpha = 1
         }
 
+        // Growing total
+        ctx.globalAlpha = totalAlpha
+        if (finalRoll > 0) {
+          ctx.shadowColor = '#fbbf24'
+          ctx.shadowBlur = 6 * (1 - eased)
+        }
+        ctx.font = `${fontSize * 0.7}px serif`
+        ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
+        ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
         ctx.fillStyle = '#e4e4e7'
-        ctx.fillText(`${displayTotal}`, w / 2, h / 2)
-
-        // Star emoji
+        ctx.fillText(`${displayTotal}`, w / 2 + fontSize * 0.5, h / 2)
         ctx.shadowBlur = 0
-        ctx.font = `${fontSize * 0.6}px serif`
-        ctx.fillText('⭐', w / 2 - fontSize * 1, h / 2)
+        ctx.globalAlpha = 1
+      }
+
+      if (phase === 'result') {
+        // Final number, big and clear
+        ctx.font = `${fontSize * 0.7}px serif`
+        ctx.fillText('⭐', w / 2 - fontSize * 0.9, h / 2)
+        ctx.font = `bold ${fontSize * 1.3}px system-ui, sans-serif`
+        ctx.fillStyle = '#e4e4e7'
+        ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
       }
     }
 
-    const animate = () => {
-      drawNumber(canvas1Ref.current, fo.roll1, fo.star1 < fo.star2 ? fo.star2 - fo.star1 + 1 : fo.star1 === fo.star2 ? 1 : 0, fo.star1, large)
-      drawNumber(canvas2Ref.current, fo.roll2, fo.star2 < fo.star1 ? fo.star1 - fo.star2 + 1 : fo.star1 === fo.star2 ? 1 : 0, fo.star2, large)
+    const maxRoll1 = fo.star1 < fo.star2 ? fo.star2 - fo.star1 + 1 : fo.star1 === fo.star2 ? 1 : 0
+    const maxRoll2 = fo.star2 < fo.star1 ? fo.star1 - fo.star2 + 1 : fo.star1 === fo.star2 ? 1 : 0
 
-      if (phase === 'rolling' || phase === 'merge') {
+    const animate = () => {
+      drawSide(canvas1Ref.current, fo.roll1, maxRoll1, fo.star1, fo.effective1, large)
+      drawSide(canvas2Ref.current, fo.roll2, maxRoll2, fo.star2, fo.effective2, large)
+
+      if (phase === 'power' || phase === 'rolling' || phase === 'merge' || phase === 'result') {
         animRef.current = requestAnimationFrame(animate)
       }
     }
@@ -155,8 +197,8 @@ export default function BattleFaceoff({
   const tie = fo.damage1 === 0 && fo.damage2 === 0
 
   const cardSize = large ? 'w-20 sm:w-24' : 'w-16'
-  const canvasW = large ? 140 : 90
-  const canvasH = large ? 40 : 28
+  const canvasW = large ? 180 : 120
+  const canvasH = large ? 44 : 30
 
   return (
     <div className="flex items-center justify-center gap-3 sm:gap-6">
@@ -166,20 +208,14 @@ export default function BattleFaceoff({
       } ${phase === 'result' || phase === 'done' ? (p2Won ? 'opacity-40 scale-90 translate-x-3' : p1Won ? 'scale-105' : '') : ''}`}>
         <div className={cardSize}><CompactCard card={fo.card1} /></div>
 
-        {/* Base power */}
-        {(phase === 'power') && (
-          <span className="text-sm text-zinc-300 animate-[fadeIn_0.3s_ease-out]">⭐ {fo.star1}</span>
-        )}
-
-        {/* Canvas for roll + merge */}
-        {(phase === 'rolling' || phase === 'merge') && (
+        {/* Canvas for power, roll, merge, result */}
+        {phase !== 'enter' && (
           <canvas ref={canvas1Ref} width={canvasW} height={canvasH} className="block" />
         )}
 
-        {/* Final number + result */}
+        {/* Damage / win text */}
         {(phase === 'result' || phase === 'done') && (
-          <div className="flex flex-col items-center animate-[fadeIn_0.3s_ease-out]">
-            <span className="text-sm font-bold text-zinc-200">⭐ {fo.effective1}</span>
+          <div className="animate-[fadeIn_0.3s_ease-out]">
             {p2Won && <span className={`${large ? 'text-lg' : 'text-sm'} font-black text-red-400`}>-{fo.damage1} HP</span>}
             {p1Won && <span className={`${large ? 'text-sm' : 'text-xs'} font-bold text-green-400`}>WIN</span>}
             {tie && <span className="text-xs text-zinc-500">TIE</span>}
@@ -196,17 +232,12 @@ export default function BattleFaceoff({
       } ${phase === 'result' || phase === 'done' ? (p1Won ? 'opacity-40 scale-90 -translate-x-3' : p2Won ? 'scale-105' : '') : ''}`}>
         <div className={cardSize}><CompactCard card={fo.card2} /></div>
 
-        {(phase === 'power') && (
-          <span className="text-sm text-zinc-300 animate-[fadeIn_0.3s_ease-out]">⭐ {fo.star2}</span>
-        )}
-
-        {(phase === 'rolling' || phase === 'merge') && (
+        {phase !== 'enter' && (
           <canvas ref={canvas2Ref} width={canvasW} height={canvasH} className="block" />
         )}
 
         {(phase === 'result' || phase === 'done') && (
-          <div className="flex flex-col items-center animate-[fadeIn_0.3s_ease-out]">
-            <span className="text-sm font-bold text-zinc-200">⭐ {fo.effective2}</span>
+          <div className="animate-[fadeIn_0.3s_ease-out]">
             {p1Won && <span className={`${large ? 'text-lg' : 'text-sm'} font-black text-red-400`}>-{fo.damage2} HP</span>}
             {p2Won && <span className={`${large ? 'text-sm' : 'text-xs'} font-bold text-green-400`}>WIN</span>}
             {tie && <span className="text-xs text-zinc-500">TIE</span>}
