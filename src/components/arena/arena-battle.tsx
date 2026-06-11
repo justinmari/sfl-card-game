@@ -488,7 +488,7 @@ export default function ArenaBattle({
           {battlePhase === 'skill-select' && (() => {
             const myPair = introMatchups.pairs.find(([a, b]) => a === userId || b === userId)
             const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
-            const availableSkills = (displayHp[userId] ?? 0) > 0 ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
+            const availableSkills = opponentId ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
