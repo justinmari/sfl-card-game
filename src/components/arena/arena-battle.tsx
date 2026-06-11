@@ -64,7 +64,7 @@ export default function ArenaBattle({
     initialPlayers.forEach((p) => { hpMap[p.id] = 10 })
     return hpMap
   })
-  const [roundNum, setRoundNum] = useState(0)
+  const [roundNum, setRoundNum] = useState(1)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
   const [battlePhase, setBattlePhase] = useState<'round-intro' | 'precomputing' | 'fighting' | 'round-end'>('round-intro')
   const [cardIdx, setCardIdx] = useState(0)
@@ -77,8 +77,12 @@ export default function ArenaBattle({
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
   const [pendingSkills, setPendingSkills] = useState<ActiveSkill[]>([])
   const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>([])
-  const [introMatchups, setIntroMatchups] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
-  const [introCountdown, setIntroCountdown] = useState(0)
+  // Compute round 1 matchups synchronously as initial state
+  const [introMatchups, setIntroMatchups] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(() => {
+    const rng = seed != null ? createSeededRng(seed * 1000 + 1) : undefined
+    return randomPair(initialPlayers, rng)
+  })
+  const [introCountdown, setIntroCountdown] = useState(5)
   // Multiplayer: track which players are ready between rounds
   const [readyPlayers, setReadyPlayers] = useState<Set<string>>(new Set())
   const [heldPlayers, setHeldPlayers] = useState<Set<string>>(new Set())
@@ -129,17 +133,6 @@ export default function ArenaBattle({
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
   }
 
-  // Auto-start round 1 on mount
-  const initRef = useRef(false)
-  useEffect(() => {
-    if (initRef.current) return
-    initRef.current = true
-    const matchups = randomPair(initialPlayers, getRoundRng(1))
-    setIntroMatchups(matchups)
-    setNextRoundPreview(matchups)
-    setRoundNum(1)
-    setIntroCountdown(5)
-  }, [])
 
   const getPlayerSkills = (playerId: string): { skill: Skill; card: BattleCard }[] => {
     const player = players.find((p) => p.id === playerId)
