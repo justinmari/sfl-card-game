@@ -68,7 +68,7 @@ export default function ArenaBattle({
   })
   const [roundNum, setRoundNum] = useState(0)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
-  const [battlePhase, setBattlePhase] = useState<'round-intro' | 'fighting' | 'round-end'>('round-intro')
+  const [battlePhase, setBattlePhase] = useState<'round-intro' | 'precomputing' | 'fighting' | 'round-end'>('round-intro')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
@@ -158,8 +158,15 @@ export default function ArenaBattle({
 
   // Step 1: Show matchups + skill activation
   const startNextRound = useCallback(() => {
-    const nextRound = roundNum + 1
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
+    const alive = updated.filter((p) => !p.eliminated)
+    // If only 1 player left, end the battle
+    if (alive.length <= 1) {
+      setPlayers(updated)
+      setPhase('done')
+      return
+    }
+    const nextRound = roundNum + 1
     setPlayers(updated)
     const matchups = nextRoundPreview ?? randomPair(updated, rng)
     setIntroMatchups(matchups)
@@ -193,7 +200,7 @@ export default function ArenaBattle({
   const startFightingRef = useRef(startFighting)
   startFightingRef.current = startFighting
 
-  // Intro countdown
+  // Intro countdown → precomputing phase
   useEffect(() => {
     if (battlePhase !== 'round-intro') return
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
@@ -201,7 +208,7 @@ export default function ArenaBattle({
       setIntroCountdown((prev) => {
         if (prev <= 1) {
           if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
-          startFightingRef.current()
+          setBattlePhase('precomputing')
           return 0
         }
         return prev - 1
@@ -209,6 +216,16 @@ export default function ArenaBattle({
     }, 1000)
     return () => { if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null } }
   }, [battlePhase === 'round-intro'])
+
+  // Precomputing phase: brief pause for skill sync, then start fighting
+  useEffect(() => {
+    if (battlePhase !== 'precomputing') return
+    // Small delay to let any last-moment skill broadcasts arrive
+    timerRef.current = setTimeout(() => {
+      startFightingRef.current()
+    }, isMultiplayer ? 500 : 0)
+    return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null } }
+  }, [battlePhase === 'precomputing'])
 
   // Single animation driver for faceoff phases
   const startFaceoffAnimation = useCallback(() => {
@@ -493,7 +510,7 @@ export default function ArenaBattle({
                   {!isMultiplayer && (
                     <button onClick={() => {
                       if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
-                      startFighting()
+                      setBattlePhase('precomputing')
                     }} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">
                       Fight Now
                     </button>
@@ -502,6 +519,13 @@ export default function ArenaBattle({
               </div>
             )
           })()}
+
+          {/* Precomputing */}
+          {battlePhase === 'precomputing' && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center animate-pulse" style={{ minHeight: '12rem' }}>
+              <p className="text-sm text-zinc-400">Preparing battle...</p>
+            </div>
+          )}
 
           {/* Fighting */}
           {battlePhase === 'fighting' && precomputed && (() => {
