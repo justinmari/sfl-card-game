@@ -27,6 +27,7 @@ export default function BattleFaceoff({
   p2Name,
   p1Hp,
   p2Hp,
+  cardFilter,
 }: {
   faceOff: FaceOffDetail
   phase: Phase
@@ -37,6 +38,7 @@ export default function BattleFaceoff({
   p2Name?: string
   p1Hp?: number
   p2Hp?: number
+  cardFilter?: string
 }) {
   const canvas1Ref = useRef<HTMLCanvasElement>(null)
   const canvas2Ref = useRef<HTMLCanvasElement>(null)
@@ -270,7 +272,7 @@ export default function BattleFaceoff({
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim1 : ''
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
-        <div ref={card1DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(2deg)' } : undefined}><CompactCard card={fo.card1} /></div>
+        <div ref={card1DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}) }}><CompactCard card={fo.card1} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />
@@ -282,7 +284,7 @@ export default function BattleFaceoff({
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
-        <div ref={card2DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(-2deg)' } : undefined}><CompactCard card={fo.card2} /></div>
+        <div ref={card2DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(-2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}) }}><CompactCard card={fo.card2} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />

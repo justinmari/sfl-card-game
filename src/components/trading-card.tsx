@@ -91,6 +91,7 @@ type CardData = {
   image_url: string | null
   rarity: string
   creature_name?: string | null
+  skillNames?: string[]
 }
 
 type Size = 'sm' | 'md' | 'lg'
@@ -258,11 +259,22 @@ export default function TradingCard({
             )}
           </div>
 
-          {/* Stars */}
-          <div className={`mt-auto flex items-center gap-[3px] pt-2 ${s.stars} ${rarityStarColor[card.rarity]}`}>
-            {Array.from({ length: stars }).map((_, i) => (
-              <span key={i}>★</span>
-            ))}
+          {/* Stars + Skills */}
+          <div className={`mt-auto flex items-center justify-between pt-2`}>
+            <div className={`flex items-center gap-[3px] ${s.stars} ${rarityStarColor[card.rarity]}`}>
+              {Array.from({ length: stars }).map((_, i) => (
+                <span key={i}>★</span>
+              ))}
+            </div>
+            {card.skillNames && card.skillNames.length > 0 && (
+              <div className="flex items-center gap-1">
+                {card.skillNames.map((name, i) => (
+                  <span key={i} className={`${s.desc} flex items-center gap-0.5 text-pink-400 font-medium`}>
+                    <span>✦</span>{name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

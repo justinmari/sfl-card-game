@@ -111,6 +111,14 @@ export default async function DashboardPage() {
               </a>
 
               <a
+                href="/admin/skills"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">✦</span>
+                <span className="text-sm font-medium">Skills</span>
+              </a>
+
+              <a
                 href="/arena/test"
                 className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
               >

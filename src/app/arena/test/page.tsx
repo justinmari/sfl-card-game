@@ -20,11 +20,18 @@ export default async function TestArenaPage() {
   // Get all cards for bot decks
   const { data: allCards } = await supabase
     .from('cards')
-    .select('id, name, image_url, rarity, creatures(name)')
+    .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
+
+  // Get skill display info from DB
+  const { data: dbSkills } = await supabase.from('skills').select('id, name, description')
 
   const cardList = (allCards || []).map((c) => {
-    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null }
-    return { id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity, creature_name: card.creatures?.name || null }
+    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[] }
+    return {
+      id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
+      creature_name: card.creatures?.name || null,
+      dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
+    }
   })
 
   // Get card details for admin decks
@@ -55,6 +62,7 @@ export default async function TestArenaPage() {
             avatarUrl={profile.avatar_url || null}
             adminDecks={adminDecks}
             allCards={cardList}
+            dbSkills={(dbSkills || []) as { id: string; name: string; description: string }[]}
           />
         )}
       </main>

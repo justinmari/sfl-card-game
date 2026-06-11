@@ -1,34 +1,7 @@
-// ===== Skills =====
+export type { Skill, SkillEffect, ActiveSkill } from '@/lib/skills'
+export { SKILL_REGISTRY, resolveSkills } from '@/lib/skills'
 
-export type SkillEffect =
-  | { type: 'multiply-totals'; factor: number; target: 'both' }
-  // Future effects:
-  // | { type: 'swap-totals' }
-  // | { type: 'dice-bonus'; bonus: number; target: 'self' | 'opponent' | 'both' }
-  // | { type: 'randomize-rarities'; target: 'both' }
-
-export type Skill = {
-  id: string
-  name: string
-  description: string
-  usesPerBattle: number
-  effect: SkillEffect
-}
-
-export type ActiveSkill = {
-  skill: Skill
-  activatedBy: string // player id
-  roundActivated: number
-}
-
-// Built-in skills
-export const SKILL_DOUBLE_EDGE: Skill = {
-  id: 'double-edge',
-  name: 'Double Edge',
-  description: 'All totals are doubled this round — for both players',
-  usesPerBattle: 1,
-  effect: { type: 'multiply-totals', factor: 2, target: 'both' },
-}
+import type { Skill, ActiveSkill } from '@/lib/skills'
 
 export type BattleCard = {
   id: string
@@ -36,6 +9,7 @@ export type BattleCard = {
   image_url: string | null
   rarity: string
   creature_name: string | null
+  dbSkillIds?: string[]
   skills?: Skill[]
 }
 
@@ -62,10 +36,16 @@ export type MatchResult = {
   winnerId: string | null
 }
 
+export type RoundFlags = {
+  healInstead?: boolean
+  visualEffect?: string // CSS filter to apply to cards
+}
+
 export type RoundResult = {
   round: number
   matches: MatchResult[]
   byePlayerId: string | null
+  flags?: RoundFlags
 }
 
 export const starCount: Record<string, number> = {
@@ -95,30 +75,86 @@ export type FaceOffDetail = FaceOff & {
   effective2: number
 }
 
+const allRarities = Object.keys(starCount)
+
 export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[]): FaceOffDetail {
-  const s1 = starCount[card1.rarity] || 1
-  const s2 = starCount[card2.rarity] || 1
-  const diff = Math.abs(s1 - s2)
+  // --- Phase 1: Determine star values (can be modified by skills) ---
+  let s1 = starCount[card1.rarity] || 1
+  let s2 = starCount[card2.rarity] || 1
 
-  let roll1 = 0
-  let roll2 = 0
-
-  if (s1 === s2) {
-    // Tie: both roll 0 or 1
-    roll1 = Math.floor(Math.random() * 2)
-    roll2 = Math.floor(Math.random() * 2)
-  } else if (s1 < s2) {
-    // Card1 is weaker: rolls 0 to diff+1 (can beat by 1)
-    roll1 = Math.floor(Math.random() * (diff + 2))
-  } else {
-    // Card2 is weaker: rolls 0 to diff+1 (can beat by 1)
-    roll2 = Math.floor(Math.random() * (diff + 2))
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      const e = as.skill.effect
+      // Scramble: randomize both rarities
+      if (e.type === 'scramble-rarities') {
+        const r1 = allRarities[Math.floor(Math.random() * allRarities.length)]
+        const r2 = allRarities[Math.floor(Math.random() * allRarities.length)]
+        s1 = starCount[r1] || 1
+        s2 = starCount[r2] || 1
+      }
+      // Leveler: all cards treated as a specific rarity
+      if (e.type === 'leveler') {
+        s1 = starCount[e.rarity] || 1
+        s2 = starCount[e.rarity] || 1
+      }
+    }
   }
 
+  // --- Phase 2: Dice rolls ---
+  let roll1 = 0
+  let roll2 = 0
+  let noDice = false
+  let bigDiceRange = 0
+
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      const e = as.skill.effect
+      if (e.type === 'no-dice') noDice = true
+      if (e.type === 'big-dice') bigDiceRange = Math.max(bigDiceRange, e.range)
+    }
+  }
+
+  if (noDice) {
+    roll1 = 0
+    roll2 = 0
+  } else if (bigDiceRange > 0) {
+    // Lower rarity card gets big dice range
+    if (s1 < s2) {
+      roll1 = Math.floor(Math.random() * (bigDiceRange + 1))
+    } else if (s2 < s1) {
+      roll2 = Math.floor(Math.random() * (bigDiceRange + 1))
+    } else {
+      // Equal: both get big dice
+      roll1 = Math.floor(Math.random() * (bigDiceRange + 1))
+      roll2 = Math.floor(Math.random() * (bigDiceRange + 1))
+    }
+  } else {
+    const diff = Math.abs(s1 - s2)
+    if (s1 === s2) {
+      roll1 = Math.floor(Math.random() * 2)
+      roll2 = Math.floor(Math.random() * 2)
+    } else if (s1 < s2) {
+      roll1 = Math.floor(Math.random() * (diff + 2))
+    } else {
+      roll2 = Math.floor(Math.random() * (diff + 2))
+    }
+  }
+
+  // Apply dice bonus
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      const e = as.skill.effect
+      if (e.type === 'dice-bonus' && e.target === 'both') {
+        if (roll1 > 0 || s1 <= s2) roll1 += e.bonus
+        if (roll2 > 0 || s2 <= s1) roll2 += e.bonus
+      }
+    }
+  }
+
+  // --- Phase 3: Effective totals ---
   let effective1 = s1 + roll1
   let effective2 = s2 + roll2
 
-  // Apply skill modifiers
   if (activeSkills) {
     for (const as of activeSkills) {
       const e = as.skill.effect
@@ -129,19 +165,40 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     }
   }
 
+  // --- Phase 4: Damage calculation ---
   const finalDiff = Math.abs(effective1 - effective2)
+  let damage1 = effective2 > effective1 ? finalDiff : 0
+  let damage2 = effective1 > effective2 ? finalDiff : 0
+
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      const e = as.skill.effect
+      // Flat damage: loser always takes fixed damage
+      if (e.type === 'flat-damage') {
+        if (damage1 > 0) damage1 = e.damage
+        if (damage2 > 0) damage2 = e.damage
+      }
+      // Multiply damage
+      if (e.type === 'multiply-damage' && e.target === 'both') {
+        damage1 = Math.round(damage1 * e.factor)
+        damage2 = Math.round(damage2 * e.factor)
+      }
+      // Reverse: damage goes to the winner instead
+      if (e.type === 'reverse-damage') {
+        const tmp1 = damage1
+        const tmp2 = damage2
+        damage1 = tmp2
+        damage2 = tmp1
+      }
+    }
+  }
 
   return {
-    card1,
-    card2,
-    star1: s1,
-    star2: s2,
-    roll1,
-    roll2,
-    effective1,
-    effective2,
-    damage1: effective2 > effective1 ? finalDiff : 0,
-    damage2: effective1 > effective2 ? finalDiff : 0,
+    card1, card2,
+    star1: s1, star2: s2,
+    roll1, roll2,
+    effective1, effective2,
+    damage1, damage2,
   }
 }
 
@@ -201,7 +258,16 @@ export function precomputeRound(
     return { player1Id: id1, player2Id: id2, faceOffs, winnerId }
   })
 
-  return { round: roundNum, matches, byePlayerId: byeId }
+  // Extract round-level flags from active skills
+  const flags: RoundFlags = {}
+  if (activeSkills) {
+    for (const as of activeSkills) {
+      if (as.skill.effect.type === 'heal-instead') flags.healInstead = true
+      if (as.skill.effect.type === 'visual') flags.visualEffect = as.skill.effect.css
+    }
+  }
+
+  return { round: roundNum, matches, byePlayerId: byeId, flags: Object.keys(flags).length > 0 ? flags : undefined }
 }
 
 const BOT_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta', 'Bot Eta']

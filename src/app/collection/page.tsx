@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import AppNavbar from '@/components/app-navbar'
 import CollectionGrid from './collection-grid'
+import { SKILL_REGISTRY } from '@/lib/skills'
 
 export default async function CollectionPage() {
   const profile = await getProfile()
@@ -12,7 +13,7 @@ export default async function CollectionPage() {
   const supabase = await createClient()
   const { data: userCards } = await supabase
     .from('user_cards')
-    .select('card_id, count, obtained_at, cards(*, creatures(name))')
+    .select('card_id, count, obtained_at, cards(*, creatures(name), card_skills(skill_id))')
     .eq('user_id', profile.id)
     .gt('count', 0)
     .order('obtained_at', { ascending: false })
@@ -28,11 +29,15 @@ export default async function CollectionPage() {
     .select('id, name')
     .order('name')
 
+  const { data: dbSkills } = await supabase.from('skills').select('id, name, description')
+  const skillNameMap = new Map((dbSkills || []).map((s) => [s.id, s.name]))
+  const skillDescMap = new Map((dbSkills || []).map((s) => [s.id, s.description]))
+
   const rows = userCards || []
   const totalCards = rows.reduce((sum, uc) => sum + uc.count, 0)
 
   const cardCounts = rows.map((uc) => {
-    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null }
+    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[] }
     return {
       card: {
         id: uc.card_id,
@@ -41,6 +46,8 @@ export default async function CollectionPage() {
         image_url: c.image_url,
         rarity: c.rarity,
         creature_name: c.creatures?.name || null,
+        skillNames: (c.card_skills || []).map((s) => skillNameMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.name || s.skill_id),
+        skillDescriptions: (c.card_skills || []).map((s) => skillDescMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.description || ''),
       },
       count: uc.count,
     }

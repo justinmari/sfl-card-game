@@ -12,7 +12,7 @@ import {
   precomputeRound,
   randomPair,
   starCount,
-  SKILL_DOUBLE_EDGE,
+  resolveSkills,
 } from '@/lib/battle-engine'
 import BattleFaceoff from '@/components/battle-faceoff'
 import CompactCard from '@/components/compact-card'
@@ -30,10 +30,11 @@ const rarityTextColor: Record<string, string> = {
 type DeckOption = { slot: number; name: string; cards: BattleCard[] }
 
 export default function TestArena({
-  userId, userName, avatarUrl, adminDecks, allCards,
+  userId, userName, avatarUrl, adminDecks, allCards, dbSkills,
 }: {
   userId: string; userName: string; avatarUrl: string | null
   adminDecks: DeckOption[]; allCards: BattleCard[]
+  dbSkills?: { id: string; name: string; description: string }[]
 }) {
   const [phase, setPhase] = useState<'setup' | 'battle' | 'done'>('setup')
   const [selectedDeck, setSelectedDeck] = useState<number | null>(null)
@@ -65,11 +66,11 @@ export default function TestArena({
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
   }
 
-  // Attach skills to cards based on rarity
+  // Resolve skill IDs from DB into full skill objects
   const attachSkills = (cards: BattleCard[]): BattleCard[] =>
     cards.map((c) => ({
       ...c,
-      skills: c.rarity === 'secret_rare' ? [SKILL_DOUBLE_EDGE] : undefined,
+      skills: c.dbSkillIds && c.dbSkillIds.length > 0 ? resolveSkills(c.dbSkillIds, dbSkills) : undefined,
     }))
 
   // Get all available skills for a player from their deck
@@ -200,17 +201,23 @@ export default function TestArena({
 
         if (phaseName === 'result' && !resultApplied) {
           resultApplied = true
-          // Apply damage
+          // Apply damage (or heal if heal-instead flag)
           if (!appliedRef.current.has(cardIdx) && precomputed) {
             appliedRef.current.add(cardIdx)
+            const heal = precomputed.flags?.healInstead
             setDisplayHp((prev) => {
               const updated = { ...prev }
               precomputed.matches.forEach((match, mi) => {
                 if (matchKo.has(mi)) return
                 const fo = match.faceOffs[cardIdx]
                 if (!fo) return
-                updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
-                updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+                if (heal) {
+                  updated[match.player1Id] = Math.min(10, (updated[match.player1Id] || 0) + fo.damage1)
+                  updated[match.player2Id] = Math.min(10, (updated[match.player2Id] || 0) + fo.damage2)
+                } else {
+                  updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
+                  updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+                }
               })
               return updated
             })
@@ -606,6 +613,7 @@ export default function TestArena({
                         p2Name={getPlayer(opponentId)?.name || 'Opponent'}
                         p1Hp={displayHp[userId] ?? 0}
                         p2Hp={displayHp[opponentId] ?? 0}
+                        cardFilter={precomputed?.flags?.visualEffect}
                       />
                     </div>
                   )
@@ -671,6 +679,7 @@ export default function TestArena({
                                 phase={faceoffPhase}
                                 rollElapsed={rollElapsed}
                                 large={false}
+                                cardFilter={precomputed?.flags?.visualEffect}
                               />
                             )}
                           </div>

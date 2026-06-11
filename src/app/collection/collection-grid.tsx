@@ -11,6 +11,8 @@ type Card = {
   image_url: string | null
   rarity: string
   creature_name?: string | null
+  skillNames?: string[]
+  skillDescriptions?: string[]
 }
 
 type PackFilter = {
@@ -293,6 +295,18 @@ export default function CollectionGrid({
               <span>Owned: x{selected.count}</span>
               <span>#{selected.card.id.slice(0, 8)}</span>
             </div>
+            {selected.card.skillNames && selected.card.skillNames.length > 0 && (
+              <div className="mt-3 w-full max-w-xs">
+                {selected.card.skillNames.map((name, i) => (
+                  <div key={i} className="rounded-lg border border-pink-800/50 bg-pink-950/20 px-4 py-2.5 text-center">
+                    <span className="text-sm font-bold text-pink-400">✦ {name}</span>
+                    {selected.card.skillDescriptions?.[i] && (
+                      <p className="mt-1 text-xs text-zinc-400">{selected.card.skillDescriptions[i]}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               onClick={() => setSelected(null)}
               className="mt-4 rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
