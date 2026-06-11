@@ -27,15 +27,8 @@ export default async function DashboardPage() {
           {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
         </p>
 
+        {/* Main */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <a
-            href="/arena"
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
-          >
-            <span className="text-3xl">⚔️</span>
-            <span className="text-sm font-medium">Arena</span>
-          </a>
-
           <a
             href="/shop"
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
@@ -45,19 +38,39 @@ export default async function DashboardPage() {
           </a>
 
           <a
+            href="/collection"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
+          >
+            <span className="text-3xl">🃏</span>
+            <span className="text-sm font-medium">Collection</span>
+          </a>
+
+          <a
             href="/players"
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
           >
             <span className="text-3xl">👥</span>
             <span className="text-sm font-medium">Friends</span>
           </a>
+        </div>
+
+        {/* Arena */}
+        <h3 className="mb-4 mt-10 text-lg font-semibold text-red-400">Arena</h3>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <a
+            href="/arena"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
+          >
+            <span className="text-3xl">⚔️</span>
+            <span className="text-sm font-medium">Battle</span>
+          </a>
 
           <a
-            href="/collection"
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
+            href="/decks"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
           >
-            <span className="text-3xl">🃏</span>
-            <span className="text-sm font-medium">Collection</span>
+            <span className="text-3xl">📋</span>
+            <span className="text-sm font-medium">Decks</span>
           </a>
         </div>
 
