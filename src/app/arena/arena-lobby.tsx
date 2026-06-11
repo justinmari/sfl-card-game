@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -31,7 +31,7 @@ export default function ArenaLobby({
 }) {
   const [players, setPlayers] = useState<Player[]>([])
   const [connected, setConnected] = useState(false)
-  const [isReady, setIsReady] = useState(false)
+  const [myReady, setMyReady] = useState(false)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -39,31 +39,34 @@ export default function ArenaLobby({
   const channelRef = useRef<RealtimeChannel | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const joinedAtRef = useRef(Date.now())
+
+  // Use broadcast for ready state instead of presence
+  const readyMapRef = useRef<Record<string, boolean>>({})
 
   useEffect(() => {
     const supabase = createClient()
 
     const channel = supabase.channel('arena-lobby', {
-      config: {
-        presence: {
-          key: userId,
-        },
-      },
+      config: { presence: { key: userId } },
     })
 
     channel
       .on('broadcast', { event: 'chat' }, ({ payload }) => {
         setMessages((prev) => [...prev.slice(-50), payload as ChatMessage])
       })
-      .on('broadcast', { event: 'countdown' }, ({ payload }) => {
-        if (payload.action === 'start') {
-          startCountdown()
-        } else if (payload.action === 'cancel') {
-          cancelCountdown()
-        }
+      .on('broadcast', { event: 'ready-change' }, ({ payload }) => {
+        readyMapRef.current[payload.userId] = payload.ready
+        // Force re-render
+        setPlayers((prev) => prev.map((p) =>
+          p.id === payload.userId ? { ...p, ready: payload.ready } : p
+        ))
+      })
+      .on('broadcast', { event: 'game-start' }, () => {
+        setGameStarted(true)
       })
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number; ready: boolean }>()
+        const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number }>()
         const playerList: Player[] = []
         for (const [id, presences] of Object.entries(state)) {
           if (presences.length > 0) {
@@ -73,7 +76,7 @@ export default function ArenaLobby({
               name: p.name,
               avatar_url: p.avatar_url,
               joined_at: p.joined_at,
-              ready: p.ready,
+              ready: readyMapRef.current[id] || false,
             })
           }
         }
@@ -85,8 +88,7 @@ export default function ArenaLobby({
           await channel.track({
             name: userName,
             avatar_url: avatarUrl,
-            joined_at: Date.now(),
-            ready: false,
+            joined_at: joinedAtRef.current,
           })
           setConnected(true)
         }
@@ -101,52 +103,49 @@ export default function ArenaLobby({
     }
   }, [userId, userName, avatarUrl])
 
-  // Check if all players are ready (need at least 2)
+  // Watch for all ready
   useEffect(() => {
-    if (players.length >= 2 && players.every((p) => p.ready) && countdown === null && !gameStarted) {
-      // Broadcast countdown start
-      channelRef.current?.send({ type: 'broadcast', event: 'countdown', payload: { action: 'start' } })
-      startCountdown()
-    } else if (players.length >= 2 && !players.every((p) => p.ready) && countdown !== null) {
-      // Someone unreadied — cancel
-      channelRef.current?.send({ type: 'broadcast', event: 'countdown', payload: { action: 'cancel' } })
-      cancelCountdown()
+    if (gameStarted || countdown !== null) return
+    if (players.length >= 2 && players.every((p) => p.ready)) {
+      setCountdown(5)
+      let count = 5
+      countdownRef.current = setInterval(() => {
+        count--
+        if (count <= 0) {
+          if (countdownRef.current) clearInterval(countdownRef.current)
+          countdownRef.current = null
+          setCountdown(null)
+          setGameStarted(true)
+          channelRef.current?.send({ type: 'broadcast', event: 'game-start', payload: {} })
+        } else {
+          setCountdown(count)
+        }
+      }, 1000)
     }
-  }, [players])
+  }, [players, gameStarted, countdown])
 
-  const startCountdown = useCallback(() => {
-    if (countdownRef.current) return
-    setCountdown(5)
-    let count = 5
-    countdownRef.current = setInterval(() => {
-      count--
-      if (count <= 0) {
-        if (countdownRef.current) clearInterval(countdownRef.current)
-        countdownRef.current = null
-        setCountdown(null)
-        setGameStarted(true)
-      } else {
-        setCountdown(count)
-      }
-    }, 1000)
-  }, [])
-
-  const cancelCountdown = useCallback(() => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current)
+  // Cancel countdown if someone unreadies
+  useEffect(() => {
+    if (countdown !== null && players.length >= 2 && !players.every((p) => p.ready)) {
+      if (countdownRef.current) clearInterval(countdownRef.current)
       countdownRef.current = null
+      setCountdown(null)
     }
-    setCountdown(null)
-  }, [])
+  }, [players, countdown])
 
-  const toggleReady = async () => {
-    const newReady = !isReady
-    setIsReady(newReady)
-    await channelRef.current?.track({
-      name: userName,
-      avatar_url: avatarUrl,
-      joined_at: Date.now(),
-      ready: newReady,
+  const toggleReady = () => {
+    const newReady = !myReady
+    setMyReady(newReady)
+    readyMapRef.current[userId] = newReady
+    // Update local players immediately
+    setPlayers((prev) => prev.map((p) =>
+      p.id === userId ? { ...p, ready: newReady } : p
+    ))
+    // Broadcast to others
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'ready-change',
+      payload: { userId, ready: newReady },
     })
   }
 
@@ -209,31 +208,39 @@ export default function ArenaLobby({
 
       {/* Player list */}
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
-              player.id === userId
-                ? 'border-amber-700 bg-amber-950/20'
-                : player.ready
-                  ? 'border-green-700 bg-green-950/20'
-                  : 'border-zinc-800 bg-zinc-900'
-            }`}
-          >
-            {player.avatar_url ? (
-              <img src={player.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover border-2 border-zinc-700" />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 border-2 border-zinc-700 text-lg text-zinc-500">?</div>
-            )}
-            <span className="text-sm font-medium text-center truncate w-full">
-              {player.name}
-              {player.id === userId && <span className="text-zinc-500"> (You)</span>}
-            </span>
-            <span className={`text-[10px] font-medium ${player.ready ? 'text-green-400' : 'text-zinc-500'}`}>
-              {player.ready ? '✓ Ready' : 'Not ready'}
-            </span>
-          </div>
-        ))}
+        {players.map((player) => {
+          const isMe = player.id === userId
+          return (
+            <div
+              key={player.id}
+              className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
+                player.ready
+                  ? 'border-green-600 bg-green-950/20'
+                  : isMe
+                    ? 'border-amber-700 bg-amber-950/20'
+                    : 'border-zinc-800 bg-zinc-900'
+              }`}
+            >
+              {player.avatar_url ? (
+                <img src={player.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover border-2 border-zinc-700" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 border-2 border-zinc-700 text-lg text-zinc-500">?</div>
+              )}
+              <span className="text-sm font-medium text-center truncate w-full">
+                {player.name}
+                {isMe && <span className="text-zinc-500"> (You)</span>}
+              </span>
+              {player.ready ? (
+                <span className="text-xs font-medium text-green-400">✅ Ready</span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                  <span className="text-[10px] text-zinc-500">Not ready</span>
+                </span>
+              )}
+            </div>
+          )
+        })}
 
         {/* Empty slots */}
         {Array.from({ length: Math.max(0, 8 - players.length) }).map((_, i) => (
@@ -286,22 +293,26 @@ export default function ArenaLobby({
 
       {/* Actions */}
       <div className="flex flex-col items-center gap-3">
-        <p className="text-sm text-zinc-500">
-          {players.length < 2
-            ? 'Need at least 2 players to start'
-            : `${readyCount}/${players.length} ready`}
-        </p>
-        <button
-          onClick={toggleReady}
-          disabled={players.length < 2 || gameStarted}
-          className={`rounded-lg px-8 py-3 text-sm font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
-            isReady
-              ? 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-              : 'bg-red-600 text-white hover:bg-red-500'
-          }`}
-        >
-          {isReady ? 'Cancel Ready' : 'Ready Up'}
-        </button>
+        {connected && (
+          <p className="text-sm text-zinc-500">
+            {players.length < 2
+              ? 'Need at least 2 players to start'
+              : `${readyCount}/${players.length} ready`}
+          </p>
+        )}
+        {connected && (
+          <button
+            onClick={toggleReady}
+            disabled={players.length < 2 || gameStarted}
+            className={`rounded-lg px-8 py-3 text-sm font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+              myReady
+                ? 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                : 'bg-red-600 text-white hover:bg-red-500'
+            }`}
+          >
+            {myReady ? 'Cancel Ready' : 'Ready Up'}
+          </button>
+        )}
       </div>
     </div>
   )
