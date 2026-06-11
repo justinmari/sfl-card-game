@@ -24,13 +24,16 @@ export default function ArenaLobby({
   userId,
   userName,
   avatarUrl,
+  legalDecks,
 }: {
   userId: string
   userName: string
   avatarUrl: string | null
+  legalDecks: { slot: number; name: string; cards: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null }[] }[]
 }) {
   const [players, setPlayers] = useState<Player[]>([])
   const [connected, setConnected] = useState(false)
+  const [selectedDeck, setSelectedDeck] = useState<number | null>(null)
   const [myReady, setMyReady] = useState(false)
   const [countdown, setCountdown] = useState<number | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
@@ -256,6 +259,44 @@ export default function ArenaLobby({
         ))}
       </div>
 
+      {/* Deck selection */}
+      <div className="mb-8">
+        <h3 className="mb-3 text-sm font-medium text-zinc-400">Choose Your Deck</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {legalDecks.map((deck) => {
+            const isSelected = selectedDeck === deck.slot
+            return (
+              <button
+                key={deck.slot}
+                onClick={() => !myReady && setSelectedDeck(isSelected ? null : deck.slot)}
+                disabled={myReady}
+                className={`rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed ${
+                  isSelected
+                    ? 'border-red-500 bg-red-950/30'
+                    : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold">{deck.name}</span>
+                  {isSelected && <span className="text-xs text-red-400">✓ Selected</span>}
+                </div>
+                <div className="flex gap-1">
+                  {deck.cards.map((card) => (
+                    <div key={card.id} className="h-8 w-6 overflow-hidden rounded border border-zinc-700">
+                      {card.image_url ? (
+                        <img src={card.image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-[6px]">🃏</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Chat */}
       <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900">
         <div className="h-48 overflow-y-auto p-3">
@@ -295,15 +336,17 @@ export default function ArenaLobby({
       <div className="flex flex-col items-center gap-3">
         {connected && (
           <p className="text-sm text-zinc-500">
-            {players.length < 2
-              ? 'Need at least 2 players to start'
-              : `${readyCount}/${players.length} ready`}
+            {!selectedDeck
+              ? 'Select a deck to ready up'
+              : players.length < 2
+                ? 'Need at least 2 players to start'
+                : `${readyCount}/${players.length} ready`}
           </p>
         )}
         {connected && (
           <button
             onClick={toggleReady}
-            disabled={players.length < 2 || gameStarted}
+            disabled={players.length < 2 || gameStarted || !selectedDeck}
             className={`rounded-lg px-8 py-3 text-sm font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
               myReady
                 ? 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'

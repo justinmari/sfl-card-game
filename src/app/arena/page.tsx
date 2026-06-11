@@ -12,11 +12,36 @@ export default async function ArenaPage() {
   const supabase = await createClient()
   const { data: decks } = await supabase
     .from('decks')
-    .select('slot, card_ids')
+    .select('slot, name, card_ids')
     .eq('user_id', profile.id)
+    .order('slot')
 
-  // Check if any deck has exactly 5 cards
-  const hasLegalDeck = (decks || []).some((d) => d.card_ids?.length === 5)
+  // Get card details for deck display
+  const allCardIds = (decks || []).flatMap((d) => d.card_ids || [])
+  const { data: cards } = allCardIds.length > 0
+    ? await supabase
+        .from('cards')
+        .select('id, name, image_url, rarity, creatures(name)')
+        .in('id', allCardIds)
+    : { data: [] }
+
+  const cardMap = new Map<string, { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null }>()
+  for (const c of cards || []) {
+    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null }
+    cardMap.set(card.id, { id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity, creature_name: card.creatures?.name || null })
+  }
+
+  const legalDecks = (decks || [])
+    .filter((d) => d.card_ids?.length === 5)
+    .map((d) => ({
+      slot: d.slot as number,
+      name: d.name as string,
+      cards: (d.card_ids as string[])
+        .map((id) => cardMap.get(id))
+        .filter((c): c is { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null } => c !== undefined),
+    }))
+
+  const hasLegalDeck = legalDecks.length > 0
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -28,6 +53,7 @@ export default async function ArenaPage() {
             userId={profile.id}
             userName={profile.full_name || 'Unknown'}
             avatarUrl={profile.avatar_url || profile.user_metadata?.avatar_url || null}
+            legalDecks={legalDecks}
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
