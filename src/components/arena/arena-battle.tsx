@@ -28,19 +28,16 @@ const rarityTextColor: Record<string, string> = {
 
 // Multiplayer sync interface
 export type BattleSyncCallbacks = {
-  // Called when local player toggles a skill
   onSkillToggle?: (skillId: string, activated: boolean) => void
-  // Called when local player clicks Ready Up
-  onReadyUp?: () => void
-  // Called when local player clicks Hold On
-  onHoldOn?: () => void
+  onReadyUp?: (roundNum: number) => void
+  onHoldOn?: (roundNum: number) => void
 }
 
 // Ref handle for receiving remote events
 export type BattleSyncHandle = {
   receiveRemoteSkill: (playerId: string, skillId: string, activated: boolean, skill: Skill, card: BattleCard) => void
-  receiveRemoteReady: (playerId: string) => void
-  receiveRemoteHold: (playerId: string) => void
+  receiveRemoteReady: (playerId: string, forRound?: number) => void
+  receiveRemoteHold: (playerId: string, forRound?: number) => void
 }
 
 export type ArenaBattleProps = {
@@ -113,10 +110,12 @@ export default function ArenaBattle({
           setPendingSkills((prev) => prev.filter((ps) => !(ps.skill.id === skillId && ps.activatedBy === playerId)))
         }
       },
-      receiveRemoteReady: (playerId) => {
+      receiveRemoteReady: (playerId, forRound) => {
+        if (forRound !== undefined && forRound !== roundNum) return
         setReadyPlayers((prev) => new Set([...prev, playerId]))
       },
-      receiveRemoteHold: (playerId) => {
+      receiveRemoteHold: (playerId, forRound) => {
+        if (forRound !== undefined && forRound !== roundNum) return
         setHeldPlayers((prev) => new Set([...prev, playerId]))
         setRoundEndHeld(true)
         if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
@@ -818,7 +817,7 @@ export default function ArenaBattle({
                       {!readyPlayers.has(userId) ? (
                         <button onClick={() => {
                           setReadyPlayers((prev) => new Set([...prev, userId]))
-                          sync?.onReadyUp?.()
+                          sync?.onReadyUp?.(roundNum)
                         }} className="rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500">Ready Up</button>
                       ) : (
                         <span className="text-xs text-green-400">You are ready</span>
@@ -835,14 +834,14 @@ export default function ArenaBattle({
                             setTimeout(() => startNextRound(), 0)
                           } else {
                             setReadyPlayers((prev) => new Set([...prev, userId]))
-                            sync?.onReadyUp?.()
+                            sync?.onReadyUp?.(roundNum)
                           }
                         }} className="rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500">Ready Up</button>
                         <button onClick={() => {
                           setRoundEndHeld(true)
                           setHeldPlayers((prev) => new Set([...prev, userId]))
                           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
-                          sync?.onHoldOn?.()
+                          sync?.onHoldOn?.(roundNum)
                         }} className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-300 hover:bg-zinc-800">Hold On</button>
                       </div>
                     </div>

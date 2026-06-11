@@ -131,11 +131,11 @@ export default function ArenaLobby({
       })
       .on('broadcast', { event: 'battle-ready' }, ({ payload }) => {
         if (payload.userId === userId) return
-        battleSyncRef.current?.receiveRemoteReady(payload.userId)
+        battleSyncRef.current?.receiveRemoteReady(payload.userId, payload.roundNum)
       })
       .on('broadcast', { event: 'battle-hold' }, ({ payload }) => {
         if (payload.userId === userId) return
-        battleSyncRef.current?.receiveRemoteHold(payload.userId)
+        battleSyncRef.current?.receiveRemoteHold(payload.userId, payload.roundNum)
       })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number }>()
@@ -282,16 +282,16 @@ export default function ArenaLobby({
               payload: { userId, skillId, activated, skill, card },
             })
           },
-          onReadyUp: () => {
+          onReadyUp: (roundNum) => {
             channelRef.current?.send({
               type: 'broadcast', event: 'battle-ready',
-              payload: { userId },
+              payload: { userId, roundNum },
             })
           },
-          onHoldOn: () => {
+          onHoldOn: (roundNum) => {
             channelRef.current?.send({
               type: 'broadcast', event: 'battle-hold',
-              payload: { userId },
+              payload: { userId, roundNum },
             })
           },
         }}
