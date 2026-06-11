@@ -323,22 +323,8 @@ export default function ArenaBattle({
             if (gameOver) {
               setPhase('done')
             } else {
-              const nextRound = roundNum + 1
-              setRoundNum(nextRound)
-              if (isServerMode) {
-                // Skip skill-select, go straight to waiting
-                setBattlePhase('waiting-for-round')
-                submitRoundReady(sessionId!, nextRound, [], displayHp).then((result) => {
-                  if (result) {
-                    setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
-                    if (result.allReady && result.round) {
-                      handleNewRound(nextRound, result.round, result.skills || [])
-                    }
-                  }
-                })
-              } else {
-                setBattlePhase('skill-select')
-              }
+              setRoundNum((r) => r + 1)
+              setBattlePhase('skill-select')
             }
           }, 0)
           return 0
