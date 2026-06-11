@@ -306,6 +306,8 @@ export default function ArenaLobby({
           deckDataRef.current = {}
           gameInitSentRef.current = false
           setCountdown(null)
+          // Reset all players to not ready
+          setLobbyPlayers((prev) => prev.map((p) => ({ ...p, ready: false, selectedDeckSlot: null })))
           // Broadcast unready to all players
           channelRef.current?.send({
             type: 'broadcast',
@@ -325,10 +327,26 @@ export default function ArenaLobby({
     <div>
       {/* Countdown overlay */}
       {countdown !== null && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 pointer-events-none">
-          <div className="flex flex-col items-center gap-2">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+          <div className="flex flex-col items-center gap-4">
             <span className="text-8xl font-black text-white animate-pulse">{countdown}</span>
             <span className="text-lg text-zinc-400">Get ready...</span>
+            <button onClick={() => {
+              if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+              setCountdown(null)
+              setMyReady(false)
+              readyMapRef.current[userId] = false
+              setLobbyPlayers((prev) => prev.map((p) =>
+                p.id === userId ? { ...p, ready: false } : p
+              ))
+              channelRef.current?.send({
+                type: 'broadcast',
+                event: 'ready-change',
+                payload: { userId, ready: false, deckSlot: selectedDeck },
+              })
+            }} className="rounded-lg border border-zinc-500 px-6 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800">
+              Hold On
+            </button>
           </div>
         </div>
       )}
