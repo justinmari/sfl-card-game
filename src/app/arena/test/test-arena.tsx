@@ -32,6 +32,7 @@ export default function TestArena({
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffKey, setFaceoffKey] = useState(0) // force re-mount
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const appliedRef = useRef<Set<number>>(new Set()) // track which cardIdx damage has been applied
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const clearTimer = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null } }
@@ -62,6 +63,7 @@ export default function TestArena({
     setRoundNum(nextRound)
     setCardIdx(0)
     setMatchKo(new Set())
+    appliedRef.current.clear()
     setBattlePhase('round-intro')
     // Auto start fighting after intro
     timerRef.current = setTimeout(() => {
@@ -70,9 +72,11 @@ export default function TestArena({
     }, 2000)
   }, [roundNum, players, displayHp])
 
-  // Apply damage when result phase starts
+  // Apply damage when result phase starts — only once per cardIdx
   const onFaceoffResult = useCallback(() => {
     if (!precomputed) return
+    if (appliedRef.current.has(cardIdx)) return
+    appliedRef.current.add(cardIdx)
     setDisplayHp((prev) => {
       const updated = { ...prev }
       precomputed.matches.forEach((match, mi) => {
@@ -109,17 +113,20 @@ export default function TestArena({
       // Auto-advance remaining matches on a loop
       clearTimer()
       const advanceRemaining = () => {
-        setDisplayHp((prev) => {
-          const updated = { ...prev }
-          precomputed.matches.forEach((match, mi) => {
-            if (matchKo.has(mi)) return
-            const fo = match.faceOffs[cardIdx]
-            if (!fo) return
-            updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
-            updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+        if (!appliedRef.current.has(cardIdx)) {
+          appliedRef.current.add(cardIdx)
+          setDisplayHp((prev) => {
+            const updated = { ...prev }
+            precomputed.matches.forEach((match, mi) => {
+              if (matchKo.has(mi)) return
+              const fo = match.faceOffs[cardIdx]
+              if (!fo) return
+              updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
+              updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+            })
+            return updated
           })
-          return updated
-        })
+        }
         timerRef.current = setTimeout(() => {
           if (cardIdx >= 4) {
             setBattlePhase('round-end')
