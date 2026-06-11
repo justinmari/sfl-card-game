@@ -183,11 +183,10 @@ export default function ArenaBattle({
   }, [roundNum, players, displayHp, seed])
 
   // Step 2: Precompute with skills and start fighting
-  // Always let precomputeRound generate its own pairings from the seeded RNG
-  // so all clients compute identical results regardless of preview state
+  // Use introMatchups as fixed pairings so the fight matches what was shown in intro
   const startFighting = useCallback(() => {
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
-    const result = precomputeRound(updated, displayHp, roundNum, undefined, pendingSkills.length > 0 ? pendingSkills : undefined, getRoundRng(roundNum))
+    const result = precomputeRound(updated, displayHp, roundNum, introMatchups ?? undefined, pendingSkills.length > 0 ? pendingSkills : undefined, getRoundRng(roundNum))
     setPrecomputed(result)
     if (pendingSkills.length > 0) {
       setSkillUsage((prev) => {
@@ -200,7 +199,7 @@ export default function ArenaBattle({
     setNextRoundPreview(null)
     setPendingSkills([])
     setBattlePhase('fighting')
-  }, [players, displayHp, roundNum, pendingSkills, seed])
+  }, [players, displayHp, roundNum, introMatchups, pendingSkills, seed])
 
   const startFightingRef = useRef(startFighting)
   startFightingRef.current = startFighting
