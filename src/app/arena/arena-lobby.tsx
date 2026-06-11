@@ -3,12 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
-import { resolveSkills } from '@/lib/battle-engine'
-import ArenaBattle, { type BattleSyncHandle, type BattleSyncCallbacks } from '@/components/arena/arena-battle'
-import type { Skill } from '@/lib/skills'
+import type { BattlePlayer, BattleCard, RoundResult } from '@/lib/battle-engine'
+import { resolveSkills, starCount } from '@/lib/battle-engine'
+import { createArenaSession, cleanupArenaSession } from './actions'
+import ArenaBattle from '@/components/arena/arena-battle'
 import CompactCard from '@/components/compact-card'
-import { starCount } from '@/lib/battle-engine'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
 
 type LobbyPlayer = {
@@ -33,16 +32,6 @@ type DeckOption = {
   slot: number
   name: string
   cards: (BattleCard & { dbSkillIds?: string[] })[]
-}
-
-type GameInitPayload = {
-  players: {
-    id: string
-    name: string
-    avatar_url: string | null
-    deck: (BattleCard & { dbSkillIds?: string[] })[]
-  }[]
-  seed: number
 }
 
 export default function ArenaLobby({
@@ -70,8 +59,9 @@ export default function ArenaLobby({
   // === Battle state ===
   const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
-  const [battleSeed, setBattleSeed] = useState<number | null>(null)
-  const battleSyncRef = useRef<BattleSyncHandle | null>(null)
+  const [battleSessionId, setBattleSessionId] = useState<string | null>(null)
+  const [battleRound, setBattleRound] = useState<RoundResult | null>(null)
+  const [battleHp, setBattleHp] = useState<Record<string, number>>({})
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -80,7 +70,6 @@ export default function ArenaLobby({
   const readyMapRef = useRef<Record<string, boolean>>({})
   const deckMapRef = useRef<Record<string, number | null>>({})
   const deckDataRef = useRef<Record<string, (BattleCard & { dbSkillIds?: string[] })[]>>({})
-  const gameInitSentRef = useRef(false)
 
   const attachSkills = (cards: (BattleCard & { dbSkillIds?: string[] })[]): BattleCard[] =>
     cards.map((c) => ({
@@ -88,27 +77,8 @@ export default function ArenaLobby({
       skills: c.dbSkillIds && c.dbSkillIds.length > 0 ? resolveSkills(c.dbSkillIds, dbSkills) : undefined,
     }))
 
-  // Handle game-init: create battle players from payload (ignore duplicates)
-  const gameInitReceivedRef = useRef(false)
-  const handleGameInit = (payload: GameInitPayload) => {
-    if (gameInitReceivedRef.current) return // ignore duplicate game-inits
-    gameInitReceivedRef.current = true
-    const players: BattlePlayer[] = payload.players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      avatar_url: p.avatar_url,
-      deck: attachSkills(p.deck),
-      hp: 10,
-      eliminated: false,
-    }))
-    setBattlePlayers(players)
-    setBattleSeed(payload.seed)
-    setBattleStarted(true)
-  }
-
   useEffect(() => {
     const supabase = createClient()
-
     const channel = supabase.channel('arena-lobby', {
       config: { presence: { key: userId } },
     })
@@ -125,18 +95,6 @@ export default function ArenaLobby({
           p.id === payload.userId ? { ...p, ready: payload.ready, selectedDeckSlot: payload.deckSlot, deck: payload.deck || p.deck } : p
         ))
       })
-      .on('broadcast', { event: 'battle-skill' }, ({ payload }) => {
-        if (payload.userId === userId) return // ignore own broadcasts
-        battleSyncRef.current?.receiveRemoteSkill(payload.userId, payload.skillId, payload.activated, payload.skill, payload.card)
-      })
-      .on('broadcast', { event: 'battle-ready' }, ({ payload }) => {
-        if (payload.userId === userId) return
-        battleSyncRef.current?.receiveRemoteReady(payload.userId, payload.roundNum)
-      })
-      .on('broadcast', { event: 'battle-hold' }, ({ payload }) => {
-        if (payload.userId === userId) return
-        battleSyncRef.current?.receiveRemoteHold(payload.userId, payload.roundNum)
-      })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number }>()
         const playerList: LobbyPlayer[] = []
@@ -144,10 +102,7 @@ export default function ArenaLobby({
           if (presences.length > 0) {
             const p = presences[0]
             playerList.push({
-              id,
-              name: p.name,
-              avatar_url: p.avatar_url,
-              joined_at: p.joined_at,
+              id, name: p.name, avatar_url: p.avatar_url, joined_at: p.joined_at,
               ready: readyMapRef.current[id] || false,
               selectedDeckSlot: deckMapRef.current[id] ?? null,
             })
@@ -158,17 +113,12 @@ export default function ArenaLobby({
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({
-            name: userName,
-            avatar_url: avatarUrl,
-            joined_at: joinedAtRef.current,
-          })
+          await channel.track({ name: userName, avatar_url: avatarUrl, joined_at: joinedAtRef.current })
           setConnected(true)
         }
       })
 
     channelRef.current = channel
-
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current)
       channel.untrack()
@@ -176,13 +126,8 @@ export default function ArenaLobby({
     }
   }, [userId, userName, avatarUrl])
 
-  // Watch for all ready → countdown → game-init
-  // Start arena session via DB RPC — all clients call it, all get the same seed
+  // Start session via server action — ALL clients call this
   const startSession = async () => {
-    if (gameInitReceivedRef.current) return
-    const supabase = createClient()
-
-    // Build player list with deck data
     const gamePlayers = lobbyPlayers.map((lp) => ({
       id: lp.id,
       name: lp.name,
@@ -190,16 +135,22 @@ export default function ArenaLobby({
       deck: deckDataRef.current[lp.id] || [],
     }))
 
-    const { data, error } = await supabase.rpc('start_arena_session', {
-      p_lobby_id: 'arena-lobby',
-      p_players: gamePlayers,
-    })
+    const result = await createArenaSession('arena-lobby', gamePlayers)
+    if (!result || !result.round) return
 
-    if (error || !data) return
-    const session = data as { id: string; seed: number; players: GameInitPayload['players'] }
-    handleGameInit({ players: session.players, seed: session.seed })
+    const players: BattlePlayer[] = (result.players as typeof gamePlayers).map((p) => ({
+      id: p.id, name: p.name, avatar_url: p.avatar_url,
+      deck: attachSkills(p.deck), hp: 10, eliminated: false,
+    }))
+
+    setBattlePlayers(players)
+    setBattleSessionId(result.sessionId)
+    setBattleRound(result.round)
+    setBattleHp(result.hp)
+    setBattleStarted(true)
   }
 
+  // Watch for all ready → countdown → start session
   useEffect(() => {
     if (battleStarted || countdown !== null) return
     if (lobbyPlayers.length >= 2 && lobbyPlayers.every((p) => p.ready)) {
@@ -225,7 +176,6 @@ export default function ArenaLobby({
       if (countdownRef.current) clearInterval(countdownRef.current)
       countdownRef.current = null
       setCountdown(null)
-      gameInitSentRef.current = false
     }
   }, [lobbyPlayers, countdown])
 
@@ -240,90 +190,46 @@ export default function ArenaLobby({
       p.id === userId ? { ...p, ready: newReady, selectedDeckSlot: selectedDeck, deck: myDeck } : p
     ))
     channelRef.current?.send({
-      type: 'broadcast',
-      event: 'ready-change',
+      type: 'broadcast', event: 'ready-change',
       payload: { userId, ready: newReady, deckSlot: selectedDeck, deck: newReady ? myDeck : undefined },
     })
   }
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!chatInput.trim() || !channelRef.current) return
-    const msg: ChatMessage = {
-      id: `${userId}-${Date.now()}`,
-      userId,
-      userName,
-      text: chatInput.trim(),
-      timestamp: Date.now(),
-    }
+    const msg: ChatMessage = { id: `${userId}-${Date.now()}`, userId, userName, text: chatInput.trim(), timestamp: Date.now() }
     channelRef.current.send({ type: 'broadcast', event: 'chat', payload: msg })
     setMessages((prev) => [...prev.slice(-50), msg])
     setChatInput('')
   }
 
   // === BATTLE VIEW ===
-  if (battleStarted && battlePlayers.length > 0 && battleSeed != null) {
+  if (battleStarted && battlePlayers.length > 0 && battleSessionId && battleRound) {
     return (
       <ArenaBattle
         userId={userId}
         players={battlePlayers}
-        seed={battleSeed}
-        syncRef={battleSyncRef}
-        sync={{
-          onSkillToggle: (skillId, activated) => {
-            // Find the skill and card to send full data
-            const player = battlePlayers.find((p) => p.id === userId)
-            let skill: Skill | undefined
-            let card: BattleCard | undefined
-            for (const c of player?.deck || []) {
-              const s = c.skills?.find((sk) => sk.id === skillId)
-              if (s) { skill = s; card = c; break }
-            }
-            channelRef.current?.send({
-              type: 'broadcast', event: 'battle-skill',
-              payload: { userId, skillId, activated, skill, card },
-            })
-          },
-          onReadyUp: (roundNum) => {
-            channelRef.current?.send({
-              type: 'broadcast', event: 'battle-ready',
-              payload: { userId, roundNum },
-            })
-          },
-          onHoldOn: (roundNum) => {
-            channelRef.current?.send({
-              type: 'broadcast', event: 'battle-hold',
-              payload: { userId, roundNum },
-            })
-          },
-        }}
+        sessionId={battleSessionId}
+        initialRound={battleRound}
+        initialHp={battleHp}
         onBattleEnd={() => {
           setBattleStarted(false)
           setBattlePlayers([])
-          setBattleSeed(null)
+          setBattleSessionId(null)
+          setBattleRound(null)
+          setBattleHp({})
           setMyReady(false)
           setSelectedDeck(null)
           readyMapRef.current = {}
           deckMapRef.current = {}
           deckDataRef.current = {}
-          gameInitSentRef.current = false
-          gameInitReceivedRef.current = false
           setCountdown(null)
-          // Reset all players to not ready
           setLobbyPlayers((prev) => prev.map((p) => ({ ...p, ready: false, selectedDeckSlot: null })))
-          // Broadcast unready to all players
-          channelRef.current?.send({
-            type: 'broadcast',
-            event: 'ready-change',
-            payload: { userId, ready: false, deckSlot: null },
-          })
-          // Clean up arena session
-          const supabase = createClient()
-          supabase.rpc('cleanup_arena_session', { p_lobby_id: 'arena-lobby' })
+          channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: false, deckSlot: null } })
+          cleanupArenaSession('arena-lobby')
         }}
       />
     )
@@ -346,14 +252,8 @@ export default function ArenaLobby({
               setCountdown(null)
               setMyReady(false)
               readyMapRef.current[userId] = false
-              setLobbyPlayers((prev) => prev.map((p) =>
-                p.id === userId ? { ...p, ready: false } : p
-              ))
-              channelRef.current?.send({
-                type: 'broadcast',
-                event: 'ready-change',
-                payload: { userId, ready: false, deckSlot: selectedDeck },
-              })
+              setLobbyPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, ready: false } : p))
+              channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: false, deckSlot: selectedDeck } })
             }} className="rounded-lg border border-zinc-500 px-6 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800">
               Hold On
             </button>
@@ -379,8 +279,7 @@ export default function ArenaLobby({
           return (
             <div key={player.id}
               className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
-                player.ready ? 'border-green-600 bg-green-950/20'
-                : isMe ? 'border-amber-700 bg-amber-950/20' : 'border-zinc-800 bg-zinc-900'
+                player.ready ? 'border-green-600 bg-green-950/20' : isMe ? 'border-amber-700 bg-amber-950/20' : 'border-zinc-800 bg-zinc-900'
               }`}>
               {player.avatar_url ? (
                 <img src={player.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover border-2 border-zinc-700" />
@@ -388,24 +287,16 @@ export default function ArenaLobby({
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 border-2 border-zinc-700 text-lg text-zinc-500">?</div>
               )}
               <span className="text-sm font-medium text-center truncate w-full">
-                {player.name}
-                {isMe && <span className="text-zinc-500"> (You)</span>}
+                {player.name}{isMe && <span className="text-zinc-500"> (You)</span>}
               </span>
-              {player.ready ? (
-                <span className="text-xs font-medium text-green-400">Ready</span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                  <span className="text-[10px] text-zinc-500">Not ready</span>
-                </span>
+              {player.ready ? <span className="text-xs font-medium text-green-400">Ready</span> : (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-zinc-500" /><span className="text-[10px] text-zinc-500">Not ready</span></span>
               )}
             </div>
           )
         })}
-
         {Array.from({ length: Math.max(0, 8 - lobbyPlayers.length) }).map((_, i) => (
-          <div key={`empty-${i}`}
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 p-4">
+          <div key={`empty-${i}`} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-zinc-700 text-zinc-700">?</div>
             <span className="text-xs text-zinc-600">Waiting...</span>
           </div>
@@ -430,29 +321,19 @@ export default function ArenaLobby({
                 disabled={myReady}
                 className={`rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed ${
                   illegal ? 'border-red-800 opacity-50 cursor-not-allowed'
-                  : isSelected ? 'border-red-500 bg-red-950/30'
-                  : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                  : isSelected ? 'border-red-500 bg-red-950/30' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
                 }`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-semibold">{deck.name}</span>
                   <span className="text-xs text-zinc-500">⭐ {totalPower} ({avgPower} avg)</span>
                 </div>
-                {illegal && (
-                  <div className="mb-2 rounded bg-red-900/50 px-2 py-1 text-[10px] text-red-300 text-center">Max 1 Secret Rare per deck</div>
-                )}
+                {illegal && <div className="mb-2 rounded bg-red-900/50 px-2 py-1 text-[10px] text-red-300 text-center">Max 1 Secret Rare per deck</div>}
                 <div className="relative h-28 mb-3 flex items-center justify-center">
                   {deck.cards.map((card, i) => (
-                    <div key={card.id}
-                      className="absolute w-20 transition-all duration-200 hover:!z-50 hover:scale-110 hover:!translate-x-0"
-                      style={{
-                        left: `calc(50% + ${(i - 2) * 38}px - 40px)`,
-                        top: `${Math.abs(i - 2) * 3}px`,
-                        zIndex: i,
-                        transform: `rotate(${(i - 2) * 4}deg)`,
-                      }}
+                    <div key={card.id} className="absolute w-20 transition-all duration-200 hover:!z-50 hover:scale-110 hover:!translate-x-0"
+                      style={{ left: `calc(50% + ${(i - 2) * 38}px - 40px)`, top: `${Math.abs(i - 2) * 3}px`, zIndex: i, transform: `rotate(${(i - 2) * 4}deg)` }}
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'rotate(0deg) scale(1.1)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = `rotate(${(i - 2) * 4}deg)` }}
-                    >
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = `rotate(${(i - 2) * 4}deg)` }}>
                       <CompactCard card={card} />
                     </div>
                   ))}
@@ -473,25 +354,19 @@ export default function ArenaLobby({
       {/* Chat */}
       <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900">
         <div className="h-48 overflow-y-auto p-3">
-          {messages.length === 0 && (
-            <p className="py-8 text-center text-xs text-zinc-600">No messages yet</p>
-          )}
+          {messages.length === 0 && <p className="py-8 text-center text-xs text-zinc-600">No messages yet</p>}
           {messages.map((msg) => (
             <div key={msg.id} className="mb-1.5">
-              <span className={`text-xs font-medium ${msg.userId === userId ? 'text-amber-400' : 'text-zinc-300'}`}>
-                {msg.userName}
-              </span>
+              <span className={`text-xs font-medium ${msg.userId === userId ? 'text-amber-400' : 'text-zinc-300'}`}>{msg.userName}</span>
               <span className="ml-2 text-xs text-zinc-400">{msg.text}</span>
             </div>
           ))}
           <div ref={chatEndRef} />
         </div>
         <form onSubmit={sendMessage} className="flex border-t border-zinc-800">
-          <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Type a message..." maxLength={200}
+          <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." maxLength={200}
             className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none" />
-          <button type="submit" disabled={!chatInput.trim()}
-            className="px-4 text-sm font-medium text-zinc-400 hover:text-white disabled:opacity-30">Send</button>
+          <button type="submit" disabled={!chatInput.trim()} className="px-4 text-sm font-medium text-zinc-400 hover:text-white disabled:opacity-30">Send</button>
         </form>
       </div>
 
