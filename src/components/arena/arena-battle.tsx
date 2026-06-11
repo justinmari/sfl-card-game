@@ -298,12 +298,11 @@ export default function ArenaBattle({
       setRoundEndCountdown((prev) => {
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
-          if (isServerMode) {
-            handleReadyUp()
-          } else {
-            // Local mode: compute next round client-side
-            handleLocalNextRound()
-          }
+          // Defer to avoid setState-during-render
+          setTimeout(() => {
+            if (isServerMode) handleReadyUp()
+            else handleLocalNextRound()
+          }, 0)
           return 0
         }
         return prev - 1
@@ -653,7 +652,90 @@ export default function ArenaBattle({
                   )}
                 </div>
 
-                {/* Match stats omitted for brevity — same as before */}
+                {/* Your match stats */}
+                {(() => {
+                  const myMatch = precomputed.matches.find((m) => m.player1Id === userId || m.player2Id === userId)
+                  if (!myMatch) return null
+                  const imP1 = myMatch.player1Id === userId
+                  const oppId = imP1 ? myMatch.player2Id : myMatch.player1Id
+                  const oppName = getPlayer(oppId)?.name || 'Opponent'
+                  const allFos = myMatch.faceOffs as FaceOffDetail[]
+                  let tempOppHp = displayHp[oppId] ?? 0
+                  allFos.forEach((fo) => { tempOppHp += (imP1 ? fo.damage2 : fo.damage1) })
+                  let tempMyHp = displayHp[userId] ?? 0
+                  allFos.forEach((fo) => { tempMyHp += (imP1 ? fo.damage1 : fo.damage2) })
+                  const fos: FaceOffDetail[] = []
+                  let tempKo = false
+                  for (const fo of allFos) {
+                    if (tempKo) break
+                    fos.push(fo)
+                    tempOppHp -= (imP1 ? fo.damage2 : fo.damage1)
+                    tempMyHp -= (imP1 ? fo.damage1 : fo.damage2)
+                    if (tempOppHp <= 0 || tempMyHp <= 0) tempKo = true
+                  }
+                  const dmgDealt = fos.reduce((s, fo) => s + (imP1 ? fo.damage2 : fo.damage1), 0)
+                  const dmgTaken = fos.reduce((s, fo) => s + (imP1 ? fo.damage1 : fo.damage2), 0)
+                  const wins = fos.filter((fo) => imP1 ? fo.damage2 > 0 : fo.damage1 > 0).length
+                  const losses = fos.filter((fo) => imP1 ? fo.damage1 > 0 : fo.damage2 > 0).length
+                  const ties = fos.length - wins - losses
+
+                  return (
+                    <div className="mb-6 border-t border-zinc-800 pt-4">
+                      <h4 className="mb-3 text-sm font-medium text-zinc-400 text-center">
+                        Your Match vs <span className="text-white">{oppName}</span>
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+                        <div><p className="text-lg font-bold text-red-400">{dmgDealt}</p><p className="text-[10px] text-zinc-500">Damage Dealt</p></div>
+                        <div><p className="text-lg font-bold text-zinc-300">{wins}-{losses}{ties > 0 ? `-${ties}` : ''}</p><p className="text-[10px] text-zinc-500">W-L{ties > 0 ? '-T' : ''}</p></div>
+                        <div><p className="text-lg font-bold text-amber-400">{dmgTaken}</p><p className="text-[10px] text-zinc-500">Damage Taken</p></div>
+                      </div>
+                      <div className="space-y-2">
+                        {fos.map((fo, i) => {
+                          const myCard = imP1 ? fo.card1 : fo.card2
+                          const oppCard = imP1 ? fo.card2 : fo.card1
+                          const myStar = imP1 ? fo.star1 : fo.star2
+                          const oppStar = imP1 ? fo.star2 : fo.star1
+                          const myRoll = imP1 ? fo.roll1 : fo.roll2
+                          const oppRoll = imP1 ? fo.roll2 : fo.roll1
+                          const myEff = imP1 ? fo.effective1 : fo.effective2
+                          const oppEff = imP1 ? fo.effective2 : fo.effective1
+                          const myDmg = imP1 ? fo.damage2 : fo.damage1
+                          const oppDmg = imP1 ? fo.damage1 : fo.damage2
+                          const won = myDmg > 0
+                          const lost = oppDmg > 0
+                          const isKoCard = tempKo && i === fos.length - 1
+                          const isMyKo = isKoCard && won
+                          const isMyDeath = isKoCard && lost
+                          const label = isMyKo ? 'KO' : isMyDeath ? 'YOU DIED' : won ? 'WIN' : lost ? 'LOSE' : 'TIE'
+                          return (
+                            <div key={i} className={`flex items-center justify-center rounded-lg py-3 px-2 ${won ? 'bg-green-950/30' : lost ? 'bg-red-950/30' : 'bg-zinc-800/50'}`}>
+                              <div className={`w-24 flex-shrink-0 ${lost ? 'opacity-50' : ''}`} style={{ transform: 'rotate(5deg)' }}>
+                                <CompactCard card={myCard} />
+                                <div className="mt-1 text-center">
+                                  <span className="text-[10px] text-zinc-400">⭐{myStar}</span>
+                                  {myRoll > 0 && <span className="text-[10px] text-amber-400"> +{myRoll}🎲</span>}
+                                </div>
+                              </div>
+                              <div className="w-10 text-center"><span className={`text-lg font-bold ${won ? 'text-green-400' : lost ? 'text-zinc-500' : 'text-zinc-400'}`}>{myEff}</span></div>
+                              <div className="flex flex-col items-center mx-2 flex-shrink-0">
+                                <span className={`text-sm font-bold ${isMyKo ? 'text-green-400' : isMyDeath ? 'text-red-400' : won ? 'text-green-400' : lost ? 'text-red-400' : 'text-zinc-500'}`}>{label}</span>
+                                <span className={`text-xs ${won ? 'text-green-400' : lost ? 'text-red-400' : 'text-zinc-500'}`}>{won ? `-${myDmg} HP` : lost ? `-${oppDmg} HP` : 'No dmg'}</span>
+                              </div>
+                              <div className="w-10 text-center"><span className={`text-lg font-bold ${lost ? 'text-red-400' : won ? 'text-zinc-500' : 'text-zinc-400'}`}>{oppEff}</span></div>
+                              <div className={`w-24 flex-shrink-0 ${won ? 'opacity-50' : ''}`} style={{ transform: 'rotate(-5deg)' }}>
+                                <CompactCard card={oppCard} />
+                                <div className="mt-1 text-center">
+                                  <span className="text-[10px] text-zinc-400">⭐{oppStar}</span>
+                                  {oppRoll > 0 && <span className="text-[10px] text-amber-400"> +{oppRoll}🎲</span>}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="text-center">
                   {aliveCount() <= 1 ? (
