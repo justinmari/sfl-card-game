@@ -33,6 +33,7 @@ export default function TestArena({
   const [faceoffKey, setFaceoffKey] = useState(0) // force re-mount
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const appliedRef = useRef<Set<number>>(new Set()) // track which cardIdx damage has been applied
+  const advancedRef = useRef<Set<number>>(new Set()) // track which cardIdx has been advanced past
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const clearTimer = () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null } }
@@ -64,6 +65,7 @@ export default function TestArena({
     setCardIdx(0)
     setMatchKo(new Set())
     appliedRef.current.clear()
+    advancedRef.current.clear()
     setBattlePhase('round-intro')
     // Auto start fighting after intro
     timerRef.current = setTimeout(() => {
@@ -90,9 +92,11 @@ export default function TestArena({
     })
   }, [precomputed, cardIdx, matchKo])
 
-  // Advance to next card when animation is fully done
+  // Advance to next card when animation is fully done — only once per cardIdx
   const onFaceoffComplete = useCallback(() => {
     if (!precomputed) return
+    if (advancedRef.current.has(cardIdx)) return
+    advancedRef.current.add(cardIdx)
     if (cardIdx >= 4) {
       setBattlePhase('round-end')
     } else {
@@ -128,6 +132,8 @@ export default function TestArena({
           })
         }
         timerRef.current = setTimeout(() => {
+          if (advancedRef.current.has(cardIdx)) return
+          advancedRef.current.add(cardIdx)
           if (cardIdx >= 4) {
             setBattlePhase('round-end')
           } else {
