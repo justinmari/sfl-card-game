@@ -30,10 +30,8 @@ const rarityTextColor: Record<string, string> = {
 export type ArenaBattleProps = {
   userId: string
   players: BattlePlayer[]
-  sessionId?: string // if provided, uses server-driven mode
-  initialRound?: RoundResult // precomputed by server
-  initialHp?: Record<string, number>
-  seed?: number // for local-only mode (test arena)
+  sessionId?: string
+  seed?: number
   onBattleEnd?: () => void
 }
 
@@ -41,31 +39,23 @@ export default function ArenaBattle({
   userId,
   players: initialPlayers,
   sessionId,
-  initialRound,
-  initialHp: initialHpProp,
   seed,
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
   const initHp = (): Record<string, number> => {
-    if (initialHpProp) return initialHpProp
     const hpMap: Record<string, number> = {}
     initialPlayers.forEach((p) => { hpMap[p.id] = 10 })
     return hpMap
   }
   const getLocalRng = (round: number) => seed != null ? createSeededRng(seed * 1000 + round) : undefined
-  const initRound = (): RoundResult => {
-    if (initialRound) return initialRound
-    // Local mode: compute round 1 client-side
-    return precomputeRound(initialPlayers, initHp(), 1, undefined, undefined, getLocalRng(1))
-  }
 
   const [phase, setPhase] = useState<'battle' | 'done'>('battle')
   const [players] = useState<BattlePlayer[]>(initialPlayers)
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
   const [roundNum, setRoundNum] = useState(1)
-  const [precomputed, setPrecomputed] = useState<RoundResult>(initRound)
-  const [battlePhase, setBattlePhase] = useState<'round-intro' | 'fighting' | 'round-end' | 'waiting'>('round-intro')
+  const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
+  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>('skill-select')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
@@ -84,10 +74,14 @@ export default function ArenaBattle({
   const rafRef = useRef<number>(0)
   const appliedRef = useRef<Set<number>>(new Set())
 
-  const introMatchups = {
+  const introMatchups = precomputed ? {
     pairs: precomputed.matches.map((m): [string, string] => [m.player1Id, m.player2Id]),
     byeId: precomputed.byePlayerId,
-  }
+  } : (() => {
+    // Preview from seed before round is computed
+    const rng = seed != null ? createSeededRng(seed * 1000 + roundNum) : undefined
+    return randomPair(initialPlayers.map((p) => ({ ...p, hp: displayHp[p.id] ?? 10, eliminated: (displayHp[p.id] ?? 10) <= 0 })), rng)
+  })()
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const clearTimer = () => {
@@ -161,15 +155,45 @@ export default function ArenaBattle({
     setMyReady(false)
     setReadyInfo(null)
     setLocalSkillIds([])
-    setIntroCountdown(5)
+    setIntroCountdown(3) // brief intro before fighting
     setBattlePhase('round-intro')
-    // Track skill usage
     skills.forEach((s) => {
       if (s.activatedBy === userId) {
         setSkillUsage((prev) => ({ ...prev, [s.skill.id]: (prev[s.skill.id] ?? 0) + 1 }))
       }
     })
   }
+
+  // Skill select countdown → submit ready
+  useEffect(() => {
+    if (battlePhase !== 'skill-select') return
+    setIntroCountdown(5)
+    if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
+    introCountdownRef.current = setInterval(() => {
+      setIntroCountdown((prev) => {
+        if (prev <= 1) {
+          if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
+          setTimeout(() => {
+            if (isServerMode) {
+              handleReadyUp()
+            } else {
+              // Local mode: compute round directly
+              const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
+              const skills: ActiveSkill[] = localSkillIds.map((skillId) => {
+                const ps = getPlayerSkills(userId).find(({ skill }) => skill.id === skillId)
+                return ps ? { skill: ps.skill, activatedBy: userId, roundActivated: roundNum } : null
+              }).filter(Boolean) as ActiveSkill[]
+              const result = precomputeRound(updated, displayHp, roundNum, undefined, skills.length > 0 ? skills : undefined, getLocalRng(roundNum))
+              handleNewRound(roundNum, result, skills)
+            }
+          }, 0)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => { if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null } }
+  }, [battlePhase === 'skill-select', roundNum])
 
   // Intro countdown → start fighting
   useEffect(() => {
@@ -213,7 +237,7 @@ export default function ArenaBattle({
 
         if (phaseName === 'result' && !resultApplied) {
           resultApplied = true
-          if (!appliedRef.current.has(cardIdx)) {
+          if (!appliedRef.current.has(cardIdx) && precomputed) {
             appliedRef.current.add(cardIdx)
             const heal = precomputed.flags?.healInstead
             setDisplayHp((prev) => {
@@ -255,13 +279,13 @@ export default function ArenaBattle({
   }, [precomputed, cardIdx, matchKo])
 
   useEffect(() => {
-    if (battlePhase === 'fighting') startFaceoffAnimation()
+    if (battlePhase === 'fighting' && precomputed) startFaceoffAnimation()
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [cardIdx, battlePhase === 'fighting'])
 
   // Detect KOs
   useEffect(() => {
-    if (battlePhase !== 'fighting') return
+    if (battlePhase !== 'fighting' || !precomputed) return
     const newKos = new Set(matchKo)
     let changed = false
     precomputed.matches.forEach((match, mi) => {
@@ -293,14 +317,15 @@ export default function ArenaBattle({
     setRoundEndCountdown(20)
     setMyReady(false)
     setReadyInfo(null)
+    setLocalSkillIds([])
     countdownRef.current = setInterval(() => {
       setRoundEndCountdown((prev) => {
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
-          // Defer to avoid setState-during-render
           setTimeout(() => {
-            if (isServerMode) handleReadyUp()
-            else handleLocalNextRound()
+            // Move to skill-select for the next round
+            setRoundNum((r) => r + 1)
+            setBattlePhase('skill-select')
           }, 0)
           return 0
         }
@@ -313,46 +338,53 @@ export default function ArenaBattle({
   useEffect(() => { return clearTimer }, [])
 
   // Submit ready to server
+  // Target round for ready submission
+  // During skill-select: submit for current roundNum
+  // During round-end: submit for roundNum + 1 (next round)
+  const getTargetRound = () => battlePhase === 'skill-select' || battlePhase === 'waiting-for-round' ? roundNum : roundNum + 1
+
   const handleReadyUp = async () => {
     if (myReady) return
     setMyReady(true)
     if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+    if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
 
     if (!isServerMode) {
       handleLocalNextRound()
       return
     }
 
-    setBattlePhase('waiting')
-    const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
+    const target = getTargetRound()
+    setBattlePhase('waiting-for-round')
+    const result = await submitRoundReady(sessionId!, target, localSkillIds, displayHp)
     if (result) {
-      setReadyInfo({ readyCount: result.readyCount ?? result.aliveCount ?? 0, aliveCount: result.aliveCount ?? 0 })
+      setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
       if (result.allReady && result.round) {
-        // Server computed the next round — use it directly
-        handleNewRound(roundNum + 1, result.round, result.skills || [])
+        handleNewRound(target, result.round, result.skills || [])
       }
     }
   }
 
   // Poll for ready status while waiting (server mode only)
   useEffect(() => {
-    if (battlePhase !== 'waiting' || !isServerMode) return
+    if (battlePhase !== 'waiting-for-round' || !isServerMode) return
+    const target = getTargetRound()
     const interval = setInterval(async () => {
-      const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
+      const result = await submitRoundReady(sessionId!, target, localSkillIds, displayHp)
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
         if (result.allReady && result.round) {
-          handleNewRound(roundNum + 1, result.round, result.skills || [])
+          handleNewRound(target, result.round, result.skills || [])
         }
       }
-    }, 3000)
+    }, 2000)
     return () => clearInterval(interval)
-  }, [battlePhase === 'waiting'])
+  }, [battlePhase === 'waiting-for-round'])
 
   const getPlayer = (id: string) => players.find((p) => p.id === id)
   const sortedByHp = [...players].sort((a, b) => (displayHp[b.id] ?? 0) - (displayHp[a.id] ?? 0))
   const fightingIds = new Set<string>()
-  if (battlePhase === 'round-intro' || battlePhase === 'fighting') {
+  if (precomputed && (battlePhase === 'round-intro' || battlePhase === 'fighting')) {
     precomputed.matches.forEach((m) => { fightingIds.add(m.player1Id); fightingIds.add(m.player2Id) })
   }
 
@@ -392,7 +424,6 @@ export default function ArenaBattle({
             const myPair = introMatchups.pairs.find(([a, b]) => a === userId || b === userId)
             const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
             const otherPairs = introMatchups.pairs.filter(([a, b]) => a !== userId && b !== userId)
-            const availableSkills = (displayHp[userId] ?? 0) > 0 ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
@@ -427,6 +458,59 @@ export default function ArenaBattle({
                   </div>
                 )}
 
+                {otherPairs.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs text-zinc-500">Other matches</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {otherPairs.map(([id1, id2], idx) => (
+                        <div key={idx} className="rounded-lg border border-zinc-800 bg-zinc-900 py-3 px-4 text-center text-sm">
+                          <span className="text-white font-medium">{getPlayer(id1)?.name}</span>
+                          <span className="mx-2 text-zinc-600 font-bold">vs</span>
+                          <span className="text-white font-medium">{getPlayer(id2)?.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {introMatchups.byeId && introMatchups.byeId !== userId && (
+                  <div className="text-xs text-zinc-500 text-center">{getPlayer(introMatchups.byeId)?.name} gets a pass</div>
+                )}
+
+                <div className="text-center pt-2">
+                  <p className="text-xs text-zinc-500">Starting in <span className="font-bold text-white">{introCountdown}s</span></p>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Skill select (before round is computed) */}
+          {battlePhase === 'skill-select' && (() => {
+            const myPair = introMatchups.pairs.find(([a, b]) => a === userId || b === userId)
+            const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
+            const availableSkills = (displayHp[userId] ?? 0) > 0 ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
+
+            return (
+              <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
+                {opponentId ? (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '10rem' }}>
+                    <div className="text-xs text-zinc-500 mb-4">Round {roundNum} — Choose Skills</div>
+                    <div className="text-2xl font-black">
+                      <span className="text-amber-400">You</span>
+                      <span className="mx-3 text-zinc-600">VS</span>
+                      <span className="text-white">{getPlayer(opponentId)?.name}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`rounded-xl border ${(displayHp[userId] ?? 0) <= 0 ? 'border-zinc-800 bg-zinc-900' : 'border-amber-800 bg-amber-950/20'} p-8 text-center`}>
+                    <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
+                    {(displayHp[userId] ?? 0) <= 0
+                      ? <><p className="text-sm text-red-400 font-medium">You have been eliminated</p><p className="text-xs text-zinc-500 mt-1">Spectating remaining matches</p></>
+                      : <span className="text-lg text-amber-400">You have a pass this round</span>
+                    }
+                  </div>
+                )}
+
                 {availableSkills.length > 0 && (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
                     <h4 className="mb-3 text-sm font-medium text-zinc-400 text-center">Skills</h4>
@@ -435,11 +519,8 @@ export default function ArenaBattle({
                         const active = localSkillIds.includes(skill.id)
                         return (
                           <button key={`${card.id}-${skill.id}`}
-                            onClick={() => {
-                              setLocalSkillIds((prev) => active ? prev.filter((id) => id !== skill.id) : [...prev, skill.id])
-                            }}
-                            className={`w-full rounded-lg border p-3 text-left transition-all ${active ? 'border-pink-500 bg-pink-950/30' : 'border-zinc-700 bg-zinc-800 hover:border-zinc-500'}`}
-                          >
+                            onClick={() => setLocalSkillIds((prev) => active ? prev.filter((id) => id !== skill.id) : [...prev, skill.id])}
+                            className={`w-full rounded-lg border p-3 text-left transition-all ${active ? 'border-pink-500 bg-pink-950/30' : 'border-zinc-700 bg-zinc-800 hover:border-zinc-500'}`}>
                             <div className="flex items-center gap-3">
                               <div className="w-10 flex-shrink-0"><CompactCard card={card} /></div>
                               <div className="flex-1 min-w-0">
@@ -461,37 +542,38 @@ export default function ArenaBattle({
                   </div>
                 )}
 
-                {otherPairs.length > 0 && (
-                  <div>
-                    <div className="mb-2 text-xs text-zinc-500">Other matches</div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {otherPairs.map(([id1, id2], idx) => (
-                        <div key={idx} className="rounded-lg border border-zinc-800 bg-zinc-900 py-3 px-4 text-center text-sm">
-                          <span className="text-white font-medium">{getPlayer(id1)?.name}</span>
-                          <span className="mx-2 text-zinc-600 font-bold">vs</span>
-                          <span className="text-white font-medium">{getPlayer(id2)?.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {introMatchups.byeId && introMatchups.byeId !== userId && (
-                  <div className="text-xs text-zinc-500 text-center">{getPlayer(introMatchups.byeId)?.name} gets a pass</div>
-                )}
-
                 <div className="text-center pt-2 space-y-2">
                   <p className="text-xs text-zinc-500">Starting in <span className="font-bold text-white">{introCountdown}s</span></p>
-                  {localSkillIds.length > 0 && (
-                    <p className="text-xs text-pink-400">{localSkillIds.join(', ')} activated</p>
+                  {localSkillIds.length > 0 && <p className="text-xs text-pink-400">{localSkillIds.join(', ')} activated</p>}
+                  {!isServerMode && (
+                    <button onClick={() => {
+                      if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
+                      const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
+                      const skills: ActiveSkill[] = localSkillIds.map((skillId) => {
+                        const ps = getPlayerSkills(userId).find(({ skill }) => skill.id === skillId)
+                        return ps ? { skill: ps.skill, activatedBy: userId, roundActivated: roundNum } : null
+                      }).filter(Boolean) as ActiveSkill[]
+                      const result = precomputeRound(updated, displayHp, roundNum, undefined, skills.length > 0 ? skills : undefined, getLocalRng(roundNum))
+                      handleNewRound(roundNum, result, skills)
+                    }} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">
+                      Fight Now
+                    </button>
                   )}
                 </div>
               </div>
             )
           })()}
 
+          {/* Waiting for round to be computed */}
+          {battlePhase === 'waiting-for-round' && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center animate-pulse" style={{ minHeight: '12rem' }}>
+              <p className="text-sm text-zinc-400">Waiting for all players...</p>
+              {readyInfo && <p className="mt-2 text-xs text-zinc-500">{readyInfo.readyCount}/{readyInfo.aliveCount} ready</p>}
+            </div>
+          )}
+
           {/* Fighting */}
-          {battlePhase === 'fighting' && (() => {
+          {battlePhase === 'fighting' && precomputed && (() => {
             const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
             const otherMatches = precomputed.matches.map((m, i) => ({ match: m, idx: i })).filter((_, i) => i !== myMatchIdx)
 
@@ -615,7 +697,7 @@ export default function ArenaBattle({
           })()}
 
           {/* Round end */}
-          {(battlePhase === 'round-end' || battlePhase === 'waiting') && (() => {
+          {(battlePhase === 'round-end') && precomputed && (() => {
             return (
               <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 animate-[fadeIn_0.5s_ease-out]">
                 <h3 className="mb-4 text-lg font-bold text-center">Round {roundNum} Complete</h3>
@@ -746,21 +828,14 @@ export default function ArenaBattle({
                 <div className="text-center">
                   {aliveCount() <= 1 ? (
                     <button onClick={() => setPhase('done')} className="rounded-lg bg-white px-6 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200">Final Results</button>
-                  ) : battlePhase === 'waiting' ? (
-                    <div className="space-y-2">
-                      <p className="text-xs text-zinc-500">
-                        Waiting for players... {readyInfo ? `${readyInfo.readyCount}/${readyInfo.aliveCount} ready` : ''}
-                      </p>
-                      <span className="text-xs text-green-400">You are ready</span>
-                    </div>
-                  ) : myReady ? (
-                    <div className="space-y-2">
-                      <span className="text-xs text-green-400">You are ready</span>
-                    </div>
                   ) : (
                     <div className="space-y-2">
                       <p className="text-xs text-zinc-500">Next round in <span className="font-bold text-white">{roundEndCountdown}s</span></p>
-                      <button onClick={handleReadyUp}
+                      <button onClick={() => {
+                        if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+                        setRoundNum((r) => r + 1)
+                        setBattlePhase('skill-select')
+                      }}
                         className="rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500">Ready Up</button>
                     </div>
                   )}

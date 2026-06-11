@@ -35,7 +35,6 @@ export async function createArenaSession(lobbyId: string, players: SessionPlayer
   const hp: Record<string, number> = {}
   players.forEach((p) => { hp[p.id] = 10 })
 
-  // Try to create session (ON CONFLICT returns existing)
   // Try to insert new session (ON CONFLICT ignores if already exists)
   await supabase
     .from('arena_sessions')
@@ -52,54 +51,20 @@ export async function createArenaSession(lobbyId: string, players: SessionPlayer
 
   if (!session) return null
 
-  // Check if round 1 already exists
-  const { data: existingRound } = await supabase
-    .from('arena_rounds')
-    .select('result')
-    .eq('session_id', session.id)
-    .eq('round_num', 1)
-    .maybeSingle()
-
-  if (existingRound) {
-    return {
-      sessionId: session.id,
-      seed: session.seed,
-      players: session.players as SessionPlayer[],
-      hp: session.hp as Record<string, number>,
-      round: existingRound.result as RoundResult,
-    }
-  }
-
-  // Compute round 1
-  const battlePlayers = buildBattlePlayers(session.players as SessionPlayer[])
-  const rng = createSeededRng(session.seed * 1000 + 1)
-  const sessionHp = session.hp as Record<string, number>
-  const result = precomputeRound(
-    battlePlayers.map((p) => ({ ...p, hp: 10, eliminated: false })),
-    sessionHp, 1, undefined, undefined, rng,
-  )
-
-  // Store round 1 (ON CONFLICT ignore if another client beat us)
-  await supabase.from('arena_rounds').insert({
-    session_id: session.id,
-    round_num: 1,
-    result: result as unknown as Record<string, unknown>,
-  }).maybeSingle()
-
+  // Return session — round 1 is computed when all players submit ready
   return {
     sessionId: session.id,
     seed: session.seed,
     players: session.players as SessionPlayer[],
-    hp: sessionHp,
-    round: result,
+    hp: session.hp as Record<string, number>,
   }
 }
 
-// Submit ready state + skills for a round
-// When all alive players are ready, computes the next round
+// Submit ready + skills for a target round
+// When all alive players are ready, computes that round
 export async function submitRoundReady(
   sessionId: string,
-  roundNum: number,
+  targetRound: number,
   skillIds: string[],
   currentHp?: Record<string, number>,
 ) {
@@ -107,7 +72,7 @@ export async function submitRoundReady(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Update HP if provided (ensures DB has latest HP before checking alive players)
+  // Update HP if provided
   if (currentHp) {
     await supabase.from('arena_sessions').update({ hp: currentHp }).eq('id', sessionId)
   }
@@ -116,12 +81,24 @@ export async function submitRoundReady(
   await supabase.from('arena_ready').upsert({
     session_id: sessionId,
     user_id: user.id,
-    round_num: roundNum,
+    round_num: targetRound,
     skills: skillIds,
     is_ready: true,
   }, { onConflict: 'session_id,user_id,round_num' })
 
-  // Get session (with potentially updated HP)
+  // Check if this round already computed
+  const { data: existingRound } = await supabase
+    .from('arena_rounds')
+    .select('result, skills_used')
+    .eq('session_id', sessionId)
+    .eq('round_num', targetRound)
+    .maybeSingle()
+
+  if (existingRound) {
+    return { ready: true, allReady: true, readyCount: 0, aliveCount: 0, round: existingRound.result as RoundResult, skills: (existingRound.skills_used || []) as ActiveSkill[] }
+  }
+
+  // Get session
   const { data: session } = await supabase
     .from('arena_sessions')
     .select('seed, players, hp')
@@ -134,12 +111,12 @@ export async function submitRoundReady(
   const sessionPlayers = session.players as SessionPlayer[]
   const aliveIds = sessionPlayers.filter((p) => (hp[p.id] ?? 0) > 0).map((p) => p.id)
 
-  // Check if all alive players are ready
+  // Check if all alive players are ready for this round
   const { data: readyRows } = await supabase
     .from('arena_ready')
     .select('user_id, skills')
     .eq('session_id', sessionId)
-    .eq('round_num', roundNum)
+    .eq('round_num', targetRound)
     .eq('is_ready', true)
 
   const readyIds = new Set((readyRows || []).map((r) => r.user_id))
@@ -149,19 +126,6 @@ export async function submitRoundReady(
     return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: aliveIds.length }
   }
 
-  // All ready — check if next round already computed (race prevention)
-  const nextRound = roundNum + 1
-  const { data: existingRound } = await supabase
-    .from('arena_rounds')
-    .select('result, skills_used')
-    .eq('session_id', sessionId)
-    .eq('round_num', nextRound)
-    .maybeSingle()
-
-  if (existingRound) {
-    return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: existingRound.result as RoundResult, skills: (existingRound.skills_used || []) as ActiveSkill[] }
-  }
-
   // Collect all skills from ready players
   const allSkills: ActiveSkill[] = []
   for (const row of readyRows || []) {
@@ -169,34 +133,30 @@ export async function submitRoundReady(
     for (const skillId of playerSkillIds) {
       const skill = SKILL_REGISTRY[skillId]
       if (skill) {
-        const player = sessionPlayers.find((p) => p.id === row.user_id)
-        const card = player?.deck.find((c) => c.dbSkillIds?.includes(skillId))
-        if (card) {
-          allSkills.push({ skill, activatedBy: row.user_id, roundActivated: nextRound })
-        }
+        allSkills.push({ skill, activatedBy: row.user_id, roundActivated: targetRound })
       }
     }
   }
 
-  // Compute next round
+  // Compute this round
   const battlePlayers = buildBattlePlayers(sessionPlayers)
-  const rng = createSeededRng(session.seed * 1000 + nextRound)
+  const rng = createSeededRng(session.seed * 1000 + targetRound)
   const updated = battlePlayers.map((p) => ({
     ...p, hp: hp[p.id] ?? 0, eliminated: (hp[p.id] ?? 0) <= 0,
   }))
 
   const result = precomputeRound(
-    updated, hp, nextRound, undefined,
+    updated, hp, targetRound, undefined,
     allSkills.length > 0 ? allSkills : undefined, rng,
   )
 
-  // Store round
+  // Store round (ON CONFLICT ignore)
   await supabase.from('arena_rounds').insert({
     session_id: sessionId,
-    round_num: nextRound,
+    round_num: targetRound,
     result: result as unknown as Record<string, unknown>,
     skills_used: allSkills as unknown as Record<string, unknown>[],
-  })
+  }).maybeSingle()
 
   return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: result, skills: allSkills }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { BattlePlayer, BattleCard, RoundResult } from '@/lib/battle-engine'
+import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
 import { resolveSkills, starCount } from '@/lib/battle-engine'
 import { createArenaSession, cleanupArenaSession } from './actions'
 import ArenaBattle from '@/components/arena/arena-battle'
@@ -60,8 +60,7 @@ export default function ArenaLobby({
   const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
   const [battleSessionId, setBattleSessionId] = useState<string | null>(null)
-  const [battleRound, setBattleRound] = useState<RoundResult | null>(null)
-  const [battleHp, setBattleHp] = useState<Record<string, number>>({})
+  const [battleSeed, setBattleSeed] = useState<number | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -138,7 +137,7 @@ export default function ArenaLobby({
     }))
 
     const result = await createArenaSession('arena-lobby', gamePlayers)
-    if (!result || !result.round) return
+    if (!result) return
 
     const players: BattlePlayer[] = (result.players as typeof gamePlayers).map((p) => ({
       id: p.id, name: p.name, avatar_url: p.avatar_url,
@@ -147,8 +146,7 @@ export default function ArenaLobby({
 
     setBattlePlayers(players)
     setBattleSessionId(result.sessionId)
-    setBattleRound(result.round)
-    setBattleHp(result.hp)
+    setBattleSeed(result.seed)
     setBattleStarted(true)
   }
 
@@ -209,20 +207,18 @@ export default function ArenaLobby({
   }
 
   // === BATTLE VIEW ===
-  if (battleStarted && battlePlayers.length > 0 && battleSessionId && battleRound) {
+  if (battleStarted && battlePlayers.length > 0 && battleSessionId) {
     return (
       <ArenaBattle
         userId={userId}
         players={battlePlayers}
         sessionId={battleSessionId}
-        initialRound={battleRound}
-        initialHp={battleHp}
+        seed={battleSeed ?? undefined}
         onBattleEnd={() => {
           setBattleStarted(false)
           setBattlePlayers([])
           setBattleSessionId(null)
-          setBattleRound(null)
-          setBattleHp({})
+          setBattleSeed(null)
           setMyReady(false)
           setSelectedDeck(null)
           readyMapRef.current = {}
