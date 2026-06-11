@@ -8,6 +8,7 @@ type Phase = 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'
 
 export default function BattleFaceoff({
   faceOff,
+  onResult,
   onComplete,
   large,
   vertical,
@@ -15,6 +16,7 @@ export default function BattleFaceoff({
   p2Name,
 }: {
   faceOff: FaceOffDetail
+  onResult?: () => void
   onComplete: () => void
   large: boolean
   vertical?: boolean
@@ -37,7 +39,7 @@ export default function BattleFaceoff({
       setTimeout(() => setPhase('power'), 500),
       setTimeout(() => setPhase('rolling'), 1200),
       setTimeout(() => setPhase('merge'), 2400),
-      setTimeout(() => setPhase('result'), 3100),
+      setTimeout(() => { setPhase('result'); onResult?.() }, 3100),
       setTimeout(() => { setPhase('done'); onComplete() }, 4500),
     ]
 

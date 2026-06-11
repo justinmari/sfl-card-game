@@ -69,11 +69,9 @@ export default function TestArena({
     }, 2000)
   }, [roundNum, players, displayHp])
 
-  // When a faceoff animation completes — apply damage for ALL active matches and advance
-  const onFaceoffComplete = useCallback(() => {
+  // Apply damage when result phase starts
+  const onFaceoffResult = useCallback(() => {
     if (!precomputed) return
-
-    // Apply damage for all non-KO matches
     setDisplayHp((prev) => {
       const updated = { ...prev }
       precomputed.matches.forEach((match, mi) => {
@@ -85,17 +83,18 @@ export default function TestArena({
       })
       return updated
     })
-
-    // Wait then advance
-    timerRef.current = setTimeout(() => {
-      if (cardIdx >= 4) {
-        setBattlePhase('round-end')
-      } else {
-        setCardIdx(cardIdx + 1)
-        setFaceoffKey((k) => k + 1)
-      }
-    }, 800)
   }, [precomputed, cardIdx, matchKo])
+
+  // Advance to next card when animation is fully done
+  const onFaceoffComplete = useCallback(() => {
+    if (!precomputed) return
+    if (cardIdx >= 4) {
+      setBattlePhase('round-end')
+    } else {
+      setCardIdx(cardIdx + 1)
+      setFaceoffKey((k) => k + 1)
+    }
+  }, [precomputed, cardIdx])
 
   // If player has a bye OR is KO'd, auto-advance other matches
   useEffect(() => {
@@ -315,6 +314,7 @@ export default function TestArena({
                       <BattleFaceoff
                         key={`large-${faceoffKey}`}
                         faceOff={displayFo}
+                        onResult={onFaceoffResult}
                         onComplete={onFaceoffComplete}
                         large
                         p1Name="You"
