@@ -16,19 +16,34 @@ export default async function ArenaPage() {
     .eq('user_id', profile.id)
     .order('slot')
 
-  // Get card details for deck display
+  // Get card details with skills
   const allCardIds = (decks || []).flatMap((d) => d.card_ids || [])
   const { data: cards } = allCardIds.length > 0
     ? await supabase
         .from('cards')
-        .select('id, name, image_url, rarity, creatures(name)')
+        .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
         .in('id', allCardIds)
     : { data: [] }
 
-  const cardMap = new Map<string, { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null }>()
+  // Get skill display info
+  const { data: dbSkills } = await supabase.from('skills').select('id, name, description')
+
+  type CardWithSkills = {
+    id: string; name: string; image_url: string | null; rarity: string
+    creature_name: string | null; dbSkillIds: string[]
+  }
+
+  const cardMap = new Map<string, CardWithSkills>()
   for (const c of cards || []) {
-    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null }
-    cardMap.set(card.id, { id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity, creature_name: card.creatures?.name || null })
+    const card = c as unknown as {
+      id: string; name: string; image_url: string | null; rarity: string
+      creatures: { name: string } | null; card_skills: { skill_id: string }[]
+    }
+    cardMap.set(card.id, {
+      id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
+      creature_name: card.creatures?.name || null,
+      dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
+    })
   }
 
   const legalDecks = (decks || [])
@@ -38,7 +53,7 @@ export default async function ArenaPage() {
       name: d.name as string,
       cards: (d.card_ids as string[])
         .map((id) => cardMap.get(id))
-        .filter((c): c is { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null } => c !== undefined),
+        .filter((c): c is CardWithSkills => c !== undefined),
     }))
 
   const hasLegalDeck = legalDecks.length > 0
@@ -54,6 +69,7 @@ export default async function ArenaPage() {
             userName={profile.full_name || 'Unknown'}
             avatarUrl={profile.avatar_url || profile.user_metadata?.avatar_url || null}
             legalDecks={legalDecks}
+            dbSkills={(dbSkills || []) as { id: string; name: string; description: string }[]}
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
