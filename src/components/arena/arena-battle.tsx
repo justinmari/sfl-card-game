@@ -825,6 +825,13 @@ export default function ArenaBattle({
                         <span className="text-xs text-green-400">You are ready</span>
                       )}
                     </div>
+                  ) : readyPlayers.has(userId) ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-zinc-500">
+                        {isMultiplayer ? `Waiting... ${readyPlayers.size}/${aliveCount()} ready` : 'Waiting...'}
+                      </p>
+                      <span className="text-xs text-green-400">You are ready</span>
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       <p className="text-xs text-zinc-500">Next round in <span className="font-bold text-white">{roundEndCountdown}s</span></p>
