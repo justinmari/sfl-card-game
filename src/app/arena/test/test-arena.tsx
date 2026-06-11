@@ -69,11 +69,11 @@ export default function TestArena({
     }, 2000)
   }, [roundNum, players, displayHp])
 
-  // When a faceoff completes for all matches
+  // When a faceoff animation completes — apply damage for ALL active matches and advance
   const onFaceoffComplete = useCallback(() => {
     if (!precomputed) return
 
-    // Apply damage
+    // Apply damage for all non-KO matches
     setDisplayHp((prev) => {
       const updated = { ...prev }
       precomputed.matches.forEach((match, mi) => {
@@ -88,17 +88,6 @@ export default function TestArena({
 
     // Wait then advance
     timerRef.current = setTimeout(() => {
-      // Check KOs
-      setMatchKo((prev) => {
-        const newKos = new Set(prev)
-        precomputed.matches.forEach((match, mi) => {
-          if (newKos.has(mi)) return
-          // We need to check from the updated HP
-          // This will be caught in the useEffect below
-        })
-        return newKos
-      })
-
       if (cardIdx >= 4) {
         setBattlePhase('round-end')
       } else {
@@ -107,6 +96,41 @@ export default function TestArena({
       }
     }, 800)
   }, [precomputed, cardIdx, matchKo])
+
+  // If my match is KO'd but other matches are still going, auto-advance via timer
+  useEffect(() => {
+    if (!precomputed || battlePhase !== 'fighting') return
+    const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
+    const myKo = myMatchIdx >= 0 && matchKo.has(myMatchIdx)
+    const allKo = matchKo.size >= precomputed.matches.length
+
+    if (myKo && !allKo && cardIdx < 4) {
+      // My match is done but others aren't — auto advance on a timer
+      clearTimer()
+      timerRef.current = setTimeout(() => {
+        // Apply damage for remaining matches
+        setDisplayHp((prev) => {
+          const updated = { ...prev }
+          precomputed.matches.forEach((match, mi) => {
+            if (matchKo.has(mi)) return
+            const fo = match.faceOffs[cardIdx]
+            if (!fo) return
+            updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
+            updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
+          })
+          return updated
+        })
+        setTimeout(() => {
+          if (cardIdx >= 4) {
+            setBattlePhase('round-end')
+          } else {
+            setCardIdx(cardIdx + 1)
+            setFaceoffKey((k) => k + 1)
+          }
+        }, 800)
+      }, 3500) // match the faceoff animation duration
+    }
+  }, [matchKo, precomputed, battlePhase, cardIdx])
 
   // Detect KOs
   useEffect(() => {
