@@ -311,7 +311,7 @@ export default function TestArena({
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4" />
+                      <div className="mt-8" />
                       <BattleFaceoff
                         key={`large-${faceoffKey}`}
                         faceOff={displayFo}

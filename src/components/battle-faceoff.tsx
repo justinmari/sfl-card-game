@@ -30,20 +30,105 @@ export default function BattleFaceoff({
   const [phase, setPhase] = useState<Phase>('enter')
   const canvas1Ref = useRef<HTMLCanvasElement>(null)
   const canvas2Ref = useRef<HTMLCanvasElement>(null)
+  const effectsCanvasRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<number>(0)
+  const effectsAnimRef = useRef<number>(0)
   const startTimeRef = useRef(0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const fo = faceOff
+
+  type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
+  const particlesRef = useRef<EmojiParticle[]>([])
+
+  const spawnParticles = (side: 'left' | 'right', isWinner: boolean, damage: number) => {
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const cx = side === 'left' ? rect.width * 0.25 : rect.width * 0.75
+    const cy = rect.height * 0.4
+
+    const winEmojis = ['🎉', '⭐', '✨', '💪', '🔥', '👑', '💫']
+    const loseEmojis = ['💀', '💥', '😵', '☠️', '🫠', '💔']
+    const emojis = isWinner ? winEmojis : loseEmojis
+    const count = Math.min(3 + damage * 2, 15)
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
+      const speed = 1.5 + Math.random() * 2
+      particlesRef.current.push({
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        x: cx + (Math.random() - 0.5) * 30,
+        y: cy + (Math.random() - 0.5) * 20,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1,
+        size: 12 + Math.random() * (8 + damage * 2),
+        age: 0,
+        rotation: Math.random() * 360,
+        rs: (Math.random() - 0.5) * 4,
+      })
+    }
+
+    if (!effectsAnimRef.current) {
+      const animate = () => {
+        const canvas = effectsCanvasRef.current
+        if (!canvas || !containerRef.current) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        const r = containerRef.current.getBoundingClientRect()
+        const dpr = window.devicePixelRatio || 1
+        canvas.width = r.width * dpr
+        canvas.height = r.height * dpr
+        canvas.style.width = `${r.width}px`
+        canvas.style.height = `${r.height}px`
+        ctx.scale(dpr, dpr)
+        ctx.clearRect(0, 0, r.width, r.height)
+
+        const ps = particlesRef.current
+        for (let i = ps.length - 1; i >= 0; i--) {
+          const p = ps[i]
+          p.x += p.vx; p.y += p.vy; p.vy += 0.03; p.vx *= 0.995; p.age++; p.rotation += p.rs
+          const alpha = p.age < 20 ? 1 : Math.max(0, 1 - (p.age - 20) / 60)
+          if (alpha <= 0) { ps.splice(i, 1); continue }
+          ctx.save()
+          ctx.translate(p.x, p.y)
+          ctx.rotate((p.rotation * Math.PI) / 180)
+          ctx.globalAlpha = alpha
+          ctx.font = `${p.size}px serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(p.emoji, 0, 0)
+          ctx.restore()
+        }
+
+        if (ps.length > 0) {
+          effectsAnimRef.current = requestAnimationFrame(animate)
+        } else {
+          effectsAnimRef.current = 0
+          ctx.clearRect(0, 0, r.width, r.height)
+        }
+      }
+      effectsAnimRef.current = requestAnimationFrame(animate)
+    }
+  }
 
   useEffect(() => {
     setPhase('enter')
     startTimeRef.current = 0
+    particlesRef.current = []
 
     const timers = [
       setTimeout(() => setPhase('power'), 500),
       setTimeout(() => setPhase('rolling'), 1200),
       setTimeout(() => setPhase('merge'), 2400),
-      setTimeout(() => { setPhase('result'); onResult?.() }, 3100),
+      setTimeout(() => {
+        setPhase('result')
+        onResult?.()
+        // Spawn effects (large only)
+        if (large) {
+          if (fo.damage2 > 0) { spawnParticles('left', true, fo.damage2); spawnParticles('right', false, fo.damage2) }
+          else if (fo.damage1 > 0) { spawnParticles('right', true, fo.damage1); spawnParticles('left', false, fo.damage1) }
+        }
+      }, 3100),
       setTimeout(() => { setPhase('done'); onComplete() }, 4500),
     ]
 
@@ -249,13 +334,14 @@ export default function BattleFaceoff({
   const knockP2 = vertical ? 'opacity-40 scale-90 translate-y-3' : 'opacity-40 scale-90 -translate-x-3'
 
   return (
-    <div className={`flex flex-col items-center gap-2`}>
+    <div ref={containerRef} className="relative flex flex-col items-center gap-2">
+    <canvas ref={effectsCanvasRef} className="absolute inset-0 pointer-events-none z-10" />
     <div className={`flex items-center justify-center ${vertical ? 'flex-col gap-4' : 'gap-3 sm:gap-6'}`}>
-      {/* Player 1 (opponent on top in vertical) */}
+      {/* Player 1 */}
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim1 : ''
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
-        <div className={cardSize}><CompactCard card={fo.card1} /></div>
+        <div className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(2deg)' } : undefined}><CompactCard card={fo.card1} /></div>
 
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
@@ -270,7 +356,7 @@ export default function BattleFaceoff({
       <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
-        <div className={cardSize}><CompactCard card={fo.card2} /></div>
+        <div className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={!large ? { transform: 'rotate(-2deg)' } : undefined}><CompactCard card={fo.card2} /></div>
 
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
@@ -307,6 +393,10 @@ export default function BattleFaceoff({
         @keyframes slideFromRight { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideFromTop { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes slideFromBottom { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes cardEnterLeft { from { transform: rotate(-10deg); } to { transform: rotate(7deg); } }
+        @keyframes cardEnterRight { from { transform: rotate(10deg); } to { transform: rotate(-7deg); } }
+        @keyframes wobbleLeft { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(4deg); } }
+        @keyframes wobbleRight { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(-4deg); } }
       `}</style>
     </div>
   )
