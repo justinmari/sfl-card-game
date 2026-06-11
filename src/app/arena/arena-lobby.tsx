@@ -11,6 +11,14 @@ type Player = {
   joined_at: number
 }
 
+type ChatMessage = {
+  id: string
+  userId: string
+  userName: string
+  text: string
+  timestamp: number
+}
+
 export default function ArenaLobby({
   userId,
   userName,
@@ -22,7 +30,10 @@ export default function ArenaLobby({
 }) {
   const [players, setPlayers] = useState<Player[]>([])
   const [connected, setConnected] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -36,6 +47,9 @@ export default function ArenaLobby({
     })
 
     channel
+      .on('broadcast', { event: 'chat' }, ({ payload }) => {
+        setMessages((prev) => [...prev.slice(-50), payload as ChatMessage])
+      })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ name: string; avatar_url: string | null; joined_at: number }>()
         const playerList: Player[] = []
@@ -71,6 +85,25 @@ export default function ArenaLobby({
       supabase.removeChannel(channel)
     }
   }, [userId, userName, avatarUrl])
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const sendMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim() || !channelRef.current) return
+    const msg: ChatMessage = {
+      id: `${userId}-${Date.now()}`,
+      userId,
+      userName,
+      text: chatInput.trim(),
+      timestamp: Date.now(),
+    }
+    channelRef.current.send({ type: 'broadcast', event: 'chat', payload: msg })
+    setMessages((prev) => [...prev.slice(-50), msg])
+    setChatInput('')
+  }
 
   return (
     <div>
@@ -113,7 +146,7 @@ export default function ArenaLobby({
         ))}
 
         {/* Empty slots */}
-        {Array.from({ length: Math.max(0, 2 - players.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(0, 8 - players.length) }).map((_, i) => (
           <div
             key={`empty-${i}`}
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 p-4"
@@ -124,6 +157,41 @@ export default function ArenaLobby({
             <span className="text-xs text-zinc-600">Waiting...</span>
           </div>
         ))}
+      </div>
+
+      {/* Chat */}
+      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900">
+        <div className="h-48 overflow-y-auto p-3">
+          {messages.length === 0 && (
+            <p className="py-8 text-center text-xs text-zinc-600">No messages yet</p>
+          )}
+          {messages.map((msg) => (
+            <div key={msg.id} className="mb-1.5">
+              <span className={`text-xs font-medium ${msg.userId === userId ? 'text-amber-400' : 'text-zinc-300'}`}>
+                {msg.userName}
+              </span>
+              <span className="ml-2 text-xs text-zinc-400">{msg.text}</span>
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+        <form onSubmit={sendMessage} className="flex border-t border-zinc-800">
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Type a message..."
+            maxLength={200}
+            className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!chatInput.trim()}
+            className="px-4 text-sm font-medium text-zinc-400 hover:text-white disabled:opacity-30"
+          >
+            Send
+          </button>
+        </form>
       </div>
 
       {/* Actions */}
