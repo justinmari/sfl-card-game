@@ -88,8 +88,11 @@ export default function ArenaLobby({
       skills: c.dbSkillIds && c.dbSkillIds.length > 0 ? resolveSkills(c.dbSkillIds, dbSkills) : undefined,
     }))
 
-  // Handle game-init: create battle players from payload
+  // Handle game-init: create battle players from payload (ignore duplicates)
+  const gameInitReceivedRef = useRef(false)
   const handleGameInit = (payload: GameInitPayload) => {
+    if (gameInitReceivedRef.current) return // ignore duplicate game-inits
+    gameInitReceivedRef.current = true
     const players: BattlePlayer[] = payload.players.map((p) => ({
       id: p.id,
       name: p.name,
@@ -189,8 +192,10 @@ export default function ArenaLobby({
           countdownRef.current = null
           setCountdown(null)
 
-          // First client to reach here broadcasts game-init
-          if (!gameInitSentRef.current) {
+          // Only the player with the lowest ID sends game-init (deterministic leader)
+          const sortedIds = [...lobbyPlayers].sort((a, b) => a.id.localeCompare(b.id))
+          const isLeader = sortedIds[0]?.id === userId
+          if (!gameInitSentRef.current && isLeader) {
             gameInitSentRef.current = true
             const seed = Math.floor(Math.random() * 2147483647)
 
@@ -305,6 +310,7 @@ export default function ArenaLobby({
           deckMapRef.current = {}
           deckDataRef.current = {}
           gameInitSentRef.current = false
+          gameInitReceivedRef.current = false
           setCountdown(null)
           // Reset all players to not ready
           setLobbyPlayers((prev) => prev.map((p) => ({ ...p, ready: false, selectedDeckSlot: null })))
