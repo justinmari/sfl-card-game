@@ -383,6 +383,13 @@ export default function ArenaBattle({
 
   const getPlayer = (id: string) => players.find((p) => p.id === id)
   const sortedByHp = [...players].sort((a, b) => (displayHp[b.id] ?? 0) - (displayHp[a.id] ?? 0))
+  // Filter skills to only those relevant to the user's match
+  const myMatchPlayerIds = (() => {
+    if (!precomputed) return new Set<string>()
+    const m = precomputed.matches.find((m) => m.player1Id === userId || m.player2Id === userId)
+    return m ? new Set([m.player1Id, m.player2Id]) : new Set<string>()
+  })()
+  const myMatchSkills = activeRoundSkills.filter((s) => myMatchPlayerIds.has(s.activatedBy))
   const fightingIds = new Set<string>()
   if (precomputed && (battlePhase === 'round-intro' || battlePhase === 'fighting')) {
     precomputed.matches.forEach((m) => { fightingIds.add(m.player1Id); fightingIds.add(m.player2Id) })
@@ -427,9 +434,9 @@ export default function ArenaBattle({
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
-                {activeRoundSkills.length > 0 && (
+                {myMatchSkills.length > 0 && (
                   <div className="rounded-lg border border-pink-800 bg-pink-950/20 px-4 py-2 text-center">
-                    {activeRoundSkills.map((as, i) => (
+                    {myMatchSkills.map((as, i) => (
                       <div key={i} className="text-sm">
                         <span className="font-bold text-pink-400">{as.skill.name}</span>
                         <span className="text-zinc-400"> — {as.skill.description}</span>
@@ -579,9 +586,9 @@ export default function ArenaBattle({
 
             return (
               <div className="space-y-4">
-                {activeRoundSkills.length > 0 && (
+                {myMatchSkills.length > 0 && (
                   <div className="rounded-lg border border-pink-800 bg-pink-950/20 px-3 py-1.5 text-center">
-                    {activeRoundSkills.map((as, i) => (
+                    {myMatchSkills.map((as, i) => (
                       <span key={i} className="text-xs"><span className="font-bold text-pink-400">{as.skill.name}</span><span className="text-zinc-500"> active</span></span>
                     ))}
                   </div>
@@ -702,9 +709,9 @@ export default function ArenaBattle({
               <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 animate-[fadeIn_0.5s_ease-out]">
                 <h3 className="mb-4 text-lg font-bold text-center">Round {roundNum} Complete</h3>
 
-                {activeRoundSkills.length > 0 && (
+                {myMatchSkills.length > 0 && (
                   <div className="mb-4 rounded-lg border border-pink-800 bg-pink-950/20 px-4 py-2">
-                    {activeRoundSkills.map((as, i) => (
+                    {myMatchSkills.map((as, i) => (
                       <div key={i} className="text-sm text-center">
                         <span className="text-white font-medium">{getPlayer(as.activatedBy)?.name}</span>
                         <span className="text-zinc-500"> used </span>
