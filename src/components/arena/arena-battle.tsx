@@ -283,7 +283,6 @@ export default function ArenaBattle({
   // Round-end: update HP on server + start countdown
   useEffect(() => {
     if (battlePhase !== 'round-end') return
-    if (isServerMode) updateSessionHp(sessionId!, displayHp)
 
     if (aliveCount() <= 1) {
       if (isServerMode) endArenaSession(sessionId!)
@@ -325,7 +324,7 @@ export default function ArenaBattle({
     }
 
     setBattlePhase('waiting')
-    const result = await submitRoundReady(sessionId!, roundNum, localSkillIds)
+    const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
     if (result) {
       setReadyInfo({ readyCount: result.readyCount ?? result.aliveCount ?? 0, aliveCount: result.aliveCount ?? 0 })
     }
@@ -335,7 +334,7 @@ export default function ArenaBattle({
   useEffect(() => {
     if (battlePhase !== 'waiting' || !isServerMode) return
     const interval = setInterval(async () => {
-      const result = await submitRoundReady(sessionId!, roundNum, localSkillIds)
+      const result = await submitRoundReady(sessionId!, roundNum, localSkillIds, displayHp)
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
       }

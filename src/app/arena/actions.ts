@@ -99,10 +99,16 @@ export async function submitRoundReady(
   sessionId: string,
   roundNum: number,
   skillIds: string[],
+  currentHp?: Record<string, number>,
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
+
+  // Update HP if provided (ensures DB has latest HP before checking alive players)
+  if (currentHp) {
+    await supabase.from('arena_sessions').update({ hp: currentHp }).eq('id', sessionId)
+  }
 
   // Upsert ready state
   await supabase.from('arena_ready').upsert({
@@ -113,7 +119,7 @@ export async function submitRoundReady(
     is_ready: true,
   }, { onConflict: 'session_id,user_id,round_num' })
 
-  // Get session
+  // Get session (with potentially updated HP)
   const { data: session } = await supabase
     .from('arena_sessions')
     .select('seed, players, hp')
