@@ -75,11 +75,11 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard): FaceOffDet
     roll1 = Math.floor(Math.random() * 2)
     roll2 = Math.floor(Math.random() * 2)
   } else if (s1 < s2) {
-    // Card1 is weaker: rolls 0 to diff (can tie but not beat)
-    roll1 = Math.floor(Math.random() * (diff + 1))
+    // Card1 is weaker: rolls 0 to diff+1 (can beat by 1)
+    roll1 = Math.floor(Math.random() * (diff + 2))
   } else {
-    // Card2 is weaker: rolls 0 to diff (can tie but not beat)
-    roll2 = Math.floor(Math.random() * (diff + 1))
+    // Card2 is weaker: rolls 0 to diff+1 (can beat by 1)
+    roll2 = Math.floor(Math.random() * (diff + 2))
   }
 
   const effective1 = s1 + roll1
