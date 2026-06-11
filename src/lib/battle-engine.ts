@@ -207,7 +207,8 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
 }
 
 export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs: [string, string][]; byeId: string | null } {
-  const alive = shuffle(players.filter((p) => !p.eliminated), rng)
+  // Sort by ID first for canonical order across all clients before shuffling
+  const alive = shuffle(players.filter((p) => !p.eliminated).sort((a, b) => a.id.localeCompare(b.id)), rng)
   const pairs: [string, string][] = []
   let byeId: string | null = null
 
@@ -235,8 +236,9 @@ export function precomputeRound(
   const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
     const p2 = players.find((p) => p.id === id2)!
-    const deck1 = shuffle(p1.deck, rng)
-    const deck2 = shuffle(p2.deck, rng)
+    // Sort decks by card ID for canonical order before shuffling
+    const deck1 = shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const deck2 = shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
     const faceOffs: FaceOff[] = []
 
     // Filter skills relevant to this match
