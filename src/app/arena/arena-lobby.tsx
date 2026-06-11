@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
 import { resolveSkills } from '@/lib/battle-engine'
-import { createSeededRng } from '@/lib/seeded-random'
 import ArenaBattle, { type BattleSyncHandle, type BattleSyncCallbacks } from '@/components/arena/arena-battle'
 import type { Skill } from '@/lib/skills'
 import CompactCard from '@/components/compact-card'
@@ -71,7 +70,7 @@ export default function ArenaLobby({
   // === Battle state ===
   const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
-  const [battleRng, setBattleRng] = useState<(() => number) | null>(null)
+  const [battleSeed, setBattleSeed] = useState<number | null>(null)
   const battleSyncRef = useRef<BattleSyncHandle | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -99,9 +98,8 @@ export default function ArenaLobby({
       hp: 10,
       eliminated: false,
     }))
-    const rng = createSeededRng(payload.seed)
     setBattlePlayers(players)
-    setBattleRng(() => rng)
+    setBattleSeed(payload.seed)
     setBattleStarted(true)
   }
 
@@ -262,12 +260,12 @@ export default function ArenaLobby({
   }
 
   // === BATTLE VIEW ===
-  if (battleStarted && battlePlayers.length > 0 && battleRng) {
+  if (battleStarted && battlePlayers.length > 0 && battleSeed != null) {
     return (
       <ArenaBattle
         userId={userId}
         players={battlePlayers}
-        rng={battleRng}
+        seed={battleSeed}
         syncRef={battleSyncRef}
         sync={{
           onSkillToggle: (skillId, activated) => {
@@ -300,7 +298,7 @@ export default function ArenaLobby({
         onBattleEnd={() => {
           setBattleStarted(false)
           setBattlePlayers([])
-          setBattleRng(null)
+          setBattleSeed(null)
           setMyReady(false)
           readyMapRef.current = {}
           deckMapRef.current = {}

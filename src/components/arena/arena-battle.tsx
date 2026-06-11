@@ -12,6 +12,7 @@ import {
   randomPair,
   starCount,
 } from '@/lib/battle-engine'
+import { createSeededRng } from '@/lib/seeded-random'
 import BattleFaceoff from '@/components/battle-faceoff'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -46,7 +47,7 @@ export type ArenaBattleProps = {
   userId: string
   players: BattlePlayer[]
   onBattleEnd?: () => void
-  rng?: () => number
+  seed?: number // shared seed for deterministic multiplayer
   sync?: BattleSyncCallbacks
   syncRef?: React.MutableRefObject<BattleSyncHandle | null>
 }
@@ -55,7 +56,7 @@ export default function ArenaBattle({
   userId,
   players: initialPlayers,
   onBattleEnd,
-  rng,
+  seed,
   sync,
   syncRef,
 }: ArenaBattleProps) {
@@ -91,6 +92,9 @@ export default function ArenaBattle({
   const introCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const rafRef = useRef<number>(0)
   const appliedRef = useRef<Set<number>>(new Set())
+
+  // Create a fresh deterministic RNG for a given round (same seed+round = same sequence on all clients)
+  const getRoundRng = (round: number) => seed != null ? createSeededRng(seed * 1000 + round) : undefined
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const alivePlayerIds = () => players.filter((p) => (displayHp[p.id] ?? 0) > 0).map((p) => p.id)
@@ -131,7 +135,7 @@ export default function ArenaBattle({
   useEffect(() => {
     if (initRef.current) return
     initRef.current = true
-    const matchups = randomPair(initialPlayers, rng)
+    const matchups = randomPair(initialPlayers, getRoundRng(1))
     setIntroMatchups(matchups)
     setNextRoundPreview(matchups)
     setRoundNum(1)
@@ -168,7 +172,7 @@ export default function ArenaBattle({
     }
     const nextRound = roundNum + 1
     setPlayers(updated)
-    const matchups = nextRoundPreview ?? randomPair(updated, rng)
+    const matchups = nextRoundPreview ?? randomPair(updated, getRoundRng(nextRound))
     setIntroMatchups(matchups)
     setNextRoundPreview(matchups)
     setRoundNum(nextRound)
@@ -177,12 +181,12 @@ export default function ArenaBattle({
     appliedRef.current.clear()
     setIntroCountdown(5)
     setBattlePhase('round-intro')
-  }, [roundNum, players, displayHp, nextRoundPreview, rng])
+  }, [roundNum, players, displayHp, nextRoundPreview, seed])
 
   // Step 2: Precompute with skills and start fighting
   const startFighting = useCallback(() => {
     const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
-    const result = precomputeRound(updated, displayHp, roundNum, nextRoundPreview ?? undefined, pendingSkills.length > 0 ? pendingSkills : undefined, rng)
+    const result = precomputeRound(updated, displayHp, roundNum, nextRoundPreview ?? undefined, pendingSkills.length > 0 ? pendingSkills : undefined, getRoundRng(roundNum))
     setPrecomputed(result)
     if (pendingSkills.length > 0) {
       setSkillUsage((prev) => {
@@ -195,7 +199,7 @@ export default function ArenaBattle({
     setNextRoundPreview(null)
     setPendingSkills([])
     setBattlePhase('fighting')
-  }, [players, displayHp, roundNum, nextRoundPreview, pendingSkills, rng])
+  }, [players, displayHp, roundNum, nextRoundPreview, pendingSkills, seed])
 
   const startFightingRef = useRef(startFighting)
   startFightingRef.current = startFighting
@@ -281,7 +285,7 @@ export default function ArenaBattle({
             setDisplayHp((currentHp) => {
               const alive = players.filter((p) => (currentHp[p.id] ?? 0) > 0)
               if (alive.length > 1) {
-                setNextRoundPreview(randomPair(alive.map((p) => ({ ...p, hp: currentHp[p.id] ?? 0, eliminated: false })), rng))
+                setNextRoundPreview(randomPair(alive.map((p) => ({ ...p, hp: currentHp[p.id] ?? 0, eliminated: false })), getRoundRng(roundNum + 1)))
               } else {
                 setNextRoundPreview(null)
               }
@@ -304,7 +308,7 @@ export default function ArenaBattle({
     }
 
     rafRef.current = requestAnimationFrame(tick)
-  }, [precomputed, cardIdx, matchKo, rng])
+  }, [precomputed, cardIdx, matchKo, seed, roundNum])
 
   useEffect(() => {
     if (battlePhase === 'fighting' && precomputed) {
@@ -331,7 +335,7 @@ export default function ArenaBattle({
         clearTimer()
         const alive = players.filter((p) => (displayHp[p.id] ?? 0) > 0)
         if (alive.length > 1) {
-          setNextRoundPreview(randomPair(alive.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: false })), rng))
+          setNextRoundPreview(randomPair(alive.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: false })), getRoundRng(roundNum + 1)))
         } else {
           setNextRoundPreview(null)
         }
