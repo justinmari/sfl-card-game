@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { listLobbies, createLobby, joinLobby, leaveLobby, type LobbyInfo } from './lobby-actions'
+import { listLobbies, createLobby, joinLobby, leaveLobby, closeStaleLobby, type LobbyInfo } from './lobby-actions'
 
 type MyLobbyInfo = {
   lobbyId: string
@@ -90,6 +90,14 @@ export default function ArenaLobbyList({
       setError('Failed to join lobby')
       setJoining(null)
     }
+  }
+
+  const isStale = (lobby: LobbyInfo) => Date.now() - new Date(lobby.created_at).getTime() > 60 * 60 * 1000
+
+  const handleCloseStaleLobby = async (lobbyId: string) => {
+    const result = await closeStaleLobby(lobbyId)
+    if (result.closed) fetchLobbies()
+    else setError('Cannot close this lobby — it has recent activity')
   }
 
   const waitingLobbies = lobbies.filter((l) => l.status === 'waiting')
@@ -216,13 +224,23 @@ export default function ArenaLobbyList({
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => handleJoin(lobby.id)}
-                  disabled={!!myLobby || joining === lobby.id || lobby.player_count >= lobby.max_players}
-                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30"
-                >
-                  {joining === lobby.id ? 'Joining...' : 'Join'}
-                </button>
+                <div className="flex gap-2">
+                  {isStale(lobby) && (
+                    <button
+                      onClick={() => handleCloseStaleLobby(lobby.id)}
+                      className="rounded-lg border border-red-800 px-3 py-2 text-xs text-red-400 hover:bg-red-900/30"
+                    >
+                      Close
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleJoin(lobby.id)}
+                    disabled={!!myLobby || joining === lobby.id || lobby.player_count >= lobby.max_players}
+                    className="rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30"
+                  >
+                    {joining === lobby.id ? 'Joining...' : 'Join'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -237,13 +255,23 @@ export default function ArenaLobbyList({
                     <span className="text-amber-400">In Game</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleJoin(lobby.id)}
-                  disabled={!!myLobby || joining === lobby.id}
-                  className="rounded-lg border border-zinc-700 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
-                >
-                  {joining === lobby.id ? 'Joining...' : 'Spectate'}
-                </button>
+                <div className="flex gap-2">
+                  {isStale(lobby) && (
+                    <button
+                      onClick={() => handleCloseStaleLobby(lobby.id)}
+                      className="rounded-lg border border-red-800 px-3 py-2 text-xs text-red-400 hover:bg-red-900/30"
+                    >
+                      Close
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleJoin(lobby.id)}
+                    disabled={!!myLobby || joining === lobby.id}
+                    className="rounded-lg border border-zinc-700 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
+                  >
+                    {joining === lobby.id ? 'Joining...' : 'Spectate'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

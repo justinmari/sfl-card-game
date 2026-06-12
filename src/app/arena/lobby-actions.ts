@@ -326,3 +326,10 @@ export async function deleteLobby(lobbyId: string) {
   const supabase = await createClient()
   await supabase.from('arena_lobbies').delete().eq('id', lobbyId)
 }
+
+// Close a stale lobby (safe — server validates 1hr+ age and no recent activity)
+export async function closeStaleLobby(lobbyId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc('rpc_close_stale_lobby', { p_lobby_id: lobbyId })
+  return { closed: !!data }
+}
