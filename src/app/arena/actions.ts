@@ -60,6 +60,88 @@ async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createCli
   return hp
 }
 
+// Check for active session and join/rejoin
+export async function checkActiveSession(userId: string, playerName: string, avatarUrl: string | null, deck: SessionPlayer['deck']) {
+  const supabase = await createClient()
+
+  const { data: session } = await supabase
+    .from('arena_sessions')
+    .select('id, seed, players, hp, status')
+    .eq('lobby_id', 'arena-lobby')
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!session) return null
+
+  const sessionPlayers = session.players as SessionPlayer[]
+  const existingPlayer = sessionPlayers.find((p) => p.id === userId)
+
+  if (existingPlayer) {
+    // Reconnecting player — they're already in the session
+    // Compute current HP from rounds
+    const hp = await computeHpFromRounds(supabase, session.id, sessionPlayers)
+
+    // Get the latest round
+    const { data: latestRound } = await supabase
+      .from('arena_rounds')
+      .select('round_num, result, skills_used')
+      .eq('session_id', session.id)
+      .order('round_num', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    return {
+      type: 'rejoin' as const,
+      sessionId: session.id,
+      seed: session.seed,
+      players: sessionPlayers,
+      hp,
+      latestRound: latestRound ? {
+        roundNum: latestRound.round_num as number,
+        result: latestRound.result as RoundResult,
+        skills: (latestRound.skills_used || []) as ActiveSkill[],
+      } : null,
+    }
+  }
+
+  // New player joining as dead spectator
+  const newPlayer: SessionPlayer = {
+    id: userId,
+    name: playerName,
+    avatar_url: avatarUrl,
+    deck,
+  }
+  const updatedPlayers = [...sessionPlayers, newPlayer]
+  const hp = await computeHpFromRounds(supabase, session.id, sessionPlayers)
+  hp[userId] = 0 // dead on arrival
+
+  await supabase.from('arena_sessions').update({
+    players: updatedPlayers,
+    hp,
+  }).eq('id', session.id)
+
+  const { data: latestRound } = await supabase
+    .from('arena_rounds')
+    .select('round_num, result, skills_used')
+    .eq('session_id', session.id)
+    .order('round_num', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return {
+    type: 'spectator' as const,
+    sessionId: session.id,
+    seed: session.seed,
+    players: updatedPlayers,
+    hp,
+    latestRound: latestRound ? {
+      roundNum: latestRound.round_num as number,
+      result: latestRound.result as RoundResult,
+      skills: (latestRound.skills_used || []) as ActiveSkill[],
+    } : null,
+  }
+}
+
 // Create arena session and compute round 1
 export async function createArenaSession(lobbyId: string, players: SessionPlayer[]) {
   const supabase = await createClient()

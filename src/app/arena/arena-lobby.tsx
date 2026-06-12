@@ -6,6 +6,17 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
 import { resolveSkills, starCount } from '@/lib/battle-engine'
 import { createArenaSession, cleanupArenaSession, updateConnectedPlayers } from './actions'
+import type { RoundResult } from '@/lib/battle-engine'
+import type { ActiveSkill } from '@/lib/skills'
+
+type ActiveSessionData = {
+  type: 'rejoin' | 'spectator'
+  sessionId: string
+  seed: number
+  players: { id: string; name: string; avatar_url: string | null; deck: (BattleCard & { dbSkillIds?: string[] })[] }[]
+  hp: Record<string, number>
+  latestRound: { roundNum: number; result: RoundResult; skills: ActiveSkill[] } | null
+} | null
 import ArenaBattle from '@/components/arena/arena-battle'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -40,12 +51,14 @@ export default function ArenaLobby({
   avatarUrl,
   legalDecks,
   dbSkills,
+  activeSession,
 }: {
   userId: string
   userName: string
   avatarUrl: string | null
   legalDecks: DeckOption[]
   dbSkills?: { id: string; name: string; description: string }[]
+  activeSession?: ActiveSessionData
 }) {
   // === Lobby state ===
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([])
@@ -62,6 +75,32 @@ export default function ArenaLobby({
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
   const [battleSessionId, setBattleSessionId] = useState<string | null>(null)
   const [battleSeed, setBattleSeed] = useState<number | null>(null)
+
+  // Auto-enter battle if there's an active session (reconnect/spectate)
+  const [initialRoundNum, setInitialRoundNum] = useState<number | null>(null)
+  const [initialRound, setInitialRound] = useState<RoundResult | null>(null)
+  const [initialHp, setInitialHp] = useState<Record<string, number> | null>(null)
+  const [initialSkills, setInitialSkills] = useState<ActiveSkill[]>([])
+
+  useEffect(() => {
+    if (!activeSession) return
+    const players: BattlePlayer[] = activeSession.players.map((p) => ({
+      id: p.id, name: p.name, avatar_url: p.avatar_url,
+      deck: attachSkills(p.deck), hp: activeSession.hp[p.id] ?? 0,
+      eliminated: (activeSession.hp[p.id] ?? 0) <= 0,
+    }))
+    setBattlePlayers(players)
+    setBattleSessionId(activeSession.sessionId)
+    battleSessionRef.current = activeSession.sessionId
+    setBattleSeed(activeSession.seed)
+    if (activeSession.latestRound) {
+      setInitialRoundNum(activeSession.latestRound.roundNum)
+      setInitialRound(activeSession.latestRound.result)
+      setInitialSkills(activeSession.latestRound.skills)
+    }
+    setInitialHp(activeSession.hp)
+    setBattleStarted(true)
+  }, [])
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const battleSessionRef = useRef<string | null>(null)
@@ -223,6 +262,10 @@ export default function ArenaLobby({
         players={battlePlayers}
         sessionId={battleSessionId}
         seed={battleSeed ?? undefined}
+        initialRoundNum={initialRoundNum ?? undefined}
+        initialRound={initialRound ?? undefined}
+        initialHp={initialHp ?? undefined}
+        initialSkills={initialSkills.length > 0 ? initialSkills : undefined}
         onBattleEnd={() => {
           setBattleStarted(false)
           setStarting(false)

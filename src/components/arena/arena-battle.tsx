@@ -32,6 +32,10 @@ export type ArenaBattleProps = {
   players: BattlePlayer[]
   sessionId?: string
   seed?: number
+  initialRoundNum?: number
+  initialRound?: RoundResult
+  initialHp?: Record<string, number>
+  initialSkills?: ActiveSkill[]
   onBattleEnd?: () => void
 }
 
@@ -40,10 +44,16 @@ export default function ArenaBattle({
   players: initialPlayers,
   sessionId,
   seed,
+  initialRoundNum,
+  initialRound,
+  initialHp: initialHpProp,
+  initialSkills,
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
+  const isReconnect = !!initialRound
   const initHp = (): Record<string, number> => {
+    if (initialHpProp) return { ...initialHpProp }
     const hpMap: Record<string, number> = {}
     initialPlayers.forEach((p) => { hpMap[p.id] = 10 })
     return hpMap
@@ -53,9 +63,9 @@ export default function ArenaBattle({
   const [phase, setPhase] = useState<'battle' | 'done'>('battle')
   const [players] = useState<BattlePlayer[]>(initialPlayers)
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
-  const [roundNum, setRoundNum] = useState(1)
-  const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
-  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>('skill-select')
+  const [roundNum, setRoundNum] = useState(initialRoundNum ?? 1)
+  const [precomputed, setPrecomputed] = useState<RoundResult | null>(initialRound ?? null)
+  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isReconnect ? 'round-end' : 'skill-select')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
@@ -64,7 +74,7 @@ export default function ArenaBattle({
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
   const [localSkillIds, setLocalSkillIds] = useState<string[]>([])
   const [matchupPreview, setMatchupPreview] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
-  const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>([])
+  const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>(initialSkills ?? [])
   const [introCountdown, setIntroCountdown] = useState(5)
   const [myReady, setMyReady] = useState(false)
   const [readyInfo, setReadyInfo] = useState<{ readyCount: number; aliveCount: number } | null>(null)

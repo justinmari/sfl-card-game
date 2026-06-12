@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import AppNavbar from '@/components/app-navbar'
 import ArenaLobby from './arena-lobby'
 import Link from 'next/link'
+import { checkActiveSession } from './actions'
 
 export default async function ArenaPage() {
   const profile = await getProfile()
@@ -58,6 +59,18 @@ export default async function ArenaPage() {
 
   const hasLegalDeck = legalDecks.length > 0
 
+  // Check for active session (reconnect or spectate)
+  let activeSession: Awaited<ReturnType<typeof checkActiveSession>> = null
+  if (hasLegalDeck) {
+    const firstDeck = legalDecks[0]
+    activeSession = await checkActiveSession(
+      profile.id,
+      profile.full_name || 'Unknown',
+      profile.avatar_url || profile.user_metadata?.avatar_url || null,
+      firstDeck.cards,
+    )
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <AppNavbar backHref="/dashboard" title="Arena" />
@@ -70,6 +83,7 @@ export default async function ArenaPage() {
             avatarUrl={profile.avatar_url || profile.user_metadata?.avatar_url || null}
             legalDecks={legalDecks}
             dbSkills={(dbSkills || []) as { id: string; name: string; description: string }[]}
+            activeSession={activeSession}
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
