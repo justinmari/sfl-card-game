@@ -252,10 +252,12 @@ export async function submitRoundReady(
     .eq('is_ready', true)
 
   const readyIds = new Set((readyRows || []).map((r) => r.user_id))
+  // Only count alive players as ready (dead players don't count)
+  const aliveReadyCount = waitingForIds.filter((id) => readyIds.has(id)).length
   const allReady = waitingForIds.every((id) => readyIds.has(id))
 
   if (!allReady) {
-    return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: waitingForIds.length }
+    return { ready: true, allReady: false, readyCount: aliveReadyCount, aliveCount: waitingForIds.length }
   }
 
   // Collect all skills from ready players (with DB name overrides)

@@ -387,6 +387,8 @@ export default function ArenaBattle({
   const localSkillIdsRef = useRef(localSkillIds)
   localSkillIdsRef.current = localSkillIds
 
+  const iAmDead = () => (displayHp[userId] ?? 0) <= 0
+
   const handleReadyUp = async () => {
     if (myReady) return
     setMyReady(true)
@@ -395,6 +397,12 @@ export default function ArenaBattle({
 
     if (!isServerMode) {
       handleLocalNextRound()
+      return
+    }
+
+    // Dead players just wait — don't submit ready
+    if (iAmDead()) {
+      setBattlePhase('waiting-for-round')
       return
     }
 
@@ -417,11 +425,24 @@ export default function ArenaBattle({
     if (battlePhase !== 'waiting-for-round' || !isServerMode) return
     const interval = setInterval(async () => {
       const target = targetRoundRef.current
-      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, getConnectedIds?.())
-      if (result) {
-        setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
-        if (result.allReady && result.round) {
-          handleNewRound(target, result.round, result.skills || [])
+      if (iAmDead()) {
+        // Dead players just check if the round exists without submitting
+        const supabase = createClient()
+        const { data } = await supabase.from('arena_rounds')
+          .select('result, skills_used')
+          .eq('session_id', sessionId!)
+          .eq('round_num', target)
+          .maybeSingle()
+        if (data) {
+          handleNewRound(target, data.result as RoundResult, (data.skills_used || []) as ActiveSkill[])
+        }
+      } else {
+        const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, getConnectedIds?.())
+        if (result) {
+          setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
+          if (result.allReady && result.round) {
+            handleNewRound(target, result.round, result.skills || [])
+          }
         }
       }
     }, 2000)
