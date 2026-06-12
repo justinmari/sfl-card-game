@@ -175,7 +175,11 @@ export default function ArenaBattle({
     return () => { supabase.removeChannel(channel) }
   }, [sessionId, roundNum])
 
+  const handledRoundsRef = useRef<Set<number>>(new Set())
   const handleNewRound = (newRoundNum: number, result: RoundResult, skills: ActiveSkill[]) => {
+    // Guard against processing the same round twice (poll + Realtime race)
+    if (handledRoundsRef.current.has(newRoundNum)) return
+    handledRoundsRef.current.add(newRoundNum)
     setRoundNum(newRoundNum)
     setPrecomputed(result)
     setActiveRoundSkills(skills)
