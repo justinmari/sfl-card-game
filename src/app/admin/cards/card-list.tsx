@@ -24,7 +24,9 @@ type Card = {
   created_at: string
 }
 
-export default function CardList({ cards, creatures }: { cards: Card[]; creatures: Creature[] }) {
+export default function CardList({ cards, creatures, cardsInPacks = [] }: { cards: Card[]; creatures: Creature[]; cardsInPacks?: string[] }) {
+  const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
+  const [filterNotInPack, setFilterNotInPack] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -40,8 +42,10 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
   const { sortCards, filterCards } = useCardFilters(cards)
 
   const filteredCards = useMemo(() => {
-    return sortCards(filterCards(cards, search, filterRarity), sort)
-  }, [cards, search, filterRarity, sort])
+    let result = filterCards(cards, search, filterRarity)
+    if (filterNotInPack) result = result.filter((c) => !cardsInPacksSet.has(c.id))
+    return sortCards(result, sort)
+  }, [cards, search, filterRarity, sort, filterNotInPack])
 
   const startEdit = (card: Card) => {
     setEditingId(card.id)
@@ -143,6 +147,14 @@ export default function CardList({ cards, creatures }: { cards: Card[]; creature
         onSortChange={setSort}
         count={filteredCards.length}
       />
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          onClick={() => setFilterNotInPack(!filterNotInPack)}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${filterNotInPack ? 'bg-amber-600 text-white' : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800'}`}
+        >
+          Not in any pack {filterNotInPack ? `(${filteredCards.length})` : ''}
+        </button>
+      </div>
 
       {/* Edit modal */}
       {editingId && (

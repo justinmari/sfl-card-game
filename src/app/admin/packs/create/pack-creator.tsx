@@ -34,7 +34,9 @@ const rarityOrder: Record<string, number> = {
   common: 5,
 }
 
-export default function PackCreator({ cards }: { cards: Card[] }) {
+export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[]; cardsInPacks?: string[] }) {
+  const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
+  const [filterNotInPack, setFilterNotInPack] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [cardsPerPack, setCardsPerPack] = useState(5)
@@ -63,9 +65,10 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
 
   // Cards for the selected date, with search/rarity filters and sort
   const dayCards = useMemo(() => {
-    const dateFiltered = cards.filter((c) => c.created_at.split('T')[0] === selectedDate)
+    let dateFiltered = cards.filter((c) => c.created_at.split('T')[0] === selectedDate)
+    if (filterNotInPack) dateFiltered = dateFiltered.filter((c) => !cardsInPacksSet.has(c.id))
     return sortCards(filterCards(dateFiltered, cardSearch, cardFilterRarity), cardSort)
-  }, [cards, selectedDate, cardSearch, cardFilterRarity, cardSort])
+  }, [cards, selectedDate, cardSearch, cardFilterRarity, cardSort, filterNotInPack])
 
   // Group day cards by rarity
   const groupedDayCards = useMemo(() => {
@@ -187,6 +190,14 @@ export default function PackCreator({ cards }: { cards: Card[] }) {
           onSortChange={setCardSort}
           count={dayCards.length}
         />
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            onClick={() => setFilterNotInPack(!filterNotInPack)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${filterNotInPack ? 'bg-amber-600 text-white' : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800'}`}
+          >
+            Not in any pack
+          </button>
+        </div>
 
         {/* Date selector */}
         <div className="mb-6 flex items-center gap-3">
