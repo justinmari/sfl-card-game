@@ -105,7 +105,7 @@ export default function ArenaLobbyList({
       {/* How to Play */}
       <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-xs text-zinc-400">
         <p className="mb-2 text-sm font-medium text-white">How to Play</p>
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <div className="space-y-1">
           <p><span className="text-white">1.</span> Build a 5-card deck in Decks</p>
           <p><span className="text-white">2.</span> Create or join a lobby</p>
           <p><span className="text-white">3.</span> Host starts the game</p>
