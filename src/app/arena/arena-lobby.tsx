@@ -82,32 +82,31 @@ export default function ArenaLobby({
   const [initialHp, setInitialHp] = useState<Record<string, number> | null>(null)
   const [initialSkills, setInitialSkills] = useState<ActiveSkill[]>([])
 
-  useEffect(() => {
-    if (!activeSession) return
-    const players: BattlePlayer[] = activeSession.players.map((p) => ({
+  // Don't auto-enter battle yet — wait for presence to confirm others are connected
+  const [pendingSession, setPendingSession] = useState(activeSession)
+
+  const enterBattle = (session: NonNullable<typeof activeSession>) => {
+    const players: BattlePlayer[] = session.players.map((p) => ({
       id: p.id, name: p.name, avatar_url: p.avatar_url,
-      deck: attachSkills(p.deck), hp: activeSession.hp[p.id] ?? 0,
-      eliminated: (activeSession.hp[p.id] ?? 0) <= 0,
+      deck: attachSkills(p.deck), hp: session.hp[p.id] ?? 0,
+      eliminated: (session.hp[p.id] ?? 0) <= 0,
     }))
     setBattlePlayers(players)
-    setBattleSessionId(activeSession.sessionId)
-    battleSessionRef.current = activeSession.sessionId
-    setBattleSeed(activeSession.seed)
-    if (activeSession.latestRound) {
-      setInitialRoundNum(activeSession.latestRound.roundNum)
-      setInitialRound(activeSession.latestRound.result)
-      setInitialSkills(activeSession.latestRound.skills)
+    setBattleSessionId(session.sessionId)
+    battleSessionRef.current = session.sessionId
+    setBattleSeed(session.seed)
+    if (session.latestRound) {
+      setInitialRoundNum(session.latestRound.roundNum)
+      setInitialRound(session.latestRound.result)
+      setInitialSkills(session.latestRound.skills)
     }
-    setInitialHp(activeSession.hp)
+    setInitialHp(session.hp)
     setBattleStarted(true)
-    // Broadcast join after channel is connected
     pendingJoinRef.current = {
-      id: userId,
-      name: userName,
-      avatar_url: avatarUrl,
-      hp: activeSession.hp[userId] ?? 0,
+      id: userId, name: userName, avatar_url: avatarUrl,
+      hp: session.hp[userId] ?? 0,
     }
-  }, [])
+  }
 
   const pendingJoinRef = useRef<{ id: string; name: string; avatar_url: string | null; hp: number } | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -194,27 +193,24 @@ export default function ArenaLobby({
     }
   }, [userId, userName, avatarUrl])
 
-  // After connecting, check if active session is actually abandoned
-  // (presence shows only us, but session exists from before)
+  // After connecting, check presence to decide: enter battle or clean up
   useEffect(() => {
-    if (!connected || !activeSession || !battleStarted) return
-    // Give presence a moment to sync, then check
+    if (!connected || !pendingSession) return
     const timer = setTimeout(() => {
       const state = channelRef.current?.presenceState() || {}
       const presentIds = Object.keys(state)
-      // If we're the only one present, the session is abandoned
       if (presentIds.length <= 1) {
+        // Only us — session is abandoned, clean up and show lobby
         cleanupArenaSession('arena-lobby').catch(() => {})
-        setBattleStarted(false)
-        setBattlePlayers([])
-        setBattleSessionId(null)
-        battleSessionRef.current = null
-        setBattleSeed(null)
-        setStarting(false)
+        setPendingSession(null)
+      } else {
+        // Others are present — join the battle
+        enterBattle(pendingSession)
+        setPendingSession(null)
       }
     }, 2000)
     return () => clearTimeout(timer)
-  }, [connected, battleStarted])
+  }, [connected, pendingSession])
 
   // Start session via server action — ALL clients call this
   const startSession = async () => {
