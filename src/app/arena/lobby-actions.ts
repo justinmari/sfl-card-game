@@ -22,7 +22,15 @@ export async function listLobbies() {
     .in('status', ['waiting', 'active'])
     .order('created_at', { ascending: false })
 
-  return (data || []).map((lobby) => ({
+  // Clean up empty lobbies (players left by closing tabs)
+  const emptyIds = (data || [])
+    .filter((l) => ((l.arena_lobby_players as any[])?.length || 0) === 0)
+    .map((l) => l.id)
+  if (emptyIds.length > 0) {
+    await supabase.from('arena_lobbies').delete().in('id', emptyIds)
+  }
+
+  return (data || []).filter((l) => !emptyIds.includes(l.id)).map((lobby) => ({
     id: lobby.id,
     host_id: lobby.host_id,
     name: lobby.name,
