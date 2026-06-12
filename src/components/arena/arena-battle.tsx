@@ -137,7 +137,7 @@ export default function ArenaBattle({
         filter: `session_id=eq.${sessionId}`,
       }, (payload) => {
         const row = payload.new as { round_num: number; result: RoundResult; skills_used: ActiveSkill[] }
-        if (row.round_num > roundNum) {
+        if (row.round_num >= targetRoundRef.current) {
           handleNewRound(row.round_num, row.result, row.skills_used || [])
         }
       })
