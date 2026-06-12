@@ -163,24 +163,38 @@ export default function SwipeableReveal({
   // Show all mode
   if (showAll) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4">
-        <h2 className="mb-3 text-center text-xl font-bold text-white">You pulled:</h2>
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-4 gap-2 pb-4 sm:grid-cols-6 md:grid-cols-8">
-            {cards.map((card, i) => (
-              <CompactCard key={i} card={card} showNew />
-            ))}
+      <>
+        {/* Mobile: full screen */}
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4 sm:hidden">
+          <h2 className="mb-3 text-center text-xl font-bold text-white">You pulled:</h2>
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-4 gap-2 pb-4">
+              {cards.map((card, i) => (
+                <CompactCard key={i} card={card} showNew />
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-center pt-3">
+            <button onClick={onDone} className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200">Done</button>
           </div>
         </div>
-        <div className="flex justify-center pt-3">
-          <button
-            onClick={onDone}
-            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
-          >
-            Done
-          </button>
+        {/* Desktop: contained overlay */}
+        <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center bg-black/80" onClick={onDone}>
+          <div className="max-w-3xl w-full mx-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-center text-xl font-bold text-white">You pulled:</h2>
+            <div className="max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-6 gap-3 pb-4">
+                {cards.map((card, i) => (
+                  <CompactCard key={i} card={card} showNew />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-center pt-4">
+              <button onClick={onDone} className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200">Done</button>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
