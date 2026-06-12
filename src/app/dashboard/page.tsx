@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         </p>
 
         {/* Main */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <a
             href="/shop"
             className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
@@ -60,11 +60,19 @@ export default async function DashboardPage() {
             <span className="text-3xl">👥</span>
             <span className="text-sm font-medium">Friends</span>
           </a>
+
+          <a
+            href="/changelog"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
+          >
+            <span className="text-3xl">📝</span>
+            <span className="text-sm font-medium">Changelog</span>
+          </a>
         </div>
 
         {/* Arena */}
         <h3 className="mb-4 mt-10 text-lg font-semibold text-red-400">Arena</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <a
             href="/arena"
             className="relative flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
@@ -87,18 +95,10 @@ export default async function DashboardPage() {
           </a>
         </div>
 
-        {/* Changelog */}
-        <div className="mt-10">
-          <a href="/changelog" className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-sm text-zinc-400 transition-colors hover:border-zinc-600">
-            <span className="text-lg">📝</span>
-            <span className="font-medium text-white">Changelog</span>
-          </a>
-        </div>
-
         {isAdmin && (
           <>
             <h3 className="mb-4 mt-10 text-lg font-semibold text-amber-400">Admin</h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <a
                 href="/admin/cards"
                 className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
