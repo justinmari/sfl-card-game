@@ -194,10 +194,16 @@ export async function submitRoundReady(
   sessionId: string,
   targetRound: number,
   skillIds: string[],
+  connectedPlayerIds?: string[],
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
+
+  // Update connected players from caller's live presence data
+  if (connectedPlayerIds) {
+    await supabase.from('arena_sessions').update({ connected_players: connectedPlayerIds }).eq('id', sessionId)
+  }
 
   // Upsert ready state
   await supabase.from('arena_ready').upsert({

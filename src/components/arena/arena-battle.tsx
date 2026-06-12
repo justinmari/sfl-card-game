@@ -36,6 +36,7 @@ export type ArenaBattleProps = {
   initialRound?: RoundResult
   initialHp?: Record<string, number>
   initialSkills?: ActiveSkill[]
+  getConnectedIds?: () => string[]
   onBattleEnd?: () => void
 }
 
@@ -48,6 +49,7 @@ export default function ArenaBattle({
   initialRound,
   initialHp: initialHpProp,
   initialSkills,
+  getConnectedIds,
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
@@ -391,7 +393,7 @@ export default function ArenaBattle({
 
     const target = targetRoundRef.current
     setBattlePhase('waiting-for-round')
-    const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current)
+    const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, getConnectedIds?.())
     if (result) {
       setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
       if (result.allReady && result.round) {
@@ -408,7 +410,7 @@ export default function ArenaBattle({
     if (battlePhase !== 'waiting-for-round' || !isServerMode) return
     const interval = setInterval(async () => {
       const target = targetRoundRef.current
-      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current)
+      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, getConnectedIds?.())
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
         if (result.allReady && result.round) {

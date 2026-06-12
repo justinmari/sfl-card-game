@@ -312,6 +312,10 @@ export default function ArenaLobby({
         initialRound={initialRound ?? undefined}
         initialHp={initialHp ?? undefined}
         initialSkills={initialSkills.length > 0 ? initialSkills : undefined}
+        getConnectedIds={() => {
+          const state = channelRef.current?.presenceState() || {}
+          return Object.keys(state)
+        }}
         onBattleEnd={() => {
           setBattleStarted(false)
           setStarting(false)
