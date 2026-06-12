@@ -169,7 +169,7 @@ export default function ArenaBattle({
   useEffect(() => {
     if (battlePhase !== 'skill-select' || !isServerMode) return
     setMatchupPreview(null)
-    getMatchupPreview(sessionId!, targetRoundRef.current, displayHpRef.current).then((result) => {
+    getMatchupPreview(sessionId!, targetRoundRef.current).then((result) => {
       if (result) setMatchupPreview(result)
     })
   }, [battlePhase === 'skill-select', roundNum])
@@ -314,9 +314,12 @@ export default function ArenaBattle({
     }
   }, [displayHp, battlePhase])
 
-  // Round-end: update HP on server + start countdown
+  // Round-end: sync HP to server + start countdown
   useEffect(() => {
     if (battlePhase !== 'round-end') return
+
+    // Sync HP to DB immediately so getMatchupPreview has correct values
+    if (isServerMode) updateSessionHp(sessionId!, displayHp)
 
     const gameOver = aliveCount() <= 1
     if (gameOver && isServerMode) endArenaSession(sessionId!)

@@ -193,12 +193,8 @@ export async function updateConnectedPlayers(sessionId: string, connectedIds: st
 }
 
 // Get matchup preview for a round (pairings only, no full computation)
-export async function getMatchupPreview(sessionId: string, targetRound: number, currentHp?: Record<string, number>) {
+export async function getMatchupPreview(sessionId: string, targetRound: number) {
   const supabase = await createClient()
-
-  if (currentHp) {
-    await supabase.from('arena_sessions').update({ hp: currentHp }).eq('id', sessionId)
-  }
 
   const { data: session } = await supabase
     .from('arena_sessions')
