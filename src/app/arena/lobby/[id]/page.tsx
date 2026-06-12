@@ -3,6 +3,7 @@ import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
 import AppNavbar from '@/components/app-navbar'
 import LobbyRoom from './lobby-room'
+import { getSessionHp } from '@/app/arena/actions'
 
 export default async function LobbyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: lobbyId } = await params
@@ -76,12 +77,27 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
     }))
 
   // Check for active session
-  const { data: session } = await supabase
+  let session = await supabase
     .from('arena_sessions')
     .select('id, seed, players, hp, status')
     .eq('arena_lobby_id', lobbyId)
     .eq('status', 'active')
     .maybeSingle()
+    .then((r) => r.data)
+
+  // If session exists, compute actual HP and check if game is over
+  if (session) {
+    const freshHp = await getSessionHp(session.id)
+    if (freshHp) {
+      const aliveCount = Object.values(freshHp).filter((h) => h > 0).length
+      if (aliveCount <= 1) {
+        // Game is over but status wasn't updated — clean it up
+        await supabase.rpc('rpc_update_arena_session', { p_session_id: session.id, p_status: 'done' })
+        await supabase.from('arena_lobbies').update({ status: 'waiting' }).eq('id', lobbyId)
+        session = null
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
