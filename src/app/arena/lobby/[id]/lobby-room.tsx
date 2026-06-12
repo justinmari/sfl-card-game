@@ -284,9 +284,10 @@ export default function LobbyRoom({
           return Object.keys(state)
         }}
         onGameOver={async () => {
-          // Reset lobby status back to waiting
+          // Reset lobby status + unready all players
           const supabase = createClient()
           await supabase.from('arena_lobbies').update({ status: 'waiting' }).eq('id', lobbyId)
+          await supabase.from('arena_lobby_players').update({ is_ready: false, deck_cards: null }).eq('lobby_id', lobbyId)
         }}
         onBattleEnd={() => {
           setBattleStarted(false)
@@ -298,6 +299,7 @@ export default function LobbyRoom({
           setInitialRoundNum(null)
           setInitialSkills([])
           setMyReady(false)
+          setSelectedDeck(null)
           setStarting(false)
           setIsRejoiningGame(false)
           fetchPlayers()
