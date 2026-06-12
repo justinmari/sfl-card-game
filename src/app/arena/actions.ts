@@ -258,13 +258,18 @@ export async function submitRoundReady(
     return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: waitingForIds.length }
   }
 
-  // Collect all skills from ready players
+  // Collect all skills from ready players (with DB name overrides)
+  const { data: dbSkillRows } = await supabase.from('skills').select('id, name, description')
+  const dbSkillMap = new Map((dbSkillRows || []).map((s) => [s.id, s]))
+
   const allSkills: ActiveSkill[] = []
   for (const row of readyRows || []) {
     const playerSkillIds = (row.skills as string[]) || []
     for (const skillId of playerSkillIds) {
-      const skill = SKILL_REGISTRY[skillId]
-      if (skill) {
+      const base = SKILL_REGISTRY[skillId]
+      if (base) {
+        const dbOverride = dbSkillMap.get(skillId)
+        const skill = dbOverride ? { ...base, name: dbOverride.name, description: dbOverride.description } : base
         allSkills.push({ skill, activatedBy: row.user_id, roundActivated: targetRound })
       }
     }
