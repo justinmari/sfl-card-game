@@ -132,6 +132,9 @@ export default function LobbyRoom({
         setInitialHp(payload.hp)
         setBattleStarted(true)
       })
+      .on('broadcast', { event: 'ready-change' }, () => {
+        fetchPlayers()
+      })
       .on('broadcast', { event: 'player-joined' }, ({ payload }) => {
         setBattlePlayers((prev) => {
           if (prev.some((p) => p.id === payload.id)) return prev
@@ -189,6 +192,7 @@ export default function LobbyRoom({
     setMyReady(newReady)
     await toggleReady(lobbyId, newReady, selectedDeck ?? undefined, newReady ? deck?.cards : null)
     fetchPlayers()
+    channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: newReady } })
   }
 
   const handleLeave = async () => {
