@@ -546,7 +546,7 @@ export default function ArenaBattle({
                             onClick={() => setLocalSkillIds((prev) => active ? prev.filter((id) => id !== skill.id) : [...prev, skill.id])}
                             className={`w-full rounded-lg border p-3 text-left transition-all ${active ? 'border-pink-500 bg-pink-950/30' : 'border-zinc-700 bg-zinc-800 hover:border-zinc-500'}`}>
                             <div className="flex items-center gap-3">
-                              <div className="w-10 flex-shrink-0"><CompactCard card={card} /></div>
+                              <div className="w-16 flex-shrink-0"><CompactCard card={card} /></div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-pink-400">{skill.name}</span>
