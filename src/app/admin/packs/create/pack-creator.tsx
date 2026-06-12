@@ -44,6 +44,7 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [selected, setSelected] = useState<SelectedCard[]>([])
+  const [isActive, setIsActive] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardSearch, setCardSearch] = useState('')
@@ -148,7 +149,7 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
 
       const { data: pack, error: packError } = await supabase
         .from('packs')
-        .insert({ name, description: description || null, cards_per_pack: cardsPerPack, price, image_url: imageUrl })
+        .insert({ name, description: description || null, cards_per_pack: cardsPerPack, price, image_url: imageUrl, is_active: isActive })
         .select()
         .single()
 
@@ -355,6 +356,16 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
                   <img src={preview} alt="Pack" className="h-10 w-10 rounded object-cover" />
                 )}
               </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-zinc-400">Enabled in shop</label>
+              <button
+                type="button"
+                onClick={() => setIsActive(!isActive)}
+                className={`relative h-6 w-11 rounded-full transition-colors ${isActive ? 'bg-green-600' : 'bg-zinc-700'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${isActive ? 'translate-x-5' : ''}`} />
+              </button>
             </div>
           </div>
 
