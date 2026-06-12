@@ -76,7 +76,7 @@ export async function checkActiveSession(lobbyId: string, userId: string, player
   if (session) {
     const connectedPlayers = (session.connected_players as string[]) || []
     if (connectedPlayers.length === 0) {
-      await supabase.from('arena_sessions').delete().eq('id', session.id)
+      await supabase.rpc('rpc_delete_arena_session', { p_lobby_id: 'arena-lobby' })
       return null
     }
   }
@@ -125,10 +125,12 @@ export async function checkActiveSession(lobbyId: string, userId: string, player
   const updatedPlayers = [...sessionPlayers, newPlayer]
   const hp = await computeHpFromRounds(supabase, session.id, updatedPlayers)
 
-  await supabase.from('arena_sessions').update({
-    players: updatedPlayers,
-    hp,
-  }).eq('id', session.id)
+  // Update session via RPC (players + hp)
+  await supabase.rpc('rpc_update_arena_session', {
+    p_session_id: session.id,
+    p_hp: hp,
+    p_players: updatedPlayers,
+  })
 
   const { data: latestRound } = await supabase
     .from('arena_rounds')
@@ -156,36 +158,21 @@ export async function checkActiveSession(lobbyId: string, userId: string, player
 export async function createArenaSession(lobbyId: string, players: SessionPlayer[]) {
   const supabase = await createClient()
 
-  // Build initial HP map
   const hp: Record<string, number> = {}
   players.forEach((p) => { hp[p.id] = 10 })
 
-  // Clean up only completed/stale sessions (not active ones)
-  await supabase.from('arena_sessions').delete().eq('lobby_id', lobbyId).eq('status', 'done')
-
-  // Try to insert new session (ON CONFLICT ignores if already exists)
-  await supabase
-    .from('arena_sessions')
-    .insert({ lobby_id: lobbyId, players, hp })
-    .select()
-    .maybeSingle()
-
-  // Always read the current session
-  const { data: session } = await supabase
-    .from('arena_sessions')
-    .select('id, seed, players, hp')
-    .eq('lobby_id', lobbyId)
-    .single()
+  // Create session via SECURITY DEFINER RPC (handles cleanup + ON CONFLICT)
+  const { data: session } = await supabase.rpc('rpc_create_arena_session', {
+    p_lobby_id: lobbyId,
+    p_arena_lobby_id: null,
+    p_players: players,
+    p_hp: hp,
+    p_connected_players: players.map((p) => p.id),
+  })
 
   if (!session) return null
-
-  // Return session — round 1 is computed when all players submit ready
-  return {
-    sessionId: session.id,
-    seed: session.seed,
-    players: session.players as SessionPlayer[],
-    hp: session.hp as Record<string, number>,
-  }
+  const s = session as { id: string; seed: number; players: SessionPlayer[]; hp: Record<string, number> }
+  return { sessionId: s.id, seed: s.seed, players: s.players, hp: s.hp }
 }
 
 // Submit ready + skills for a target round
@@ -202,7 +189,7 @@ export async function submitRoundReady(
 
   // Update connected players from caller's live presence data
   if (connectedPlayerIds) {
-    await supabase.from('arena_sessions').update({ connected_players: connectedPlayerIds }).eq('id', sessionId)
+    await supabase.rpc('rpc_update_arena_session', { p_session_id: sessionId, p_connected_players: connectedPlayerIds })
   }
 
   // Upsert ready state
@@ -300,13 +287,13 @@ export async function submitRoundReady(
     allSkills.length > 0 ? allSkills : undefined, rng,
   )
 
-  // Store round (ON CONFLICT ignore)
-  await supabase.from('arena_rounds').insert({
-    session_id: sessionId,
-    round_num: targetRound,
-    result: result as unknown as Record<string, unknown>,
-    skills_used: allSkills as unknown as Record<string, unknown>[],
-  }).maybeSingle()
+  // Store round via SECURITY DEFINER RPC
+  await supabase.rpc('rpc_insert_arena_round', {
+    p_session_id: sessionId,
+    p_round_num: targetRound,
+    p_result: result as unknown as Record<string, unknown>,
+    p_skills_used: allSkills as unknown as Record<string, unknown>[],
+  })
 
   return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: result, skills: allSkills }
 }
@@ -326,25 +313,25 @@ export async function getSessionHp(sessionId: string) {
 // Update HP in session after a round completes
 export async function updateSessionHp(sessionId: string, hp: Record<string, number>) {
   const supabase = await createClient()
-  await supabase.from('arena_sessions').update({ hp }).eq('id', sessionId)
+  await supabase.rpc('rpc_update_arena_session', { p_session_id: sessionId, p_hp: hp })
 }
 
 // Mark session as done
 export async function endArenaSession(sessionId: string) {
   const supabase = await createClient()
-  await supabase.from('arena_sessions').update({ status: 'done' }).eq('id', sessionId)
+  await supabase.rpc('rpc_update_arena_session', { p_session_id: sessionId, p_status: 'done' })
 }
 
 // Clean up session
 export async function cleanupArenaSession(lobbyId: string) {
   const supabase = await createClient()
-  await supabase.from('arena_sessions').delete().eq('lobby_id', lobbyId)
+  await supabase.rpc('rpc_delete_arena_session', { p_lobby_id: lobbyId })
 }
 
 // Update connected players list (called when presence changes)
 export async function updateConnectedPlayers(sessionId: string, connectedIds: string[]) {
   const supabase = await createClient()
-  await supabase.from('arena_sessions').update({ connected_players: connectedIds }).eq('id', sessionId)
+  await supabase.rpc('rpc_update_arena_session', { p_session_id: sessionId, p_connected_players: connectedIds })
 }
 
 // Get matchup preview for a round (pairings only, no full computation)
@@ -378,11 +365,12 @@ export async function getMatchupPreview(sessionId: string, targetRound: number) 
 
   const { pairs, byeId } = randomPair(updated, rng)
 
-  // Store matchups + computed HP
-  await supabase.from('arena_sessions').update({
-    matchups: { round: targetRound, pairs, byeId },
-    hp,
-  }).eq('id', sessionId)
+  // Store matchups + computed HP via RPC
+  await supabase.rpc('rpc_update_arena_session', {
+    p_session_id: sessionId,
+    p_matchups: { round: targetRound, pairs, byeId },
+    p_hp: hp,
+  })
 
   return { pairs, byeId }
 }
