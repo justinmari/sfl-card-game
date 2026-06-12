@@ -616,12 +616,15 @@ export default function ArenaBattle({
           })()}
 
           {/* Waiting for round to be computed */}
-          {battlePhase === 'waiting-for-round' && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center animate-pulse" style={{ minHeight: '12rem' }}>
-              <p className="text-sm text-zinc-400">Waiting for all players...</p>
-              {readyInfo && <p className="mt-2 text-xs text-zinc-500">{readyInfo.readyCount}/{readyInfo.aliveCount} ready</p>}
-            </div>
-          )}
+          {battlePhase === 'waiting-for-round' && (() => {
+            const iAmDead = (displayHp[userId] ?? 0) <= 0
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center animate-pulse" style={{ minHeight: '12rem' }}>
+                <p className="text-sm text-zinc-400">{iAmDead ? 'Waiting for all living players...' : 'Waiting for all players...'}</p>
+                {readyInfo && <p className="mt-2 text-xs text-zinc-500">{readyInfo.readyCount}/{readyInfo.aliveCount} ready</p>}
+              </div>
+            )
+          })()}
 
           {/* Fighting */}
           {battlePhase === 'fighting' && precomputed && (() => {
