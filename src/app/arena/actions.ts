@@ -27,6 +27,39 @@ function buildBattlePlayers(sessionPlayers: SessionPlayer[]): BattlePlayer[] {
   }))
 }
 
+// Compute HP from all played rounds (single source of truth)
+async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createClient>>, sessionId: string, sessionPlayers: SessionPlayer[]) {
+  const hp: Record<string, number> = {}
+  sessionPlayers.forEach((p) => { hp[p.id] = 10 })
+
+  const { data: rounds } = await supabase
+    .from('arena_rounds')
+    .select('result')
+    .eq('session_id', sessionId)
+    .order('round_num')
+
+  if (rounds) {
+    for (const round of rounds) {
+      const result = round.result as RoundResult
+      for (const match of result.matches) {
+        // Apply damage from each face-off, stopping at KO
+        for (const fo of match.faceOffs) {
+          if (result.flags?.healInstead) {
+            hp[match.player1Id] = Math.min(10, (hp[match.player1Id] ?? 0) + fo.damage1)
+            hp[match.player2Id] = Math.min(10, (hp[match.player2Id] ?? 0) + fo.damage2)
+          } else {
+            hp[match.player1Id] = Math.max(0, (hp[match.player1Id] ?? 0) - fo.damage1)
+            hp[match.player2Id] = Math.max(0, (hp[match.player2Id] ?? 0) - fo.damage2)
+          }
+          if (hp[match.player1Id] <= 0 || hp[match.player2Id] <= 0) break
+        }
+      }
+    }
+  }
+
+  return hp
+}
+
 // Create arena session and compute round 1
 export async function createArenaSession(lobbyId: string, players: SessionPlayer[]) {
   const supabase = await createClient()
@@ -66,16 +99,10 @@ export async function submitRoundReady(
   sessionId: string,
   targetRound: number,
   skillIds: string[],
-  currentHp?: Record<string, number>,
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-
-  // Update HP if provided
-  if (currentHp) {
-    await supabase.from('arena_sessions').update({ hp: currentHp }).eq('id', sessionId)
-  }
 
   // Upsert ready state
   await supabase.from('arena_ready').upsert({
@@ -101,14 +128,15 @@ export async function submitRoundReady(
   // Get session (includes stored matchups + connected players)
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('seed, players, hp, matchups, connected_players')
+    .select('seed, players, matchups, connected_players')
     .eq('id', sessionId)
     .single()
 
   if (!session) return null
 
-  const hp = session.hp as Record<string, number>
   const sessionPlayers = session.players as SessionPlayer[]
+  // Compute HP from round history (deterministic, no client dependency)
+  const hp = await computeHpFromRounds(supabase, sessionId, sessionPlayers)
   const connectedIds = new Set((session.connected_players as string[]) || [])
   const aliveIds = sessionPlayers.filter((p) => (hp[p.id] ?? 0) > 0).map((p) => p.id)
   // Only wait for players who are both alive AND connected
@@ -198,7 +226,7 @@ export async function getMatchupPreview(sessionId: string, targetRound: number) 
 
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('seed, players, hp, matchups')
+    .select('seed, players, matchups')
     .eq('id', sessionId)
     .single()
 
@@ -210,9 +238,11 @@ export async function getMatchupPreview(sessionId: string, targetRound: number) 
     return { pairs: stored.pairs, byeId: stored.byeId }
   }
 
-  // Compute and store matchups
-  const hp = session.hp as Record<string, number>
+  // Compute HP from round history (server-side, deterministic)
   const sessionPlayers = session.players as SessionPlayer[]
+  const hp = await computeHpFromRounds(supabase, sessionId, sessionPlayers)
+
+  // Compute and store matchups
   const battlePlayers = buildBattlePlayers(sessionPlayers)
   const rng = createSeededRng(session.seed * 1000 + targetRound)
   const updated = battlePlayers.map((p) => ({
@@ -221,9 +251,10 @@ export async function getMatchupPreview(sessionId: string, targetRound: number) 
 
   const { pairs, byeId } = randomPair(updated, rng)
 
-  // Store in session so submitRoundReady uses the same pairings
+  // Store matchups + computed HP
   await supabase.from('arena_sessions').update({
     matchups: { round: targetRound, pairs, byeId },
+    hp,
   }).eq('id', sessionId)
 
   return { pairs, byeId }

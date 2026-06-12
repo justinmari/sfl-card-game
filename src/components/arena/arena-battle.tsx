@@ -318,9 +318,6 @@ export default function ArenaBattle({
   useEffect(() => {
     if (battlePhase !== 'round-end') return
 
-    // Sync HP to DB immediately so getMatchupPreview has correct values
-    if (isServerMode) updateSessionHp(sessionId!, displayHp)
-
     const gameOver = aliveCount() <= 1
     if (gameOver && isServerMode) endArenaSession(sessionId!)
 
@@ -354,8 +351,6 @@ export default function ArenaBattle({
   // Track target round in a ref so polls always use the latest value
   const targetRoundRef = useRef(roundNum)
   targetRoundRef.current = roundNum
-  const displayHpRef = useRef(displayHp)
-  displayHpRef.current = displayHp
   const localSkillIdsRef = useRef(localSkillIds)
   localSkillIdsRef.current = localSkillIds
 
@@ -372,7 +367,7 @@ export default function ArenaBattle({
 
     const target = targetRoundRef.current
     setBattlePhase('waiting-for-round')
-    const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, displayHpRef.current)
+    const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current)
     if (result) {
       setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
       if (result.allReady && result.round) {
@@ -389,7 +384,7 @@ export default function ArenaBattle({
     if (battlePhase !== 'waiting-for-round' || !isServerMode) return
     const interval = setInterval(async () => {
       const target = targetRoundRef.current
-      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, displayHpRef.current)
+      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current)
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
         if (result.allReady && result.round) {
