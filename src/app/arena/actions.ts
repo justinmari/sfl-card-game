@@ -62,13 +62,13 @@ async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createCli
 }
 
 // Check for active session and join/rejoin
-export async function checkActiveSession(userId: string, playerName: string, avatarUrl: string | null, deck: SessionPlayer['deck']) {
+export async function checkActiveSession(lobbyId: string, userId: string, playerName: string, avatarUrl: string | null, deck: SessionPlayer['deck']) {
   const supabase = await createClient()
 
   const { data: session } = await supabase
     .from('arena_sessions')
     .select('id, seed, players, hp, status, connected_players, created_at')
-    .eq('lobby_id', 'arena-lobby')
+    .eq('arena_lobby_id', lobbyId)
     .eq('status', 'active')
     .maybeSingle()
 

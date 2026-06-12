@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
+import { createClient } from '@/lib/supabase/server'
 import AppNavbar from '@/components/app-navbar'
 
 export default async function DashboardPage() {
@@ -12,6 +13,13 @@ export default async function DashboardPage() {
   if (!profile.full_name) {
     redirect('/setup')
   }
+
+  // Get active lobby count for arena badge
+  const supabase = await createClient()
+  const { count: lobbyCount } = await supabase
+    .from('arena_lobbies')
+    .select('*', { count: 'exact', head: true })
+    .in('status', ['waiting', 'active'])
 
   const isAdmin = profile.role === 'admin'
 
@@ -59,10 +67,15 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <a
             href="/arena"
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
+            className="relative flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
           >
             <span className="text-3xl">⚔️</span>
             <span className="text-sm font-medium">Battle</span>
+            {(lobbyCount ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {lobbyCount}
+              </span>
+            )}
           </a>
 
           <a
