@@ -194,6 +194,28 @@ export default function ArenaLobby({
     }
   }, [userId, userName, avatarUrl])
 
+  // After connecting, check if active session is actually abandoned
+  // (presence shows only us, but session exists from before)
+  useEffect(() => {
+    if (!connected || !activeSession || !battleStarted) return
+    // Give presence a moment to sync, then check
+    const timer = setTimeout(() => {
+      const state = channelRef.current?.presenceState() || {}
+      const presentIds = Object.keys(state)
+      // If we're the only one present, the session is abandoned
+      if (presentIds.length <= 1) {
+        cleanupArenaSession('arena-lobby').catch(() => {})
+        setBattleStarted(false)
+        setBattlePlayers([])
+        setBattleSessionId(null)
+        battleSessionRef.current = null
+        setBattleSeed(null)
+        setStarting(false)
+      }
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [connected, battleStarted])
+
   // Start session via server action — ALL clients call this
   const startSession = async () => {
     setStarting(true)
