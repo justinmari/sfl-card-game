@@ -98,10 +98,10 @@ export async function submitRoundReady(
     return { ready: true, allReady: true, readyCount: 0, aliveCount: 0, round: existingRound.result as RoundResult, skills: (existingRound.skills_used || []) as ActiveSkill[] }
   }
 
-  // Get session
+  // Get session (includes stored matchups)
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('seed, players, hp')
+    .select('seed, players, hp, matchups')
     .eq('id', sessionId)
     .single()
 
@@ -138,6 +138,10 @@ export async function submitRoundReady(
     }
   }
 
+  // Use stored matchups as fixed pairings (same ones shown in skill-select)
+  const storedMatchups = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null } | null
+  const fixedPairings = storedMatchups?.round === targetRound ? { pairs: storedMatchups.pairs, byeId: storedMatchups.byeId } : undefined
+
   // Compute this round
   const battlePlayers = buildBattlePlayers(sessionPlayers)
   const rng = createSeededRng(session.seed * 1000 + targetRound)
@@ -146,7 +150,7 @@ export async function submitRoundReady(
   }))
 
   const result = precomputeRound(
-    updated, hp, targetRound, undefined,
+    updated, hp, targetRound, fixedPairings,
     allSkills.length > 0 ? allSkills : undefined, rng,
   )
 
@@ -189,12 +193,19 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
 
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('seed, players, hp')
+    .select('seed, players, hp, matchups')
     .eq('id', sessionId)
     .single()
 
   if (!session) return null
 
+  // Return stored matchups if already computed for this round
+  const stored = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null } | null
+  if (stored && stored.round === targetRound) {
+    return { pairs: stored.pairs, byeId: stored.byeId }
+  }
+
+  // Compute and store matchups
   const hp = session.hp as Record<string, number>
   const sessionPlayers = session.players as SessionPlayer[]
   const battlePlayers = buildBattlePlayers(sessionPlayers)
@@ -204,5 +215,11 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
   }))
 
   const { pairs, byeId } = randomPair(updated, rng)
+
+  // Store in session so submitRoundReady uses the same pairings
+  await supabase.from('arena_sessions').update({
+    matchups: { round: targetRound, pairs, byeId },
+  }).eq('id', sessionId)
+
   return { pairs, byeId }
 }
