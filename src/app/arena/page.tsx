@@ -41,11 +41,8 @@ export default async function ArenaPage() {
     )
   }
 
-  // Check if already in a lobby → redirect
+  // Check if already in a lobby (don't auto-redirect, show reconnect option)
   const myLobby = await getMyLobby()
-  if (myLobby) {
-    redirect(`/arena/lobby/${myLobby.lobbyId}`)
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -55,6 +52,7 @@ export default async function ArenaPage() {
           userId={profile.id}
           userName={profile.full_name || 'Unknown'}
           avatarUrl={profile.avatar_url || profile.user_metadata?.avatar_url || null}
+          myLobby={myLobby}
         />
       </main>
     </div>

@@ -2,17 +2,27 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { listLobbies, createLobby, joinLobby, type LobbyInfo } from './lobby-actions'
+import { listLobbies, createLobby, joinLobby, leaveLobby, type LobbyInfo } from './lobby-actions'
+
+type MyLobbyInfo = {
+  lobbyId: string
+  status: string
+  hostId: string
+  name: string
+} | null
 
 export default function ArenaLobbyList({
   userId,
   userName,
   avatarUrl,
+  myLobby: initialMyLobby,
 }: {
   userId: string
   userName: string
   avatarUrl: string | null
+  myLobby?: MyLobbyInfo
 }) {
+  const [myLobby, setMyLobby] = useState<MyLobbyInfo>(initialMyLobby ?? null)
   const [lobbies, setLobbies] = useState<LobbyInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -96,8 +106,41 @@ export default function ArenaLobbyList({
         <div className="mb-4 rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300 text-center">{error}</div>
       )}
 
+      {/* Reconnect banner */}
+      {myLobby && (
+        <div className="mb-6 rounded-xl border border-amber-800 bg-amber-950/20 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-amber-400">You&apos;re in a lobby</h4>
+              <p className="mt-1 text-xs text-zinc-400">
+                <span className="text-white font-medium">{myLobby.name}</span>
+                <span className="ml-2 text-zinc-500">({myLobby.status === 'active' ? 'In Game' : 'Waiting'})</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push(`/arena/lobby/${myLobby.lobbyId}`)}
+                className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500"
+              >
+                Rejoin
+              </button>
+              <button
+                onClick={async () => {
+                  await leaveLobby(myLobby.lobbyId)
+                  setMyLobby(null)
+                  fetchLobbies()
+                }}
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create lobby */}
-      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      {!myLobby && <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <h3 className="mb-3 text-sm font-medium text-zinc-400">Create a Lobby</h3>
         <div className="flex gap-3">
           <input
@@ -116,7 +159,7 @@ export default function ArenaLobbyList({
             {creating ? 'Creating...' : 'Create'}
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Lobby list */}
       <div className="mb-4 flex items-center justify-between">
@@ -157,7 +200,7 @@ export default function ArenaLobbyList({
                 </div>
                 <button
                   onClick={() => handleJoin(lobby.id)}
-                  disabled={joining === lobby.id || lobby.player_count >= lobby.max_players}
+                  disabled={!!myLobby || joining === lobby.id || lobby.player_count >= lobby.max_players}
                   className="rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30"
                 >
                   {joining === lobby.id ? 'Joining...' : 'Join'}
@@ -178,7 +221,7 @@ export default function ArenaLobbyList({
                 </div>
                 <button
                   onClick={() => handleJoin(lobby.id)}
-                  disabled={joining === lobby.id}
+                  disabled={!!myLobby || joining === lobby.id}
                   className="rounded-lg border border-zinc-700 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
                 >
                   {joining === lobby.id ? 'Joining...' : 'Spectate'}
