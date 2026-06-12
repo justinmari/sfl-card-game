@@ -233,12 +233,27 @@ export function precomputeRound(
 ): RoundResult {
   const { pairs, byeId } = fixedPairings || randomPair(players, rng)
 
+  // Gift Exchange: pool all alive players' cards, shuffle, redistribute
+  let giftDecks: Map<string, BattleCard[]> | null = null
+  if (activeSkills?.some((s) => s.skill.effect.type === 'gift-exchange')) {
+    const alivePlayers = players.filter((p) => !p.eliminated)
+    const allCards = alivePlayers.flatMap((p) => [...p.deck]).sort((a, b) => a.id.localeCompare(b.id))
+    const shuffled = shuffle(allCards, rng)
+    giftDecks = new Map()
+    let cardIdx = 0
+    for (const p of alivePlayers) {
+      const dealt = shuffled.slice(cardIdx, cardIdx + 5)
+      giftDecks.set(p.id, dealt.length === 5 ? dealt : [...dealt, ...p.deck.slice(dealt.length)])
+      cardIdx += 5
+    }
+  }
+
   const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
     const p2 = players.find((p) => p.id === id2)!
-    // Sort decks by card ID for canonical order before shuffling
-    const deck1 = shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
-    const deck2 = shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    // Use gift-exchange decks if active, otherwise normal decks
+    const deck1 = giftDecks?.get(id1) || shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const deck2 = giftDecks?.get(id2) || shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
     const faceOffs: FaceOff[] = []
 
     // Filter skills relevant to this match

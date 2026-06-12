@@ -10,6 +10,7 @@ export type SkillEffect =
   | { type: 'big-dice'; range: number }
   | { type: 'heal-instead' }
   | { type: 'visual'; css: string }
+  | { type: 'gift-exchange' }
 
 export type Skill = {
   id: string

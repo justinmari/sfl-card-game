@@ -10,6 +10,7 @@ export { SKILL_REVERSE_UNO } from './reverse-uno'
 export { SKILL_UNDERDOG } from './underdog'
 export { SKILL_HEAL_INSTEAD } from './heal-instead'
 export { SKILL_BROWN_TINT } from './brown-tint'
+export { SKILL_GIFT_EXCHANGE } from './gift-exchange'
 
 import type { Skill } from './types'
 import { SKILL_DOUBLE_EDGE } from './double-edge'
@@ -23,6 +24,7 @@ import { SKILL_REVERSE_UNO } from './reverse-uno'
 import { SKILL_UNDERDOG } from './underdog'
 import { SKILL_HEAL_INSTEAD } from './heal-instead'
 import { SKILL_BROWN_TINT } from './brown-tint'
+import { SKILL_GIFT_EXCHANGE } from './gift-exchange'
 
 // Registry — maps DB skill IDs to full definitions
 // Add new skills here after creating their file
@@ -38,6 +40,7 @@ export const SKILL_REGISTRY: Record<string, Skill> = {
   'underdog': SKILL_UNDERDOG,
   'heal-instead': SKILL_HEAL_INSTEAD,
   'brown-tint': SKILL_BROWN_TINT,
+  'gift-exchange': SKILL_GIFT_EXCHANGE,
 }
 
 // Resolve skill IDs from DB into full Skill objects
