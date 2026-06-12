@@ -209,6 +209,10 @@ export default function ArenaLobby({
 
   // Start session via server action — ALL clients call this
   const startSession = async () => {
+    // Don't start if not everyone is ready (new player may have joined)
+    if (lobbyPlayers.length < 2 || !lobbyPlayers.every((p) => p.ready)) {
+      return
+    }
     setStarting(true)
     const gamePlayers = lobbyPlayers.map((lp) => ({
       id: lp.id,
