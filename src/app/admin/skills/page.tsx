@@ -16,7 +16,7 @@ export default async function AdminSkillsPage() {
 
   const { data: allCards } = await supabase
     .from('cards')
-    .select('id, name, rarity')
+    .select('id, name, rarity, image_url')
     .order('name')
 
   return (
@@ -24,7 +24,7 @@ export default async function AdminSkillsPage() {
       <AppNavbar backHref="/dashboard" title="Manage Skills" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <SkillList skills={skills || []} allCards={(allCards || []) as { id: string; name: string; rarity: string }[]} />
+        <SkillList skills={skills || []} allCards={(allCards || []) as { id: string; name: string; rarity: string; image_url: string | null }[]} />
       </main>
     </div>
   )

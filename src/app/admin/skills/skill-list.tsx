@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import CompactCard from '@/components/compact-card'
 
 type SkillCard = { card_id: string; cards: { name: string; rarity: string } | null }
 type Skill = {
@@ -12,7 +13,7 @@ type Skill = {
   card_skills: SkillCard[]
 }
 
-type CardOption = { id: string; name: string; rarity: string }
+type CardOption = { id: string; name: string; rarity: string; image_url: string | null }
 
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
@@ -156,22 +157,26 @@ export default function SkillList({ skills, allCards }: { skills: Skill[]; allCa
                       placeholder="Search cards to assign..."
                       className="mb-2 w-full rounded-lg border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
                     />
-                    <div className="max-h-40 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-800">
-                      {filteredCards.map((card) => {
-                        const assigned = editCardIds.has(card.id)
-                        return (
-                          <button
-                            key={card.id}
-                            onClick={() => toggleCard(card.id)}
-                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-700 ${assigned ? 'bg-pink-950/20' : ''}`}
-                          >
-                            <span className={`font-medium ${rarityTextColor[card.rarity] || 'text-zinc-300'}`}>
-                              {card.name}
-                            </span>
-                            {assigned && <span className="text-xs text-pink-400">Assigned</span>}
-                          </button>
-                        )
-                      })}
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-800 p-2">
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                        {filteredCards.map((card) => {
+                          const assigned = editCardIds.has(card.id)
+                          return (
+                            <button
+                              key={card.id}
+                              onClick={() => toggleCard(card.id)}
+                              className={`relative rounded-lg transition-all ${
+                                assigned ? 'ring-2 ring-pink-500 ring-offset-1 ring-offset-zinc-800' : 'hover:opacity-80'
+                              }`}
+                            >
+                              <CompactCard card={card} />
+                              {assigned && (
+                                <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-pink-500 text-[8px] font-bold text-white">✓</div>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
                       {filteredCards.length === 0 && (
                         <p className="px-3 py-2 text-xs text-zinc-500">No cards found</p>
                       )}

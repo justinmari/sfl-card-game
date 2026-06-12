@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
+import CompactCard from '@/components/compact-card'
 
 type Card = {
   id: string
@@ -173,7 +174,7 @@ export default function ProfileForm({
         </div>
 
         {/* Current top cards */}
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:justify-center">
+        <div className="mb-4 grid grid-cols-4 gap-2 sm:flex sm:justify-center">
           {[0, 1, 2, 3].map((i) => {
             const card = topCards[i]
             return card ? (
@@ -211,8 +212,8 @@ export default function ProfileForm({
               placeholder="Search cards..."
               className="mb-3 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
             />
-            <div className="max-h-64 overflow-y-auto">
-              <div className="flex flex-wrap gap-2">
+            <div className="max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                 {filteredCards.map((card) => {
                   const isSelected = selectedCards.includes(card.id)
                   return (
@@ -221,16 +222,20 @@ export default function ProfileForm({
                       type="button"
                       onClick={() => toggleCard(card.id)}
                       disabled={!isSelected && selectedCards.length >= 4}
-                      className={`relative rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                      className={`relative rounded-lg transition-all ${
                         isSelected
-                          ? 'border-green-500 bg-green-950/30 text-white'
+                          ? 'ring-2 ring-green-500 ring-offset-1 ring-offset-zinc-900'
                           : selectedCards.length >= 4
-                            ? 'border-zinc-800 text-zinc-600 cursor-not-allowed'
-                            : 'border-zinc-700 text-zinc-300 hover:border-zinc-500'
+                            ? 'opacity-30 cursor-not-allowed'
+                            : 'hover:opacity-80'
                       }`}
                     >
-                      {card.name}
-                      {isSelected && <span className="ml-2 text-green-400">✓</span>}
+                      <CompactCard card={card} />
+                      {isSelected && (
+                        <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] font-bold text-white">
+                          ✓
+                        </div>
+                      )}
                     </button>
                   )
                 })}
