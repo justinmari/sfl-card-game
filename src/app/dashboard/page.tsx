@@ -70,7 +70,7 @@ export default async function DashboardPage() {
             className="relative flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
           >
             <span className="text-3xl">⚔️</span>
-            <span className="text-sm font-medium">Battle</span>
+            <span className="text-sm font-medium">Arena</span>
             {(lobbyCount ?? 0) > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                 {lobbyCount}
@@ -85,6 +85,61 @@ export default async function DashboardPage() {
             <span className="text-3xl">📋</span>
             <span className="text-sm font-medium">Decks</span>
           </a>
+        </div>
+
+        {/* How to Play */}
+        <h3 className="mb-4 mt-10 text-lg font-semibold text-zinc-300">How to Play Arena</h3>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400 space-y-3">
+          <div className="flex gap-3">
+            <span className="text-lg">1️⃣</span>
+            <p><span className="text-white font-medium">Build a Deck</span> — Go to Decks and create a deck with 5 cards. Higher rarity cards have more stars (power).</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="text-lg">2️⃣</span>
+            <p><span className="text-white font-medium">Join or Create a Lobby</span> — Head to Arena, create a lobby or join an existing one. The host starts the game when everyone is ready.</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="text-lg">3️⃣</span>
+            <p><span className="text-white font-medium">Battle!</span> — Each round, you&apos;re matched against another player. Your 5 cards face off one by one. Higher total (stars + dice roll) wins each face-off and deals damage.</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="text-lg">4️⃣</span>
+            <p><span className="text-white font-medium">Use Skills</span> — Secret Rare cards have special skills you can activate before a round. Skills affect both players — use them wisely!</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="text-lg">5️⃣</span>
+            <p><span className="text-white font-medium">Last One Standing</span> — Everyone starts with 10 HP. Get KO&apos;d and you&apos;re out. Last player alive wins!</p>
+          </div>
+        </div>
+
+        {/* Changelog */}
+        <h3 className="mb-4 mt-10 text-lg font-semibold text-zinc-300">Changelog</h3>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 text-sm space-y-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-amber-400">NEW</span>
+              <span className="text-xs text-zinc-500">Arena Update</span>
+            </div>
+            <ul className="list-disc list-inside text-zinc-400 space-y-1">
+              <li>Multi-lobby system — create or join lobbies</li>
+              <li>Host controls — the lobby creator starts the game</li>
+              <li>Card skills — Secret Rare cards have special abilities</li>
+              <li>Spectator mode — join active games as a spectator</li>
+              <li>Reconnect support — rejoin if you disconnect</li>
+              <li>Server-computed battles — fair and cheat-proof</li>
+            </ul>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-zinc-500">Previous</span>
+            </div>
+            <ul className="list-disc list-inside text-zinc-400 space-y-1">
+              <li>Card collection with pack opening animations</li>
+              <li>Daily Gruten claims</li>
+              <li>Player profiles and friends page</li>
+              <li>Deck builder with 3 deck slots</li>
+            </ul>
+          </div>
         </div>
 
         {isAdmin && (
