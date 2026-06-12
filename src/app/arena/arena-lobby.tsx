@@ -100,8 +100,16 @@ export default function ArenaLobby({
     }
     setInitialHp(activeSession.hp)
     setBattleStarted(true)
+    // Broadcast join after channel is connected
+    pendingJoinRef.current = {
+      id: userId,
+      name: userName,
+      avatar_url: avatarUrl,
+      hp: activeSession.hp[userId] ?? 0,
+    }
   }, [])
 
+  const pendingJoinRef = useRef<{ id: string; name: string; avatar_url: string | null; hp: number } | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const battleSessionRef = useRef<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -124,6 +132,16 @@ export default function ArenaLobby({
     })
 
     channel
+      .on('broadcast', { event: 'player-joined' }, ({ payload }) => {
+        // Add new player to battle (if not already present)
+        setBattlePlayers((prev) => {
+          if (prev.some((p) => p.id === payload.id)) return prev
+          return [...prev, {
+            id: payload.id, name: payload.name, avatar_url: payload.avatar_url,
+            deck: [], hp: payload.hp ?? 0, eliminated: (payload.hp ?? 0) <= 0,
+          }]
+        })
+      })
       .on('broadcast', { event: 'chat' }, ({ payload }) => {
         setMessages((prev) => [...prev.slice(-50), payload as ChatMessage])
       })
@@ -160,6 +178,11 @@ export default function ArenaLobby({
         if (status === 'SUBSCRIBED') {
           await channel.track({ name: userName, avatar_url: avatarUrl, joined_at: joinedAtRef.current })
           setConnected(true)
+          // Send pending join broadcast (reconnect/spectator)
+          if (pendingJoinRef.current) {
+            channel.send({ type: 'broadcast', event: 'player-joined', payload: pendingJoinRef.current })
+            pendingJoinRef.current = null
+          }
         }
       })
 

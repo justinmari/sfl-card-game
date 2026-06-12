@@ -61,7 +61,23 @@ export default function ArenaBattle({
   const getLocalRng = (round: number) => seed != null ? createSeededRng(seed * 1000 + round) : undefined
 
   const [phase, setPhase] = useState<'battle' | 'done'>('battle')
-  const [players] = useState<BattlePlayer[]>(initialPlayers)
+  const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers)
+
+  // React to new players joining (reconnect/spectator)
+  useEffect(() => {
+    setPlayers((prev) => {
+      const newPlayers = initialPlayers.filter((p) => !prev.some((ep) => ep.id === p.id))
+      if (newPlayers.length === 0) return prev
+      // Add new players and set their HP
+      const updated = [...prev, ...newPlayers]
+      setDisplayHp((hp) => {
+        const copy = { ...hp }
+        newPlayers.forEach((p) => { if (!(p.id in copy)) copy[p.id] = p.hp ?? 0 })
+        return copy
+      })
+      return updated
+    })
+  }, [initialPlayers.length])
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
   const [roundNum, setRoundNum] = useState(initialRoundNum ?? 1)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(initialRound ?? null)
