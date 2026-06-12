@@ -67,10 +67,20 @@ export async function checkActiveSession(userId: string, playerName: string, ava
 
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('id, seed, players, hp, status')
+    .select('id, seed, players, hp, status, connected_players, created_at')
     .eq('lobby_id', 'arena-lobby')
     .eq('status', 'active')
     .maybeSingle()
+
+  // Clean up stale sessions with no connected players (older than 1 min)
+  if (session) {
+    const connectedPlayers = (session.connected_players as string[]) || []
+    const ageMs = Date.now() - new Date(session.created_at).getTime()
+    if (connectedPlayers.length === 0 && ageMs > 60000) {
+      await supabase.from('arena_sessions').delete().eq('id', session.id)
+      return null
+    }
+  }
 
   if (!session) return null
 
