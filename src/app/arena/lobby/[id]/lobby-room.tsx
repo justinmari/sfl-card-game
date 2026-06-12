@@ -8,7 +8,7 @@ import type { BattlePlayer, BattleCard, RoundResult } from '@/lib/battle-engine'
 import { resolveSkills, starCount } from '@/lib/battle-engine'
 import type { ActiveSkill } from '@/lib/skills'
 import { leaveLobby, toggleReady, kickPlayer, startGame } from '@/app/arena/lobby-actions'
-import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview, updateConnectedPlayers, checkActiveSession } from '@/app/arena/actions'
+import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview, updateConnectedPlayers, checkActiveSession, getSessionHp } from '@/app/arena/actions'
 import ArenaBattle from '@/components/arena/arena-battle'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -86,33 +86,40 @@ export default function LobbyRoom({
   // Set up battle from active session on mount
   useEffect(() => {
     if (!activeSession) return
-    const bp: BattlePlayer[] = activeSession.players.map((p: any) => ({
-      id: p.id, name: p.name, avatar_url: p.avatar_url,
-      deck: attachSkills(p.deck || []),
-      hp: activeSession.hp[p.id] ?? 0,
-      eliminated: (activeSession.hp[p.id] ?? 0) <= 0,
-    }))
-    setBattlePlayers(bp)
-    setBattleSessionId(activeSession.sessionId)
-    setBattleSeed(activeSession.seed)
-    setInitialHp(activeSession.hp)
 
-    // Get latest round, THEN enter battle
-    const supabase = createClient()
-    supabase.from('arena_rounds')
-      .select('round_num, result, skills_used')
-      .eq('session_id', activeSession.sessionId)
-      .order('round_num', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setInitialRoundNum(data.round_num)
-          setInitialRound(data.result as RoundResult)
-          setInitialSkills((data.skills_used || []) as ActiveSkill[])
-        }
-        setBattleStarted(true)
-      })
+    const setup = async () => {
+      // Fetch fresh HP from round history (server-computed, always accurate)
+      const freshHp = await getSessionHp(activeSession.sessionId) || activeSession.hp
+
+      const bp: BattlePlayer[] = activeSession.players.map((p: any) => ({
+        id: p.id, name: p.name, avatar_url: p.avatar_url,
+        deck: attachSkills(p.deck || []),
+        hp: freshHp[p.id] ?? 0,
+        eliminated: (freshHp[p.id] ?? 0) <= 0,
+      }))
+      setBattlePlayers(bp)
+      setBattleSessionId(activeSession.sessionId)
+      setBattleSeed(activeSession.seed)
+      setInitialHp(freshHp)
+
+      // Get latest round
+      const supabase = createClient()
+      const { data } = await supabase.from('arena_rounds')
+        .select('round_num, result, skills_used')
+        .eq('session_id', activeSession.sessionId)
+        .order('round_num', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (data) {
+        setInitialRoundNum(data.round_num)
+        setInitialRound(data.result as RoundResult)
+        setInitialSkills((data.skills_used || []) as ActiveSkill[])
+      }
+      setBattleStarted(true)
+    }
+
+    setup()
   }, [])
 
   // Realtime channel for lobby

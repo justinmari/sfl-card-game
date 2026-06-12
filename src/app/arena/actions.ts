@@ -302,6 +302,18 @@ export async function submitRoundReady(
   return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: result, skills: allSkills }
 }
 
+// Get fresh HP computed from round history
+export async function getSessionHp(sessionId: string) {
+  const supabase = await createClient()
+  const { data: session } = await supabase
+    .from('arena_sessions')
+    .select('players')
+    .eq('id', sessionId)
+    .single()
+  if (!session) return null
+  return computeHpFromRounds(supabase, sessionId, session.players as SessionPlayer[])
+}
+
 // Update HP in session after a round completes
 export async function updateSessionHp(sessionId: string, hp: Record<string, number>) {
   const supabase = await createClient()
