@@ -75,14 +75,11 @@ export default function ArenaBattle({
   const rafRef = useRef<number>(0)
   const appliedRef = useRef<Set<number>>(new Set())
 
-  const introMatchups = precomputed ? {
+  // Matchups: prefer precomputed result, then server preview, then null
+  const introMatchups: { pairs: [string, string][]; byeId: string | null } | null = precomputed ? {
     pairs: precomputed.matches.map((m): [string, string] => [m.player1Id, m.player2Id]),
     byeId: precomputed.byePlayerId,
-  } : (() => {
-    // Preview from seed before round is computed
-    const rng = seed != null ? createSeededRng(seed * 1000 + roundNum) : undefined
-    return randomPair(initialPlayers.map((p) => ({ ...p, hp: displayHp[p.id] ?? 10, eliminated: (displayHp[p.id] ?? 10) <= 0 })), rng)
-  })()
+  } : matchupPreview
 
   const aliveCount = () => Object.values(displayHp).filter((hp) => hp > 0).length
   const clearTimer = () => {
@@ -441,7 +438,7 @@ export default function ArenaBattle({
           </div>
 
           {/* Round intro */}
-          {battlePhase === 'round-intro' && (() => {
+          {battlePhase === 'round-intro' && introMatchups && (() => {
             const myPair = introMatchups.pairs.find(([a, b]) => a === userId || b === userId)
             const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
             const otherPairs = introMatchups.pairs.filter(([a, b]) => a !== userId && b !== userId)
