@@ -102,13 +102,13 @@ export default function ArenaLobby({
     }
     setInitialHp(session.hp)
     setBattleStarted(true)
-    pendingJoinRef.current = {
-      id: userId, name: userName, avatar_url: avatarUrl,
-      hp: session.hp[userId] ?? 0,
-    }
+    // Broadcast join to other clients
+    channelRef.current?.send({
+      type: 'broadcast', event: 'player-joined',
+      payload: { id: userId, name: userName, avatar_url: avatarUrl, hp: session.hp[userId] ?? 0 },
+    })
   }
 
-  const pendingJoinRef = useRef<{ id: string; name: string; avatar_url: string | null; hp: number } | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const battleSessionRef = useRef<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -177,11 +177,6 @@ export default function ArenaLobby({
         if (status === 'SUBSCRIBED') {
           await channel.track({ name: userName, avatar_url: avatarUrl, joined_at: joinedAtRef.current })
           setConnected(true)
-          // Send pending join broadcast (reconnect/spectator)
-          if (pendingJoinRef.current) {
-            channel.send({ type: 'broadcast', event: 'player-joined', payload: pendingJoinRef.current })
-            pendingJoinRef.current = null
-          }
         }
       })
 
