@@ -61,6 +61,7 @@ export default function LobbyRoom({
   const [chatInput, setChatInput] = useState('')
   const [leaving, setLeaving] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Battle state
   const [isRejoiningGame, setIsRejoiningGame] = useState(!!activeSession)
@@ -245,6 +246,7 @@ export default function LobbyRoom({
       setInitialHp(result.hp ?? null)
       setBattleStarted(true)
     } else {
+      setError(result && 'error' in result ? result.error : 'Failed to start game')
       setStarting(false)
     }
   }
@@ -307,6 +309,10 @@ export default function LobbyRoom({
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
           <span className="text-4xl font-black text-white animate-pulse">Starting...</span>
         </div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300 text-center">{error}</div>
       )}
 
       {/* Players */}

@@ -274,10 +274,11 @@ export async function startGame(lobbyId: string) {
   await supabase.from('arena_lobbies').update({ status: 'active' }).eq('id', lobbyId)
 
   // Clean up any old session via RPC
-  await supabase.rpc('rpc_delete_arena_session_by_lobby', { p_arena_lobby_id: lobbyId })
+  const { error: deleteErr } = await supabase.rpc('rpc_delete_arena_session_by_lobby', { p_arena_lobby_id: lobbyId })
+  if (deleteErr) return { error: `Cleanup failed: ${deleteErr.message}` }
 
   // Create session via RPC
-  const { data: sessionData } = await supabase.rpc('rpc_create_arena_session', {
+  const { data: sessionData, error: createErr } = await supabase.rpc('rpc_create_arena_session', {
     p_lobby_id: lobbyId,
     p_arena_lobby_id: lobbyId,
     p_players: sessionPlayers,
@@ -285,8 +286,9 @@ export async function startGame(lobbyId: string) {
     p_connected_players: players.map((p) => p.user_id),
   })
 
+  if (createErr) return { error: `Session creation failed: ${createErr.message}` }
   const session = sessionData as { id: string; seed: number } | null
-  if (!session) return { error: 'Failed to create session' }
+  if (!session) return { error: 'Failed to create session (null response)' }
 
   return {
     sessionId: session.id,
