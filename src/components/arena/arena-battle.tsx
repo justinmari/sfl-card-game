@@ -499,30 +499,19 @@ export default function ArenaBattle({
 
           {/* Skill select (before round is computed) */}
           {battlePhase === 'skill-select' && (() => {
-            const myPair = introMatchups.pairs.find(([a, b]) => a === userId || b === userId)
-            const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
-            const availableSkills = opponentId ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
+            const isAlive = (displayHp[userId] ?? 0) > 0
+            const availableSkills = isAlive ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
-                {opponentId ? (
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '10rem' }}>
-                    <div className="text-xs text-zinc-500 mb-4">Round {roundNum} — Choose Skills</div>
-                    <div className="text-2xl font-black">
-                      <span className="text-amber-400">You</span>
-                      <span className="mx-3 text-zinc-600">VS</span>
-                      <span className="text-white">{getPlayer(opponentId)?.name}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`rounded-xl border ${(displayHp[userId] ?? 0) <= 0 ? 'border-zinc-800 bg-zinc-900' : 'border-amber-800 bg-amber-950/20'} p-8 text-center`}>
-                    <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
-                    {(displayHp[userId] ?? 0) <= 0
-                      ? <><p className="text-sm text-red-400 font-medium">You have been eliminated</p><p className="text-xs text-zinc-500 mt-1">Spectating remaining matches</p></>
-                      : <span className="text-lg text-amber-400">You have a pass this round</span>
-                    }
-                  </div>
-                )}
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '10rem' }}>
+                  <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
+                  {isAlive ? (
+                    <div className="text-xl font-bold text-white">Prepare for Battle</div>
+                  ) : (
+                    <><p className="text-sm text-red-400 font-medium">You have been eliminated</p><p className="text-xs text-zinc-500 mt-1">Spectating remaining matches</p></>
+                  )}
+                </div>
 
                 {availableSkills.length > 0 && (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
