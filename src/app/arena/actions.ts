@@ -120,11 +120,19 @@ export async function submitRoundReady(
     .eq('is_ready', true)
 
   const readyIds = new Set((readyRows || []).map((r) => r.user_id))
-  const allReady = aliveIds.every((id) => readyIds.has(id))
+  let allReady = aliveIds.every((id) => readyIds.has(id))
 
-  if (!allReady) {
+  // Check if deadline has passed — auto-ready missing players
+  const matchupData = session.matchups as { round: number; deadline?: string } | null
+  const deadline = matchupData?.deadline ? new Date(matchupData.deadline) : null
+  const deadlinePassed = deadline && new Date() > deadline
+
+  if (!allReady && !deadlinePassed) {
     return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: aliveIds.length }
   }
+
+  // If deadline passed, treat all alive players as ready (missing ones forfeit skills)
+  if (deadlinePassed) allReady = true
 
   // Collect all skills from ready players
   const allSkills: ActiveSkill[] = []
@@ -200,7 +208,7 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
   if (!session) return null
 
   // Return stored matchups if already computed for this round
-  const stored = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null } | null
+  const stored = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null; deadline?: string } | null
   if (stored && stored.round === targetRound) {
     return { pairs: stored.pairs, byeId: stored.byeId }
   }
@@ -216,9 +224,10 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
 
   const { pairs, byeId } = randomPair(updated, rng)
 
-  // Store in session so submitRoundReady uses the same pairings
+  // Store in session with deadline (30s from now for skill selection + buffer)
+  const deadline = new Date(Date.now() + 30000).toISOString()
   await supabase.from('arena_sessions').update({
-    matchups: { round: targetRound, pairs, byeId },
+    matchups: { round: targetRound, pairs, byeId, deadline },
   }).eq('id', sessionId)
 
   return { pairs, byeId }
