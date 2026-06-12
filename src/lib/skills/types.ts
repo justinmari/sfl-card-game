@@ -11,6 +11,7 @@ export type SkillEffect =
   | { type: 'heal-instead' }
   | { type: 'visual'; css: string }
   | { type: 'gift-exchange' }
+  | { type: 'promote-rarity'; from: string; to: string }
 
 export type Skill = {
   id: string

@@ -101,6 +101,11 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
         s1 = starCount[e.rarity] || 1
         s2 = starCount[e.rarity] || 1
       }
+      // Promote rarity: change one rarity to another
+      if (e.type === 'promote-rarity') {
+        if (card1.rarity === e.from) s1 = starCount[e.to] || s1
+        if (card2.rarity === e.from) s2 = starCount[e.to] || s2
+      }
     }
   }
 
