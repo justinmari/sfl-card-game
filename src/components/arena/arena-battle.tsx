@@ -175,7 +175,7 @@ export default function ArenaBattle({
           if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
           setTimeout(() => {
             if (isServerMode) {
-              handleReadyUp()
+              handleReadyUpRef.current()
             } else {
               // Local mode: compute round directly
               const updated = players.map((p) => ({ ...p, hp: displayHp[p.id] ?? 0, eliminated: (displayHp[p.id] ?? 0) <= 0 }))
@@ -338,10 +338,13 @@ export default function ArenaBattle({
   useEffect(() => { return clearTimer }, [])
 
   // Submit ready to server
-  // Target round for ready submission
-  // During skill-select: submit for current roundNum
-  // During round-end: submit for roundNum + 1 (next round)
-  const getTargetRound = () => battlePhase === 'skill-select' || battlePhase === 'waiting-for-round' ? roundNum : roundNum + 1
+  // Track target round in a ref so polls always use the latest value
+  const targetRoundRef = useRef(roundNum)
+  targetRoundRef.current = roundNum
+  const displayHpRef = useRef(displayHp)
+  displayHpRef.current = displayHp
+  const localSkillIdsRef = useRef(localSkillIds)
+  localSkillIdsRef.current = localSkillIds
 
   const handleReadyUp = async () => {
     if (myReady) return
@@ -354,9 +357,9 @@ export default function ArenaBattle({
       return
     }
 
-    const target = getTargetRound()
+    const target = targetRoundRef.current
     setBattlePhase('waiting-for-round')
-    const result = await submitRoundReady(sessionId!, target, localSkillIds, displayHp)
+    const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, displayHpRef.current)
     if (result) {
       setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
       if (result.allReady && result.round) {
@@ -365,12 +368,15 @@ export default function ArenaBattle({
     }
   }
 
+  const handleReadyUpRef = useRef(handleReadyUp)
+  handleReadyUpRef.current = handleReadyUp
+
   // Poll for ready status while waiting (server mode only)
   useEffect(() => {
     if (battlePhase !== 'waiting-for-round' || !isServerMode) return
-    const target = getTargetRound()
     const interval = setInterval(async () => {
-      const result = await submitRoundReady(sessionId!, target, localSkillIds, displayHp)
+      const target = targetRoundRef.current
+      const result = await submitRoundReady(sessionId!, target, localSkillIdsRef.current, displayHpRef.current)
       if (result) {
         setReadyInfo({ readyCount: result.readyCount ?? 0, aliveCount: result.aliveCount ?? 0 })
         if (result.allReady && result.round) {
