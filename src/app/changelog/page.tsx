@@ -10,7 +10,7 @@ export default async function ChangelogPage() {
   const supabase = await createClient()
   const { data: logs } = await supabase
     .from('changelogs')
-    .select('id, title, content, created_at')
+    .select('id, version, title, content, created_at')
     .order('created_at', { ascending: false })
 
   return (
@@ -27,7 +27,8 @@ export default async function ChangelogPage() {
             {logs.map((log, i) => (
               <div key={log.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
                 <div className="mb-2 flex items-center gap-2">
-                  {i === 0 && <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white">NEW</span>}
+                  {i === 0 && <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white">LATEST</span>}
+                  {log.version && <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] font-mono text-zinc-300">v{log.version}</span>}
                   <h3 className="text-sm font-bold text-white">{log.title}</h3>
                 </div>
                 <p className="text-sm text-zinc-400 whitespace-pre-wrap">{log.content}</p>
