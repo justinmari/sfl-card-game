@@ -209,7 +209,13 @@ export default function LobbyRoom({
   }
 
   const handleStartGame = async () => {
+    if (!selectedDeck) return
     setStarting(true)
+    // Save host's deck to DB before starting
+    const deck = legalDecks.find((d) => d.slot === selectedDeck)
+    if (deck) {
+      await toggleReady(lobbyId, true, selectedDeck, deck.cards)
+    }
     const result = await startGame(lobbyId)
     if (result && 'sessionId' in result) {
       channelRef.current?.send({
@@ -243,7 +249,7 @@ export default function LobbyRoom({
 
   const secretRareCount = (deck: DeckOption) => deck.cards.filter((c) => c.rarity === 'secret_rare').length
   const othersReady = players.filter((p) => p.user_id !== userId).every((p) => p.is_ready)
-  const canStart = isHost && players.length >= 2 && othersReady
+  const canStart = isHost && players.length >= 2 && othersReady && selectedDeck !== null
 
   // === BATTLE VIEW ===
   if (battleStarted && battlePlayers.length > 0 && battleSessionId) {
@@ -405,7 +411,7 @@ export default function LobbyRoom({
           <>
             <button onClick={handleStartGame} disabled={!canStart || starting}
               className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
-              {starting ? 'Starting...' : canStart ? 'Start Game' : players.length < 2 ? 'Need 2+ players' : 'Waiting for players to ready up'}
+              {starting ? 'Starting...' : canStart ? 'Start Game' : !selectedDeck ? 'Select a deck first' : players.length < 2 ? 'Need 2+ players' : 'Waiting for players to ready up'}
             </button>
             <button onClick={handleLeave} disabled={leaving}
               className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-400 hover:bg-zinc-800 disabled:opacity-50">
