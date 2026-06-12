@@ -84,7 +84,7 @@ export default function ArenaBattle({
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
   const [roundNum, setRoundNum] = useState(initialRoundNum ?? 1)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(initialRound ?? null)
-  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isReconnect ? 'fighting' : 'skill-select')
+  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isReconnect ? 'waiting-for-round' : 'skill-select')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
