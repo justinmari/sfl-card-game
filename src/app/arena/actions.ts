@@ -72,11 +72,10 @@ export async function checkActiveSession(userId: string, playerName: string, ava
     .eq('status', 'active')
     .maybeSingle()
 
-  // Clean up stale sessions with no connected players (older than 1 min)
+  // Clean up stale sessions with no connected players
   if (session) {
     const connectedPlayers = (session.connected_players as string[]) || []
-    const ageMs = Date.now() - new Date(session.created_at).getTime()
-    if (connectedPlayers.length === 0 && ageMs > 60000) {
+    if (connectedPlayers.length === 0) {
       await supabase.from('arena_sessions').delete().eq('id', session.id)
       return null
     }
