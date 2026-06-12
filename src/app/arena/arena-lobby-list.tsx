@@ -216,11 +216,15 @@ export default function ArenaLobbyList({
                   </div>
                   {lobby.players.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
-                      {lobby.players.map((p) => (
-                        <span key={p.user_id} className={`rounded-full px-2 py-0.5 text-[10px] ${p.user_id === lobby.host_id ? 'bg-amber-900/50 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                          {p.user_name}{p.user_id === lobby.host_id ? ' (Host)' : ''}{p.is_ready ? ' ✓' : ''}
-                        </span>
-                      ))}
+                      {lobby.players.map((p) => {
+                        const isConnected = lobby.connected_ids.length === 0 || lobby.connected_ids.includes(p.user_id)
+                        return (
+                          <span key={p.user_id} className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${p.user_id === lobby.host_id ? 'bg-amber-900/50 text-amber-400' : 'bg-zinc-800 text-zinc-400'} ${!isConnected ? 'opacity-40' : ''}`}>
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-zinc-600'}`} />
+                            {p.user_name}{p.user_id === lobby.host_id ? ' ★' : ''}{p.is_ready ? ' ✓' : ''}
+                          </span>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

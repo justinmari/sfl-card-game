@@ -11,6 +11,7 @@ export type LobbyInfo = {
   created_at: string
   player_count: number
   players: { user_id: string; user_name: string; avatar_url: string | null; is_ready: boolean }[]
+  connected_ids: string[]
 }
 
 // List open lobbies
@@ -18,7 +19,7 @@ export async function listLobbies() {
   const supabase = await createClient()
   const { data } = await supabase
     .from('arena_lobbies')
-    .select('*, arena_lobby_players(user_id, user_name, avatar_url, is_ready)')
+    .select('*, arena_lobby_players(user_id, user_name, avatar_url, is_ready), arena_sessions(connected_players)')
     .in('status', ['waiting', 'active'])
     .order('created_at', { ascending: false })
 
@@ -39,6 +40,7 @@ export async function listLobbies() {
     created_at: lobby.created_at,
     player_count: (lobby.arena_lobby_players as any[])?.length || 0,
     players: (lobby.arena_lobby_players as any[]) || [],
+    connected_ids: ((lobby.arena_sessions as any[])?.[0]?.connected_players as string[]) || [],
   })) as LobbyInfo[]
 }
 

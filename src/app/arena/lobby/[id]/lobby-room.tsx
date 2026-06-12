@@ -118,6 +118,13 @@ export default function LobbyRoom({
         setInitialSkills((data.skills_used || []) as ActiveSkill[])
       }
       setBattleStarted(true)
+      // Broadcast join after a short delay to ensure channel is connected
+      setTimeout(() => {
+        channelRef.current?.send({
+          type: 'broadcast', event: 'player-joined',
+          payload: { id: userId, name: userName, avatar_url: avatarUrl, hp: freshHp[userId] ?? 0 },
+        })
+      }, 2000)
     }
 
     setup()
