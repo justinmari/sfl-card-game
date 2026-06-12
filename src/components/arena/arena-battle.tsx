@@ -513,7 +513,8 @@ export default function ArenaBattle({
             const myPair = matchupPreview?.pairs.find(([a, b]) => a === userId || b === userId)
             const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
             const hasPass = matchupPreview && !myPair && isAlive
-            const availableSkills = isAlive && !hasPass ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
+            // Only show skills when matchup is loaded and player has an opponent
+            const availableSkills = isAlive && opponentId ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">

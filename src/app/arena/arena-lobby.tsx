@@ -57,6 +57,7 @@ export default function ArenaLobby({
   const [chatInput, setChatInput] = useState('')
 
   // === Battle state ===
+  const [starting, setStarting] = useState(false)
   const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
   const [battleSessionId, setBattleSessionId] = useState<string | null>(null)
@@ -127,6 +128,7 @@ export default function ArenaLobby({
 
   // Start session via server action — ALL clients call this
   const startSession = async () => {
+    setStarting(true)
     // Clean up any stale session first
     await cleanupArenaSession('arena-lobby').catch(() => {})
     const gamePlayers = lobbyPlayers.map((lp) => ({
@@ -216,6 +218,7 @@ export default function ArenaLobby({
         seed={battleSeed ?? undefined}
         onBattleEnd={() => {
           setBattleStarted(false)
+          setStarting(false)
           setBattlePlayers([])
           setBattleSessionId(null)
           setBattleSeed(null)
@@ -239,22 +242,30 @@ export default function ArenaLobby({
 
   return (
     <div>
-      {/* Countdown overlay */}
-      {countdown !== null && (
+      {/* Countdown / Starting overlay */}
+      {(countdown !== null || starting) && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
           <div className="flex flex-col items-center gap-4">
-            <span className="text-8xl font-black text-white animate-pulse">{countdown}</span>
-            <span className="text-lg text-zinc-400">Get ready...</span>
-            <button onClick={() => {
-              if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
-              setCountdown(null)
-              setMyReady(false)
-              readyMapRef.current[userId] = false
-              setLobbyPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, ready: false } : p))
-              channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: false, deckSlot: selectedDeck } })
-            }} className="rounded-lg border border-zinc-500 px-6 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800">
-              Hold On
-            </button>
+            {starting ? (
+              <>
+                <span className="text-4xl font-black text-white animate-pulse">Starting...</span>
+              </>
+            ) : (
+              <>
+                <span className="text-8xl font-black text-white animate-pulse">{countdown}</span>
+                <span className="text-lg text-zinc-400">Get ready...</span>
+                <button onClick={() => {
+                  if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+                  setCountdown(null)
+                  setMyReady(false)
+                  readyMapRef.current[userId] = false
+                  setLobbyPlayers((prev) => prev.map((p) => p.id === userId ? { ...p, ready: false } : p))
+                  channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: false, deckSlot: selectedDeck } })
+                }} className="rounded-lg border border-zinc-500 px-6 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800">
+                  Hold On
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
