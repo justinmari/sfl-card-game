@@ -98,10 +98,10 @@ export async function submitRoundReady(
     return { ready: true, allReady: true, readyCount: 0, aliveCount: 0, round: existingRound.result as RoundResult, skills: (existingRound.skills_used || []) as ActiveSkill[] }
   }
 
-  // Get session (includes stored matchups)
+  // Get session (includes stored matchups + connected players)
   const { data: session } = await supabase
     .from('arena_sessions')
-    .select('seed, players, hp, matchups')
+    .select('seed, players, hp, matchups, connected_players')
     .eq('id', sessionId)
     .single()
 
@@ -109,9 +109,12 @@ export async function submitRoundReady(
 
   const hp = session.hp as Record<string, number>
   const sessionPlayers = session.players as SessionPlayer[]
+  const connectedIds = new Set((session.connected_players as string[]) || [])
   const aliveIds = sessionPlayers.filter((p) => (hp[p.id] ?? 0) > 0).map((p) => p.id)
+  // Only wait for players who are both alive AND connected
+  const waitingForIds = aliveIds.filter((id) => connectedIds.size === 0 || connectedIds.has(id))
 
-  // Check if all alive players are ready for this round
+  // Check if all connected alive players are ready for this round
   const { data: readyRows } = await supabase
     .from('arena_ready')
     .select('user_id, skills')
@@ -120,19 +123,11 @@ export async function submitRoundReady(
     .eq('is_ready', true)
 
   const readyIds = new Set((readyRows || []).map((r) => r.user_id))
-  let allReady = aliveIds.every((id) => readyIds.has(id))
+  const allReady = waitingForIds.every((id) => readyIds.has(id))
 
-  // Check if deadline has passed — auto-ready missing players
-  const matchupData = session.matchups as { round: number; deadline?: string } | null
-  const deadline = matchupData?.deadline ? new Date(matchupData.deadline) : null
-  const deadlinePassed = deadline && new Date() > deadline
-
-  if (!allReady && !deadlinePassed) {
-    return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: aliveIds.length }
+  if (!allReady) {
+    return { ready: true, allReady: false, readyCount: readyIds.size, aliveCount: waitingForIds.length }
   }
-
-  // If deadline passed, treat all alive players as ready (missing ones forfeit skills)
-  if (deadlinePassed) allReady = true
 
   // Collect all skills from ready players
   const allSkills: ActiveSkill[] = []
@@ -191,6 +186,12 @@ export async function cleanupArenaSession(lobbyId: string) {
   await supabase.from('arena_sessions').delete().eq('lobby_id', lobbyId)
 }
 
+// Update connected players list (called when presence changes)
+export async function updateConnectedPlayers(sessionId: string, connectedIds: string[]) {
+  const supabase = await createClient()
+  await supabase.from('arena_sessions').update({ connected_players: connectedIds }).eq('id', sessionId)
+}
+
 // Get matchup preview for a round (pairings only, no full computation)
 export async function getMatchupPreview(sessionId: string, targetRound: number, currentHp?: Record<string, number>) {
   const supabase = await createClient()
@@ -208,7 +209,7 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
   if (!session) return null
 
   // Return stored matchups if already computed for this round
-  const stored = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null; deadline?: string } | null
+  const stored = session.matchups as { round: number; pairs: [string, string][]; byeId: string | null } | null
   if (stored && stored.round === targetRound) {
     return { pairs: stored.pairs, byeId: stored.byeId }
   }
@@ -224,10 +225,9 @@ export async function getMatchupPreview(sessionId: string, targetRound: number, 
 
   const { pairs, byeId } = randomPair(updated, rng)
 
-  // Store in session with deadline (30s from now for skill selection + buffer)
-  const deadline = new Date(Date.now() + 30000).toISOString()
+  // Store in session so submitRoundReady uses the same pairings
   await supabase.from('arena_sessions').update({
-    matchups: { round: targetRound, pairs, byeId, deadline },
+    matchups: { round: targetRound, pairs, byeId },
   }).eq('id', sessionId)
 
   return { pairs, byeId }

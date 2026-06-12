@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { BattlePlayer, BattleCard } from '@/lib/battle-engine'
 import { resolveSkills, starCount } from '@/lib/battle-engine'
-import { createArenaSession, cleanupArenaSession } from './actions'
+import { createArenaSession, cleanupArenaSession, updateConnectedPlayers } from './actions'
 import ArenaBattle from '@/components/arena/arena-battle'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -64,6 +64,7 @@ export default function ArenaLobby({
   const [battleSeed, setBattleSeed] = useState<number | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const battleSessionRef = useRef<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const joinedAtRef = useRef(Date.now())
@@ -110,6 +111,11 @@ export default function ArenaLobby({
         }
         playerList.sort((a, b) => a.joined_at - b.joined_at)
         setLobbyPlayers(playerList)
+        // Sync connected players to DB during battle
+        if (battleSessionRef.current) {
+          const connectedIds = playerList.map((p) => p.id)
+          updateConnectedPlayers(battleSessionRef.current, connectedIds).catch(() => {})
+        }
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -148,8 +154,11 @@ export default function ArenaLobby({
 
     setBattlePlayers(players)
     setBattleSessionId(result.sessionId)
+    battleSessionRef.current = result.sessionId
     setBattleSeed(result.seed)
     setBattleStarted(true)
+    // Initial connected players sync
+    updateConnectedPlayers(result.sessionId, lobbyPlayers.map((p) => p.id)).catch(() => {})
   }
 
   // Watch for all ready → countdown → start session
@@ -221,6 +230,7 @@ export default function ArenaLobby({
           setStarting(false)
           setBattlePlayers([])
           setBattleSessionId(null)
+          battleSessionRef.current = null
           setBattleSeed(null)
           setMyReady(false)
           setSelectedDeck(null)
