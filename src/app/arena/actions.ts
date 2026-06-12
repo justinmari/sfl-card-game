@@ -11,6 +11,7 @@ type SessionPlayer = {
   name: string
   avatar_url: string | null
   deck: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds?: string[] }[]
+  startingHp?: number // 10 for original players, 0 for late-joining spectators
 }
 
 function buildBattlePlayers(sessionPlayers: SessionPlayer[]): BattlePlayer[] {
@@ -30,7 +31,7 @@ function buildBattlePlayers(sessionPlayers: SessionPlayer[]): BattlePlayer[] {
 // Compute HP from all played rounds (single source of truth)
 async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createClient>>, sessionId: string, sessionPlayers: SessionPlayer[]) {
   const hp: Record<string, number> = {}
-  sessionPlayers.forEach((p) => { hp[p.id] = 10 })
+  sessionPlayers.forEach((p) => { hp[p.id] = p.startingHp ?? 10 })
 
   const { data: rounds } = await supabase
     .from('arena_rounds')
@@ -110,10 +111,10 @@ export async function checkActiveSession(userId: string, playerName: string, ava
     name: playerName,
     avatar_url: avatarUrl,
     deck,
+    startingHp: 0, // dead on arrival
   }
   const updatedPlayers = [...sessionPlayers, newPlayer]
-  const hp = await computeHpFromRounds(supabase, session.id, sessionPlayers)
-  hp[userId] = 0 // dead on arrival
+  const hp = await computeHpFromRounds(supabase, session.id, updatedPlayers)
 
   await supabase.from('arena_sessions').update({
     players: updatedPlayers,
