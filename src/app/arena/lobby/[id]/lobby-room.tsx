@@ -283,6 +283,11 @@ export default function LobbyRoom({
           const state = channelRef.current?.presenceState() || {}
           return Object.keys(state)
         }}
+        onGameOver={async () => {
+          // Reset lobby status back to waiting
+          const supabase = createClient()
+          await supabase.from('arena_lobbies').update({ status: 'waiting' }).eq('id', lobbyId)
+        }}
         onBattleEnd={() => {
           setBattleStarted(false)
           setBattlePlayers([])

@@ -38,6 +38,7 @@ export type ArenaBattleProps = {
   initialSkills?: ActiveSkill[]
   isRejoining?: boolean // true when joining a game already in progress
   getConnectedIds?: () => string[]
+  onGameOver?: () => Promise<void> | void
   onBattleEnd?: () => void
 }
 
@@ -52,6 +53,7 @@ export default function ArenaBattle({
   initialSkills,
   isRejoining,
   getConnectedIds,
+  onGameOver,
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
@@ -352,7 +354,9 @@ export default function ArenaBattle({
     if (battlePhase !== 'round-end') return
 
     const gameOver = aliveCount() <= 1
-    if (gameOver && isServerMode) endArenaSession(sessionId!)
+    if (gameOver && isServerMode) {
+      endArenaSession(sessionId!).then(() => onGameOver?.())
+    }
 
     setRoundEndCountdown(20)
     setMyReady(false)
