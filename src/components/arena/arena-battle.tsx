@@ -36,6 +36,7 @@ export type ArenaBattleProps = {
   initialRound?: RoundResult
   initialHp?: Record<string, number>
   initialSkills?: ActiveSkill[]
+  isRejoining?: boolean // true when joining a game already in progress
   getConnectedIds?: () => string[]
   onBattleEnd?: () => void
 }
@@ -49,11 +50,12 @@ export default function ArenaBattle({
   initialRound,
   initialHp: initialHpProp,
   initialSkills,
+  isRejoining,
   getConnectedIds,
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
-  const isReconnect = isServerMode && !!initialRoundNum
+  const isReconnect = !!isRejoining
   const initHp = (): Record<string, number> => {
     if (initialHpProp) return { ...initialHpProp }
     const hpMap: Record<string, number> = {}
@@ -83,11 +85,9 @@ export default function ArenaBattle({
   }, [initialPlayers.length])
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
   // On reconnect: roundNum = next round (last computed + 1), start at waiting-for-round
-  const [roundNum, setRoundNum] = useState(isReconnect ? (initialRoundNum! + 1) : (initialHpProp ? 1 : 1))
+  const [roundNum, setRoundNum] = useState(isReconnect && initialRoundNum ? (initialRoundNum + 1) : 1)
   const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
-  // If we have initialHp, we're joining an existing game → wait for round
-  const isJoiningExistingGame = isReconnect || !!initialHpProp
-  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isJoiningExistingGame ? 'waiting-for-round' : 'skill-select')
+  const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isReconnect ? 'waiting-for-round' : 'skill-select')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')

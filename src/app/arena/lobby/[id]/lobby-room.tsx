@@ -63,7 +63,8 @@ export default function LobbyRoom({
   const [starting, setStarting] = useState(false)
 
   // Battle state
-  const [battleStarted, setBattleStarted] = useState(!!activeSession)
+  const [isRejoiningGame, setIsRejoiningGame] = useState(!!activeSession)
+  const [battleStarted, setBattleStarted] = useState(false)
   const [battlePlayers, setBattlePlayers] = useState<BattlePlayer[]>([])
   const [battleSessionId, setBattleSessionId] = useState<string | null>(activeSession?.sessionId ?? null)
   const [battleSeed, setBattleSeed] = useState<number | null>(activeSession?.seed ?? null)
@@ -134,6 +135,7 @@ export default function LobbyRoom({
         setBattleSessionId(payload.sessionId)
         setBattleSeed(payload.seed)
         setInitialHp(payload.hp)
+        setIsRejoiningGame(false) // fresh start, not rejoin
         setBattleStarted(true)
       })
       .on('broadcast', { event: 'ready-change' }, () => {
@@ -267,6 +269,7 @@ export default function LobbyRoom({
         initialRound={initialRound ?? undefined}
         initialHp={initialHp ?? undefined}
         initialSkills={initialSkills.length > 0 ? initialSkills : undefined}
+        isRejoining={isRejoiningGame}
         getConnectedIds={() => {
           const state = channelRef.current?.presenceState() || {}
           return Object.keys(state)
@@ -282,6 +285,7 @@ export default function LobbyRoom({
           setInitialSkills([])
           setMyReady(false)
           setStarting(false)
+          setIsRejoiningGame(false)
           fetchPlayers()
         }}
       />
