@@ -68,6 +68,9 @@ export async function createArenaSession(lobbyId: string, players: SessionPlayer
   const hp: Record<string, number> = {}
   players.forEach((p) => { hp[p.id] = 10 })
 
+  // Clean up only completed/stale sessions (not active ones)
+  await supabase.from('arena_sessions').delete().eq('lobby_id', lobbyId).eq('status', 'done')
+
   // Try to insert new session (ON CONFLICT ignores if already exists)
   await supabase
     .from('arena_sessions')

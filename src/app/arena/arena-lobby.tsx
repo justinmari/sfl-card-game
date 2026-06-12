@@ -135,8 +135,6 @@ export default function ArenaLobby({
   // Start session via server action — ALL clients call this
   const startSession = async () => {
     setStarting(true)
-    // Clean up any stale session first
-    await cleanupArenaSession('arena-lobby').catch(() => {})
     const gamePlayers = lobbyPlayers.map((lp) => ({
       id: lp.id,
       name: lp.name,
