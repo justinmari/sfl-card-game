@@ -92,8 +92,11 @@ export default function LobbyRoom({
       eliminated: (activeSession.hp[p.id] ?? 0) <= 0,
     }))
     setBattlePlayers(bp)
+    setBattleSessionId(activeSession.sessionId)
+    setBattleSeed(activeSession.seed)
+    setInitialHp(activeSession.hp)
 
-    // Get latest round
+    // Get latest round, THEN enter battle
     const supabase = createClient()
     supabase.from('arena_rounds')
       .select('round_num, result, skills_used')
@@ -107,6 +110,7 @@ export default function LobbyRoom({
           setInitialRound(data.result as RoundResult)
           setInitialSkills((data.skills_used || []) as ActiveSkill[])
         }
+        setBattleStarted(true)
       })
   }, [])
 
