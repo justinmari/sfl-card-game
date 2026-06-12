@@ -295,6 +295,16 @@ export default function ArenaLobby({
     setChatInput('')
   }
 
+  // === LOADING: checking if session is active ===
+  if (pendingSession) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <span className="text-4xl animate-pulse">⚔️</span>
+        <p className="mt-4 text-sm text-zinc-400">Connecting to arena...</p>
+      </div>
+    )
+  }
+
   // === BATTLE VIEW ===
   if (battleStarted && battlePlayers.length > 0 && battleSessionId) {
     return (
