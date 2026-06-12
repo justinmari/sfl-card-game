@@ -11,7 +11,7 @@ import {
   starCount,
 } from '@/lib/battle-engine'
 import { createClient } from '@/lib/supabase/client'
-import { submitRoundReady, updateSessionHp, endArenaSession } from '@/app/arena/actions'
+import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview } from '@/app/arena/actions'
 import { createSeededRng } from '@/lib/seeded-random'
 import { precomputeRound, randomPair } from '@/lib/battle-engine'
 import BattleFaceoff from '@/components/battle-faceoff'
@@ -63,6 +63,7 @@ export default function ArenaBattle({
   const [roundEndCountdown, setRoundEndCountdown] = useState(0)
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
   const [localSkillIds, setLocalSkillIds] = useState<string[]>([])
+  const [matchupPreview, setMatchupPreview] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
   const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>([])
   const [introCountdown, setIntroCountdown] = useState(5)
   const [myReady, setMyReady] = useState(false)
@@ -163,6 +164,15 @@ export default function ArenaBattle({
       }
     })
   }
+
+  // Fetch matchup preview from server when entering skill-select
+  useEffect(() => {
+    if (battlePhase !== 'skill-select' || !isServerMode) return
+    setMatchupPreview(null)
+    getMatchupPreview(sessionId!, targetRoundRef.current, displayHpRef.current).then((result) => {
+      if (result) setMatchupPreview(result)
+    })
+  }, [battlePhase === 'skill-select', roundNum])
 
   // Skill select countdown → submit ready
   useEffect(() => {
@@ -500,16 +510,27 @@ export default function ArenaBattle({
           {/* Skill select (before round is computed) */}
           {battlePhase === 'skill-select' && (() => {
             const isAlive = (displayHp[userId] ?? 0) > 0
-            const availableSkills = isAlive ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
+            const myPair = matchupPreview?.pairs.find(([a, b]) => a === userId || b === userId)
+            const opponentId = myPair ? (myPair[0] === userId ? myPair[1] : myPair[0]) : null
+            const hasPass = matchupPreview && !myPair && isAlive
+            const availableSkills = isAlive && !hasPass ? getPlayerSkills(userId).filter(({ skill }) => isSkillUsable(skill)) : []
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '10rem' }}>
                   <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
-                  {isAlive ? (
-                    <div className="text-xl font-bold text-white">Prepare for Battle</div>
-                  ) : (
+                  {!isAlive ? (
                     <><p className="text-sm text-red-400 font-medium">You have been eliminated</p><p className="text-xs text-zinc-500 mt-1">Spectating remaining matches</p></>
+                  ) : hasPass ? (
+                    <span className="text-lg text-amber-400">You have a pass this round</span>
+                  ) : opponentId ? (
+                    <div className="text-2xl font-black">
+                      <span className="text-amber-400">You</span>
+                      <span className="mx-3 text-zinc-600">VS</span>
+                      <span className="text-white">{getPlayer(opponentId)?.name}</span>
+                    </div>
+                  ) : (
+                    <div className="text-xl font-bold text-white animate-pulse">Preparing matchups...</div>
                   )}
                 </div>
 

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { type BattlePlayer, type RoundResult, precomputeRound } from '@/lib/battle-engine'
+import { type BattlePlayer, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
 import { type ActiveSkill } from '@/lib/skills'
 import { createSeededRng } from '@/lib/seeded-random'
 import { resolveSkills, SKILL_REGISTRY } from '@/lib/skills'
@@ -177,4 +177,32 @@ export async function endArenaSession(sessionId: string) {
 export async function cleanupArenaSession(lobbyId: string) {
   const supabase = await createClient()
   await supabase.from('arena_sessions').delete().eq('lobby_id', lobbyId)
+}
+
+// Get matchup preview for a round (pairings only, no full computation)
+export async function getMatchupPreview(sessionId: string, targetRound: number, currentHp?: Record<string, number>) {
+  const supabase = await createClient()
+
+  if (currentHp) {
+    await supabase.from('arena_sessions').update({ hp: currentHp }).eq('id', sessionId)
+  }
+
+  const { data: session } = await supabase
+    .from('arena_sessions')
+    .select('seed, players, hp')
+    .eq('id', sessionId)
+    .single()
+
+  if (!session) return null
+
+  const hp = session.hp as Record<string, number>
+  const sessionPlayers = session.players as SessionPlayer[]
+  const battlePlayers = buildBattlePlayers(sessionPlayers)
+  const rng = createSeededRng(session.seed * 1000 + targetRound)
+  const updated = battlePlayers.map((p) => ({
+    ...p, hp: hp[p.id] ?? 0, eliminated: (hp[p.id] ?? 0) <= 0,
+  }))
+
+  const { pairs, byeId } = randomPair(updated, rng)
+  return { pairs, byeId }
 }
