@@ -53,7 +53,7 @@ export default function ArenaBattle({
   onBattleEnd,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
-  const isReconnect = !!initialRound
+  const isReconnect = !!initialRoundNum // reconnecting if any round has been played
   const initHp = (): Record<string, number> => {
     if (initialHpProp) return { ...initialHpProp }
     const hpMap: Record<string, number> = {}
@@ -82,8 +82,9 @@ export default function ArenaBattle({
     })
   }, [initialPlayers.length])
   const [displayHp, setDisplayHp] = useState<Record<string, number>>(initHp)
-  const [roundNum, setRoundNum] = useState(initialRoundNum ?? 1)
-  const [precomputed, setPrecomputed] = useState<RoundResult | null>(initialRound ?? null)
+  // On reconnect: roundNum = next round (last computed + 1), start at waiting-for-round
+  const [roundNum, setRoundNum] = useState(isReconnect ? (initialRoundNum! + 1) : 1)
+  const [precomputed, setPrecomputed] = useState<RoundResult | null>(null)
   const [battlePhase, setBattlePhase] = useState<'skill-select' | 'waiting-for-round' | 'round-intro' | 'fighting' | 'round-end' | 'waiting'>(isReconnect ? 'waiting-for-round' : 'skill-select')
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
