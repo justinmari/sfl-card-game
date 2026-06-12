@@ -55,7 +55,8 @@ export default function ArenaBattle({
   const initHp = (): Record<string, number> => {
     if (initialHpProp) return { ...initialHpProp }
     const hpMap: Record<string, number> = {}
-    initialPlayers.forEach((p) => { hpMap[p.id] = 10 })
+    // Use player.hp if available (reconnect/spectate), otherwise default to 10
+    initialPlayers.forEach((p) => { hpMap[p.id] = p.hp ?? 10 })
     return hpMap
   }
   const getLocalRng = (round: number) => seed != null ? createSeededRng(seed * 1000 + round) : undefined
