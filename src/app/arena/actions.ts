@@ -260,14 +260,21 @@ export async function submitRoundReady(
     return { ready: true, allReady: false, readyCount: aliveReadyCount, aliveCount: waitingForIds.length }
   }
 
-  // Collect all skills from ready players (with DB name overrides)
+  // Collect all skills from ready players (validated against their actual deck)
   const { data: dbSkillRows } = await supabase.from('skills').select('id, name, description')
   const dbSkillMap = new Map((dbSkillRows || []).map((s) => [s.id, s]))
 
   const allSkills: ActiveSkill[] = []
   for (const row of readyRows || []) {
     const playerSkillIds = (row.skills as string[]) || []
+    // Get this player's deck to validate skills
+    const player = sessionPlayers.find((p) => p.id === row.user_id)
+    const playerCardSkillIds = new Set(
+      (player?.deck || []).flatMap((c) => c.dbSkillIds || [])
+    )
     for (const skillId of playerSkillIds) {
+      // Only allow skills the player's deck actually has
+      if (!playerCardSkillIds.has(skillId)) continue
       const base = SKILL_REGISTRY[skillId]
       if (base) {
         const dbOverride = dbSkillMap.get(skillId)

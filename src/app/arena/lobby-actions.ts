@@ -154,10 +154,56 @@ export async function toggleReady(lobbyId: string, ready: boolean, deckSlot?: nu
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  // If readying up with a deck, validate ownership server-side
+  let validatedCards = null
+  if (ready && deckSlot != null) {
+    // Fetch the actual deck from DB
+    const { data: deck } = await supabase
+      .from('decks')
+      .select('card_ids')
+      .eq('user_id', user.id)
+      .eq('slot', deckSlot)
+      .single()
+
+    if (!deck || !deck.card_ids || deck.card_ids.length !== 5) {
+      return { error: 'Invalid deck' }
+    }
+
+    // Fetch actual card data from DB (not trusting client)
+    const { data: cards } = await supabase
+      .from('cards')
+      .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
+      .in('id', deck.card_ids as string[])
+
+    // Verify player owns all cards
+    const { data: owned } = await supabase
+      .from('user_cards')
+      .select('card_id')
+      .eq('user_id', user.id)
+      .in('card_id', deck.card_ids as string[])
+      .gt('count', 0)
+
+    const ownedIds = new Set((owned || []).map((o) => o.card_id))
+    const allOwned = (deck.card_ids as string[]).every((id) => ownedIds.has(id))
+    if (!allOwned) return { error: 'You don\'t own all cards in this deck' }
+
+    validatedCards = (cards || []).map((c) => {
+      const card = c as unknown as {
+        id: string; name: string; image_url: string | null; rarity: string
+        creatures: { name: string } | null; card_skills: { skill_id: string }[]
+      }
+      return {
+        id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
+        creature_name: card.creatures?.name || null,
+        dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
+      }
+    })
+  }
+
   await supabase.from('arena_lobby_players').update({
     is_ready: ready,
     deck_slot: deckSlot ?? null,
-    deck_cards: deckCards ?? null,
+    deck_cards: ready ? validatedCards : null,
   }).eq('lobby_id', lobbyId).eq('user_id', user.id)
 
   return { success: true }
