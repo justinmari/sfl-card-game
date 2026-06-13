@@ -11,7 +11,11 @@ When working on features or bug fixes, follow this workflow:
 5. **Full regression** — Run the complete test suite to verify nothing is broken
 6. **Report** — Summarize what was done, what tests were added, and suggest the user test locally before deploying
 7. **Wait for user approval** — Do not commit, push, or deploy unless the user explicitly asks
-8. **Backup live DB** — Before pushing migrations, create a backup of the live Supabase database (schema + data) to `supabase/backup_*.sql` (do NOT commit backups)
+8. **Backup live DB** — Before pushing migrations, back up the live database (do NOT commit backups):
+   ```bash
+   npx supabase db dump -f supabase/backup_YYYYMMDD_schema.sql
+   npx supabase db dump --data-only -f supabase/backup_YYYYMMDD_data.sql
+   ```
 9. **Sync live DB** — Push migrations to the live database with `npx supabase db push`, ensuring no data loss
 10. **Commit and push** — Only when the user says to push; stage specific files (never `git add -A`)
 
