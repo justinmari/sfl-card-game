@@ -71,29 +71,22 @@ async function setupPlayer(userId: string, name: string, deckName: string) {
   })
 }
 
-async function extractScoreboard(page: Page): Promise<{ name: string; hp: string }[]> {
+async function extractMatchups(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const roundHeaders = document.querySelectorAll('h3')
-    for (const h of roundHeaders) {
-      if (!h.textContent?.startsWith('Round')) continue
-      const container = h.closest('.mb-6')
-      if (!container) continue
-      const grid = container.querySelector('.grid')
-      if (!grid) continue
-
-      return Array.from(grid.children)
-        .map(cell => {
-          const name = cell.querySelector('p')?.textContent?.trim() || ''
-          const spans = Array.from(cell.querySelectorAll('span'))
-          const hpSpan = spans.find(s =>
-            s.classList.contains('font-bold') && /^\d+$/.test(s.textContent?.trim() || '')
-          )
-          return { name, hp: hpSpan?.textContent?.trim() || '' }
-        })
-        .filter(e => e.name && e.hp)
-        .sort((a, b) => a.name.localeCompare(b.name))
-    }
-    return []
+    const h3 = Array.from(document.querySelectorAll('h3')).find(h => h.textContent?.includes('Complete'))
+    if (!h3) return []
+    const container = h3.closest('div.rounded-xl')
+    if (!container) return []
+    const resultDiv = container.querySelector('.space-y-1')
+    if (!resultDiv) return []
+    return Array.from(resultDiv.querySelectorAll(':scope > div > div:first-child'))
+      .map(el => {
+        const spans = Array.from(el.querySelectorAll('span.font-medium'))
+        if (spans.length < 2) return ''
+        return `${spans[0].textContent?.trim()} vs ${spans[1].textContent?.trim()}`
+      })
+      .filter(Boolean)
+      .sort()
   })
 }
 
@@ -170,46 +163,38 @@ test.describe('8-Player Full Arena Game', () => {
     while (true) {
       round++
 
-      // Wait for host to reach round-end or game-over
+      // Wait for host to see "Round X Complete" or game-over
       await expect(
-        page.getByText(/Next round in|Final results in|Wins!/).first()
+        page.getByText(/Round \d+ Complete|Wins!/).first()
       ).toBeVisible({ timeout: 120000 })
 
       if (await page.getByText('Wins!').isVisible()) break
 
-      // Wait for all players to also reach round-end
+      // Wait for ALL players to also see "Round X Complete"
       for (const ctx of contexts) {
-        try {
-          await expect(
-            ctx.page.getByText(/Next round in|Final results in|Wins!/).first()
-          ).toBeVisible({ timeout: 15000 })
-        } catch {}
+        await expect(
+          ctx.page.getByText(/Round \d+ Complete|Wins!/).first()
+        ).toBeVisible({ timeout: 60000 })
       }
 
-      // Screenshot all 8 perspectives at this round's end
+      // Extract match results from "Round X Complete" section on each client
+      const hostResults = await extractMatchups(page)
+      expect(hostResults.length, `Round ${round}: host has no match results`).toBeGreaterThan(0)
+
+      for (let i = 0; i < contexts.length; i++) {
+        const playerResults = await extractMatchups(contexts[i].page)
+        expect(playerResults, `Round ${round}: ${contexts[i].info.name} sees different match results than host`).toEqual(hostResults)
+      }
+
+      // Screenshot all 8 perspectives
       for (const p of allPages) {
-        try {
-          await test.info().attach(`round-${round}-${p.label}`, {
-            body: await p.page.screenshot(), contentType: 'image/png',
-          })
-        } catch {}
-      }
-
-      // Extract scoreboard HP from all 8 and verify they match
-      const hostBoard = await extractScoreboard(page)
-      if (hostBoard.length > 0) {
-        for (let i = 0; i < contexts.length; i++) {
-          try {
-            const playerBoard = await extractScoreboard(contexts[i].page)
-            expect(playerBoard, `Round ${round}: player ${i + 1} (${contexts[i].info.name}) scoreboard differs from host`).toEqual(hostBoard)
-          } catch (e) {
-            if (String(e).includes('scoreboard differs')) throw e
-          }
-        }
+        await test.info().attach(`round-${round}-${p.label}`, {
+          body: await p.page.screenshot(), contentType: 'image/png',
+        })
       }
 
       // Wait for the round to advance on the host
-      await expect(page.getByText(/Next round in|Final results in/).first()).not.toBeVisible({ timeout: 25000 })
+      await expect(page.getByText(/Round \d+ Complete/).first()).not.toBeVisible({ timeout: 25000 })
     }
 
     // === FINAL GAME-OVER VERIFICATION ===

@@ -50,6 +50,7 @@ export default async function CollectionPage() {
         skillDescriptions: (c.card_skills || []).map((s) => skillDescMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.description || ''),
       },
       count: uc.count,
+      obtainedAt: uc.obtained_at as string,
     }
   })
 

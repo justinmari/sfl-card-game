@@ -34,8 +34,11 @@ export default function ProfileForm({
   const [showCardPicker, setShowCardPicker] = useState(false)
   const [cardSearch, setCardSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingCards, setSavingCards] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const router = useRouter()
 
   const toggleCard = (cardId: string) => {
@@ -43,6 +46,36 @@ export default function ProfileForm({
       setSelectedCards(selectedCards.filter((id) => id !== cardId))
     } else if (selectedCards.length < 4) {
       setSelectedCards([...selectedCards, cardId])
+    }
+  }
+
+  const handleDrop = (targetIdx: number) => {
+    if (dragIdx === null || dragIdx === targetIdx) return
+    const updated = [...selectedCards]
+    const [moved] = updated.splice(dragIdx, 1)
+    updated.splice(targetIdx, 0, moved)
+    setSelectedCards(updated)
+    setDragIdx(null)
+    setDragOverIdx(null)
+  }
+
+  const saveTopCards = async () => {
+    setSavingCards(true)
+    setError(null)
+    try {
+      const supabase = createClient()
+      const { error: rpcError } = await supabase.rpc('update_profile', {
+        p_full_name: name.trim() || fullName,
+        p_avatar_url: null,
+        p_top_cards: selectedCards,
+      })
+      if (rpcError) throw rpcError
+      setSuccess(true)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save cards')
+    } finally {
+      setSavingCards(false)
     }
   }
 
@@ -166,10 +199,16 @@ export default function ProfileForm({
           <label className="text-sm text-zinc-400">Top 4 ({selectedCards.length}/4)</label>
           <button
             type="button"
-            onClick={() => setShowCardPicker(!showCardPicker)}
-            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+            disabled={savingCards}
+            onClick={async () => {
+              if (showCardPicker) {
+                await saveTopCards()
+              }
+              setShowCardPicker(!showCardPicker)
+            }}
+            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
           >
-            {showCardPicker ? 'Done' : 'Edit'}
+            {savingCards ? 'Saving...' : showCardPicker ? 'Done' : 'Edit'}
           </button>
         </div>
 
@@ -178,7 +217,16 @@ export default function ProfileForm({
           {[0, 1, 2, 3].map((i) => {
             const card = topCards[i]
             return card ? (
-              <div key={card.id} className="relative">
+              <div
+                key={card.id}
+                className={`relative ${showCardPicker ? 'cursor-grab active:cursor-grabbing' : ''} ${dragOverIdx === i && dragIdx !== i ? 'ring-2 ring-blue-500 rounded-2xl' : ''}`}
+                draggable={showCardPicker}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i) }}
+                onDragLeave={() => setDragOverIdx(null)}
+                onDrop={(e) => { e.preventDefault(); handleDrop(i) }}
+                onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
+              >
                 <TradingCard card={card} size="sm" />
                 {showCardPicker && (
                   <button

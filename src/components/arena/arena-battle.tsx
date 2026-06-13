@@ -941,6 +941,16 @@ export default function ArenaBattle({
               </div>
             ))}
           </div>
+          {sortedByHp[0]?.deck && (
+            <div className="mb-8">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">Winning Deck</p>
+              <div className="mx-auto grid max-w-md grid-cols-5 gap-2">
+                {sortedByHp[0].deck.map((card) => (
+                  <CompactCard key={card.id} card={card} />
+                ))}
+              </div>
+            </div>
+          )}
           {onBattleEnd && (
             <button onClick={onBattleEnd} className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-300 hover:bg-zinc-800">Back</button>
           )}

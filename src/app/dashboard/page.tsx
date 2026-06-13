@@ -72,6 +72,14 @@ export default async function DashboardPage() {
             <span className="text-3xl">📝</span>
             <span className="text-sm font-medium">Changelog</span>
           </a>
+
+          <a
+            href="/suggest"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-800 bg-emerald-950/30 py-8 transition-colors hover:border-emerald-600"
+          >
+            <span className="text-3xl">💡</span>
+            <span className="text-sm font-medium">Suggest a Card</span>
+          </a>
         </div>
 
         {/* Arena */}
@@ -169,6 +177,14 @@ export default async function DashboardPage() {
               >
                 <span className="text-3xl">⚙️</span>
                 <span className="text-sm font-medium">Feature Settings</span>
+              </a>
+
+              <a
+                href="/admin/suggestions"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">💡</span>
+                <span className="text-sm font-medium">Card Suggestions</span>
               </a>
             </div>
           </>

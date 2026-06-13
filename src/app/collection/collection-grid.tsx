@@ -26,7 +26,7 @@ type Creature = {
   name: string
 }
 
-type SortOption = 'rarity' | 'name' | 'count'
+type SortOption = 'rarity' | 'name' | 'count' | 'date'
 
 const rarityOrder: Record<string, number> = {
   secret_rare: 0,
@@ -43,7 +43,7 @@ export default function CollectionGrid({
   creatures,
   totalCards,
 }: {
-  cardCounts: { card: Card; count: number }[]
+  cardCounts: { card: Card; count: number; obtainedAt?: string }[]
   packFilters: PackFilter[]
   creatures: Creature[]
   totalCards: number
@@ -106,9 +106,38 @@ export default function CollectionGrid({
       case 'count':
         items.sort((a, b) => b.count - a.count)
         break
+      case 'date':
+        items.sort((a, b) => {
+          const da = a.obtainedAt || ''
+          const db = b.obtainedAt || ''
+          const dateCompare = db.localeCompare(da)
+          if (dateCompare !== 0) {
+            const dayA = da.slice(0, 10)
+            const dayB = db.slice(0, 10)
+            if (dayA !== dayB) return dayB.localeCompare(dayA)
+          }
+          return (rarityOrder[a.card.rarity] ?? 99) - (rarityOrder[b.card.rarity] ?? 99)
+        })
+        break
     }
     return items
   }, [filtered, sort])
+
+  const dateSections = useMemo(() => {
+    if (sort !== 'date') return null
+    const groups: { label: string; items: typeof sorted }[] = []
+    let currentDay = ''
+    for (const item of sorted) {
+      const day = item.obtainedAt ? item.obtainedAt.slice(0, 10) : 'Unknown'
+      if (day !== currentDay) {
+        currentDay = day
+        const label = day === 'Unknown' ? 'Unknown' : new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+        groups.push({ label, items: [] })
+      }
+      groups[groups.length - 1].items.push(item)
+    }
+    return groups
+  }, [sorted, sort])
 
   const filteredTotal = sorted.reduce((sum, { count }) => sum + count, 0)
 
@@ -245,7 +274,7 @@ export default function CollectionGrid({
       <div>
         <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Sort</div>
         <div className="flex flex-col gap-1">
-          {(['rarity', 'name', 'count'] as SortOption[]).map((opt) => (
+          {(['rarity', 'name', 'count', 'date'] as SortOption[]).map((opt) => (
             <button
               key={opt}
               onClick={() => setSort(opt)}
@@ -255,7 +284,7 @@ export default function CollectionGrid({
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
-              {opt === 'count' ? 'Quantity' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+              {opt === 'count' ? 'Quantity' : opt === 'date' ? 'Acquired' : opt.charAt(0).toUpperCase() + opt.slice(1)}
             </button>
           ))}
         </div>
@@ -320,6 +349,37 @@ export default function CollectionGrid({
       {/* Card grid */}
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-zinc-500">No cards match this filter.</p>
+      ) : dateSections ? (
+        <div className="space-y-8">
+          {dateSections.map((section) => (
+            <div key={section.label}>
+              <h3 className="mb-3 border-b border-zinc-800 pb-2 text-sm font-semibold text-zinc-400">{section.label}</h3>
+              <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
+                {section.items.map(({ card, count }) => (
+                  <div key={card.id} className="sm:contents">
+                    <div className="sm:hidden">
+                      <TradingCard
+                        card={card}
+                        size="sm"
+                        count={count}
+                        onClick={() => setSelected({ card, count })}
+                        className="!w-full"
+                      />
+                    </div>
+                    <div className="hidden sm:block">
+                      <TradingCard
+                        card={card}
+                        size="md"
+                        count={count}
+                        onClick={() => setSelected({ card, count })}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
           {sorted.map(({ card, count }) => (
