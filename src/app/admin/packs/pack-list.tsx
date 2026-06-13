@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
-import { rarityBadgeColors } from '@/lib/rarities'
+import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
 import { autoDistribute } from '@/lib/auto-distribute'
 import PackWrapper from '@/components/pack-wrapper'
 
@@ -156,6 +156,17 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
     const supabase = createClient()
     await supabase.from('packs').update({ is_active: !current }).eq('id', id)
     router.refresh()
+  }
+
+  const getRarityChances = (pack: Pack) => {
+    const byRarity = new Map<string, number>()
+    for (const pc of pack.pack_cards) {
+      const r = pc.cards.rarity
+      byRarity.set(r, (byRarity.get(r) || 0) + pc.pull_percentage)
+    }
+    return [...byRarity.entries()]
+      .map(([rarity, chance]) => ({ rarity, chance }))
+      .sort((a, b) => b.chance - a.chance)
   }
 
   if (packs.length === 0) {
@@ -385,6 +396,27 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
               </div>
 
               </div>
+            </div>
+
+            {/* Rarity drop rates */}
+            <div className="mb-4 space-y-1.5">
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Drop Rates</p>
+              {getRarityChances(pack).map(({ rarity, chance }) => (
+                <div key={rarity} className="flex items-center gap-2">
+                  <span className={`w-20 rounded px-1.5 py-0.5 text-[10px] text-center ${rarityBadgeColors[rarity]}`}>
+                    {rarityLabel[rarity] || rarity}
+                  </span>
+                  <div className="h-2 flex-1 rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-zinc-500"
+                      style={{ width: `${Math.max(chance, 1)}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-right text-xs text-zinc-400">
+                    {chance < 1 ? chance.toFixed(1) : Math.round(chance)}%
+                  </span>
+                </div>
+              ))}
             </div>
 
             {/* Pull rates */}
