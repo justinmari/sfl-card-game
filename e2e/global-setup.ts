@@ -82,7 +82,7 @@ export default async function globalSetup() {
   console.log(`Test users: admin=${adminId}, player=${playerId}`)
 
   await upsertProfile(adminId, 'Test Admin', 'admin', 10000)
-  await upsertProfile(playerId, 'Test Player', 'player', 5000)
+  await upsertProfile(playerId, 'Test Player', 'user', 5000)
 
   await seedUserCards(adminId)
   await seedUserCards(playerId)
