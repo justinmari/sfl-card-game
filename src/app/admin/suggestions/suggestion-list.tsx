@@ -39,6 +39,7 @@ export default function SuggestionList({
   const [editDesc, setEditDesc] = useState('')
   const [editRarity, setEditRarity] = useState('')
   const [editCreature, setEditCreature] = useState<string | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
   const router = useRouter()
 
   const items = tab === 'pending' ? pending : archived
@@ -90,6 +91,36 @@ export default function SuggestionList({
     }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this archived suggestion permanently?')) return
+    setProcessing(id)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.rpc('admin_delete_suggestion', { p_id: id })
+      if (error) throw error
+      router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (!confirm(`Delete all ${archived.length} archived suggestions permanently?`)) return
+    setDeletingAll(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.rpc('admin_delete_all_archived')
+      if (error) throw error
+      router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeletingAll(false)
+    }
+  }
+
   return (
     <>
       <div className="mb-6 flex gap-2">
@@ -106,6 +137,18 @@ export default function SuggestionList({
           Archived ({archived.length})
         </button>
       </div>
+
+      {tab === 'archived' && archived.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={handleDeleteAll}
+            disabled={deletingAll}
+            className="rounded-lg border border-red-800 px-4 py-2 text-xs font-medium text-red-400 hover:bg-red-900/30 disabled:opacity-50"
+          >
+            {deletingAll ? 'Deleting...' : `Delete All (${archived.length})`}
+          </button>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="py-10 text-center text-zinc-500">
@@ -216,13 +259,22 @@ export default function SuggestionList({
                       </>
                     )}
                     {tab === 'archived' && (
-                      <button
-                        onClick={() => handleAction(s.id, 'added', true)}
-                        disabled={processing === s.id}
-                        className="rounded border border-green-800 px-3 py-1 text-xs text-green-400 hover:bg-green-900/30 disabled:opacity-50"
-                      >
-                        Restore & Add
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleAction(s.id, 'added', true)}
+                          disabled={processing === s.id}
+                          className="rounded border border-green-800 px-3 py-1 text-xs text-green-400 hover:bg-green-900/30 disabled:opacity-50"
+                        >
+                          Restore & Add
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          disabled={processing === s.id}
+                          className="rounded border border-red-800 px-3 py-1 text-xs text-red-400 hover:bg-red-900/30 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

@@ -52,11 +52,14 @@ export default function SuggestForm({
       let imageUrl: string | null = null
 
       if (file) {
-        const compressed = await compressImage(file, 400, 400, 0.85)
-        const fileName = `suggestions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+        const isGif = file.type === 'image/gif'
+        const blob = isGif ? file : await compressImage(file, 400, 400, 0.85)
+        const ext = isGif ? 'gif' : 'jpg'
+        const contentType = isGif ? 'image/gif' : 'image/jpeg'
+        const fileName = `suggestions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('card-images')
-          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+          .upload(fileName, blob, { contentType })
         if (uploadError) throw uploadError
         const { data: { publicUrl } } = supabase.storage
           .from('card-images')

@@ -245,3 +245,68 @@ test.describe('Admin Card Suggestions', () => {
     await expect(page.getByText('Card Suggestions')).toBeVisible({ timeout: 10000 })
   })
 })
+
+test.describe('Admin Delete Archived Suggestions', () => {
+  async function createArchivedSuggestion(title: string) {
+    const listRes = await fetch(`${LOCAL_URL}/auth/v1/admin/users?page=1&per_page=50`, { headers })
+    const listData = await listRes.json()
+    const player = listData.users?.find((u: any) => u.email === 'player@test.com')
+    if (player) {
+      await fetch(`${LOCAL_URL}/rest/v1/card_suggestions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          user_id: player.id,
+          title,
+          description: 'Archived test',
+          rarity: 'common',
+          status: 'archived',
+        }),
+      })
+    }
+  }
+
+  test.beforeAll(async () => {
+    await cleanupSuggestions()
+  })
+
+  test.afterAll(async () => {
+    await cleanupSuggestions()
+  })
+
+  test('can delete a single archived suggestion', async ({ page }) => {
+    await cleanupSuggestions()
+    await createArchivedSuggestion('Delete Me')
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/suggestions')
+    await page.getByRole('button', { name: /^Archived/ }).click()
+    await expect(page.getByText('Delete Me').first()).toBeVisible({ timeout: 10000 })
+
+    page.on('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.waitForTimeout(2000)
+
+    await expect(page.getByText('No archived suggestions.')).toBeVisible({ timeout: 10000 })
+    await test.info().attach('after-delete', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+
+  test('can delete all archived suggestions', async ({ page }) => {
+    await cleanupSuggestions()
+    await createArchivedSuggestion('Delete All 1')
+    await createArchivedSuggestion('Delete All 2')
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/suggestions')
+    await page.getByRole('button', { name: /^Archived/ }).click()
+    await expect(page.getByText('Delete All 1').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Delete All 2').first()).toBeVisible()
+
+    page.on('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: /^Delete All/ }).click()
+    await page.waitForTimeout(2000)
+
+    await expect(page.getByText('No archived suggestions.')).toBeVisible({ timeout: 10000 })
+    await test.info().attach('after-delete-all', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+})
