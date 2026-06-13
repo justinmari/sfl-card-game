@@ -45,10 +45,11 @@ export function autoDistribute(
     result[0].pull_percentage = Math.round((result[0].pull_percentage + leftover) * 100) / 100
   }
 
-  // Fix rounding so total is exactly 100
+  // Fix rounding so total is exactly 100 — adjust the largest entry to absorb the error
   const total = result.reduce((sum, e) => sum + e.pull_percentage, 0)
   if (result.length > 0) {
-    result[0].pull_percentage = Math.round((result[0].pull_percentage + (100 - total)) * 100) / 100
+    const largest = result.reduce((max, e) => e.pull_percentage > max.pull_percentage ? e : max, result[0])
+    largest.pull_percentage = Math.round((largest.pull_percentage + (100 - total)) * 100) / 100
   }
 
   return result

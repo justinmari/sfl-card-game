@@ -413,7 +413,7 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
                     />
                   </div>
                   <span className="w-12 text-right text-xs text-zinc-400">
-                    {chance < 1 ? chance.toFixed(1) : Math.round(chance)}%
+                    {chance < 0.1 ? chance.toFixed(2) : chance < 1 ? chance.toFixed(1) : Math.round(chance)}%
                   </span>
                 </div>
               ))}
