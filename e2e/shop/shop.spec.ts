@@ -17,7 +17,7 @@ async function resetGruten(userId: string, amount: number) {
     await fetch(`${LOCAL_URL}/rest/v1/profiles?id=eq.${user.id}`, {
       method: 'PATCH',
       headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ gruten: amount }),
+      body: JSON.stringify({ gruten: amount, last_pack_purchase: null }),
     })
   }
 }

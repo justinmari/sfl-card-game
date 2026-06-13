@@ -16,7 +16,7 @@ test.describe('Arena Toggle', () => {
     await page.goto('/admin/arena')
     await expect(page.getByRole('heading', { name: 'Feature Settings' })).toBeVisible()
     await expect(page.getByText('Arena', { exact: true })).toBeVisible()
-    await expect(page.getByText('Enabled', { exact: true })).toBeVisible()
+    await expect(page.getByText('Enabled', { exact: true }).first()).toBeVisible()
   })
 
   test('player cannot access feature settings page', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Arena Toggle', () => {
 
     await expect(page.getByText('Disabled', { exact: true })).toBeVisible()
     await page.click('text=Enable Arena')
-    await expect(page.getByText('Enabled', { exact: true })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Enabled', { exact: true }).first()).toBeVisible({ timeout: 5000 })
   })
 
   test('admin can cancel disable', async ({ page }) => {
@@ -55,7 +55,7 @@ test.describe('Arena Toggle', () => {
 
     await page.click('text=Cancel')
     await expect(page.getByText('Are you sure?')).not.toBeVisible()
-    await expect(page.getByText('Enabled', { exact: true })).toBeVisible()
+    await expect(page.getByText('Enabled', { exact: true }).first()).toBeVisible()
   })
 
   test('arena tile is disabled on dashboard when arena is off', async ({ page }) => {

@@ -24,12 +24,12 @@ export async function listLobbies() {
     .in('status', ['waiting', 'active'])
     .order('created_at', { ascending: false })
 
-  // Clean up empty lobbies (players left by closing tabs)
+  // Clean up empty lobbies via RPC (RLS restricts direct delete to host only)
   const emptyIds = (data || [])
     .filter((l) => ((l.arena_lobby_players as any[])?.length || 0) === 0)
     .map((l) => l.id)
   if (emptyIds.length > 0) {
-    await supabase.from('arena_lobbies').delete().in('id', emptyIds)
+    await supabase.rpc('rpc_cleanup_empty_lobbies', { p_lobby_ids: emptyIds })
   }
 
   return (data || []).filter((l) => !emptyIds.includes(l.id)).map((lobby) => ({
@@ -125,7 +125,7 @@ export async function leaveLobby(lobbyId: string) {
     .eq('lobby_id', lobbyId)
 
   if ((count || 0) === 0) {
-    await supabase.from('arena_lobbies').delete().eq('id', lobbyId)
+    await supabase.rpc('rpc_cleanup_empty_lobbies', { p_lobby_ids: [lobbyId] })
     return { deleted: true }
   }
 
@@ -327,9 +327,20 @@ export async function getMyLobby() {
   }
 }
 
-// Delete a lobby (host only or cleanup)
+// Delete a lobby (host only)
 export async function deleteLobby(lobbyId: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: lobby } = await supabase
+    .from('arena_lobbies')
+    .select('host_id')
+    .eq('id', lobbyId)
+    .single()
+
+  if (lobby?.host_id !== user.id) return
+
   await supabase.from('arena_lobbies').delete().eq('id', lobbyId)
 }
 
