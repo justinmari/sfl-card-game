@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { login, TEST_ADMIN, TEST_PLAYER, resetArenaEnabled, setArenaDisabled, cleanupLobbies } from './helpers'
+import { login, TEST_ADMIN, TEST_PLAYER, resetArenaEnabled, setArenaDisabled, cleanupArena } from '../helpers'
 
 test.describe('Arena Toggle', () => {
   test.beforeEach(async () => {
     await resetArenaEnabled()
-    await cleanupLobbies()
+    await cleanupArena()
   })
 
   test.afterAll(async () => {
