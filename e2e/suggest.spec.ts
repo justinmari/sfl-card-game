@@ -16,6 +16,25 @@ async function cleanupSuggestions() {
   })
 }
 
+async function setSuggestionsEnabled(enabled: boolean) {
+  await fetch(`${LOCAL_URL}/rest/v1/app_settings?key=eq.suggestions_enabled`, {
+    method: 'DELETE',
+    headers,
+  })
+  await fetch(`${LOCAL_URL}/rest/v1/app_settings`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ key: 'suggestions_enabled', value: enabled }),
+  })
+}
+
+async function resetSuggestionsEnabled() {
+  await fetch(`${LOCAL_URL}/rest/v1/app_settings?key=eq.suggestions_enabled`, {
+    method: 'DELETE',
+    headers,
+  })
+}
+
 test.describe('Card Suggestions', () => {
   test.beforeAll(async () => {
     await cleanupSuggestions()
@@ -107,6 +126,60 @@ test.describe('Card Suggestions', () => {
     await login(page, TEST_PLAYER)
     await page.goto('/dashboard')
     await expect(page.getByText('Suggest a Card')).toBeVisible({ timeout: 10000 })
+  })
+})
+
+test.describe('Admin Can Submit Suggestions', () => {
+  test.beforeAll(async () => {
+    await cleanupSuggestions()
+    await resetSuggestionsEnabled()
+  })
+
+  test.afterAll(async () => {
+    await cleanupSuggestions()
+  })
+
+  test('admin can submit a card suggestion', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/suggest')
+    await expect(page.getByPlaceholder('Card name')).toBeVisible({ timeout: 10000 })
+
+    await page.getByPlaceholder('Card name').fill('Admin Suggestion')
+    await page.click('button:has-text("Review & Submit")')
+    await expect(page.getByText('Review Your Suggestion')).toBeVisible({ timeout: 5000 })
+    await page.click('button:has-text("Confirm")')
+
+    await expect(page.getByText('Suggestion Submitted!')).toBeVisible({ timeout: 10000 })
+  })
+})
+
+test.describe('Suggestions Feature Toggle', () => {
+  test.afterAll(async () => {
+    await resetSuggestionsEnabled()
+  })
+
+  test('suggest button hidden when feature disabled', async ({ page }) => {
+    await setSuggestionsEnabled(false)
+    await login(page, TEST_PLAYER)
+    await page.goto('/dashboard')
+    await expect(page.getByText('Shop')).toBeVisible({ timeout: 10000 })
+
+    const suggestLink = page.locator('a[href="/suggest"]')
+    await expect(suggestLink).toHaveCount(0)
+  })
+
+  test('suggest page redirects when feature disabled', async ({ page }) => {
+    await setSuggestionsEnabled(false)
+    await login(page, TEST_PLAYER)
+    await page.goto('/suggest')
+    await page.waitForURL(/\/dashboard/, { timeout: 10000 })
+  })
+
+  test('suggest button visible when feature enabled', async ({ page }) => {
+    await setSuggestionsEnabled(true)
+    await login(page, TEST_PLAYER)
+    await page.goto('/dashboard')
+    await expect(page.locator('a[href="/suggest"]')).toBeVisible({ timeout: 10000 })
   })
 })
 
