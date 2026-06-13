@@ -35,6 +35,7 @@ export type MatchResult = {
   player2Id: string
   faceOffs: FaceOff[]
   winnerId: string | null
+  hpSnapshots: Record<string, number>[]
 }
 
 export type RoundFlags = {
@@ -253,39 +254,7 @@ export function precomputeRound(
     }
   }
 
-  const matches: MatchResult[] = pairs.map(([id1, id2]) => {
-    const p1 = players.find((p) => p.id === id1)!
-    const p2 = players.find((p) => p.id === id2)!
-    // Use gift-exchange decks if active, otherwise normal decks
-    const deck1 = giftDecks?.get(id1) || shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
-    const deck2 = giftDecks?.get(id2) || shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
-    const faceOffs: FaceOff[] = []
-
-    // Filter skills relevant to this match
-    const matchSkills = activeSkills?.filter((s) => s.activatedBy === id1 || s.activatedBy === id2)
-
-    for (let i = 0; i < 5; i++) {
-      faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills, rng))
-    }
-
-    // Simulate to find winner
-    let hp1 = currentHp[id1] || 0
-    let hp2 = currentHp[id2] || 0
-    for (const fo of faceOffs) {
-      hp1 -= fo.damage1
-      hp2 -= fo.damage2
-      if (hp1 <= 0 || hp2 <= 0) break
-    }
-
-    let winnerId: string | null = null
-    if (hp1 > hp2) winnerId = id1
-    else if (hp2 > hp1) winnerId = id2
-    else winnerId = (rng || Math.random)() > 0.5 ? id1 : id2
-
-    return { player1Id: id1, player2Id: id2, faceOffs, winnerId }
-  })
-
-  // Extract round-level flags from active skills
+  // Extract round-level flags before match computation so healInstead affects HP snapshots
   const flags: RoundFlags = {}
   if (activeSkills) {
     for (const as of activeSkills) {
@@ -293,6 +262,47 @@ export function precomputeRound(
       if (as.skill.effect.type === 'visual') flags.visualEffect = as.skill.effect.css
     }
   }
+  const healInstead = flags.healInstead ?? false
+
+  const matches: MatchResult[] = pairs.map(([id1, id2]) => {
+    const p1 = players.find((p) => p.id === id1)!
+    const p2 = players.find((p) => p.id === id2)!
+    const deck1 = giftDecks?.get(id1) || shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const deck2 = giftDecks?.get(id2) || shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const faceOffs: FaceOff[] = []
+
+    const matchSkills = activeSkills?.filter((s) => s.activatedBy === id1 || s.activatedBy === id2)
+
+    for (let i = 0; i < 5; i++) {
+      faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills, rng))
+    }
+
+    // Compute HP snapshots: one before any face-off, one after each
+    let hp1 = currentHp[id1] || 0
+    let hp2 = currentHp[id2] || 0
+    const hpSnapshots: Record<string, number>[] = [{ [id1]: hp1, [id2]: hp2 }]
+
+    for (const fo of faceOffs) {
+      if (healInstead) {
+        hp1 = Math.min(10, hp1 + fo.damage1)
+        hp2 = Math.min(10, hp2 + fo.damage2)
+      } else {
+        hp1 = Math.max(0, hp1 - fo.damage1)
+        hp2 = Math.max(0, hp2 - fo.damage2)
+      }
+      hpSnapshots.push({ [id1]: hp1, [id2]: hp2 })
+      if (hp1 <= 0 || hp2 <= 0) break
+    }
+
+    const finalHp1 = hpSnapshots[hpSnapshots.length - 1][id1]
+    const finalHp2 = hpSnapshots[hpSnapshots.length - 1][id2]
+    let winnerId: string | null = null
+    if (finalHp1 > finalHp2) winnerId = id1
+    else if (finalHp2 > finalHp1) winnerId = id2
+    else winnerId = (rng || Math.random)() > 0.5 ? id1 : id2
+
+    return { player1Id: id1, player2Id: id2, faceOffs, winnerId, hpSnapshots }
+  })
 
   return { round: roundNum, matches, byePlayerId: byeId, flags: Object.keys(flags).length > 0 ? flags : undefined }
 }

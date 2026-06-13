@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { listLobbies, createLobby, joinLobby, leaveLobby, closeStaleLobby, type LobbyInfo } from './lobby-actions'
+import { useArenaStatus } from '@/hooks/use-arena-status'
 
 type MyLobbyInfo = {
   lobbyId: string
@@ -32,6 +33,7 @@ export default function ArenaLobbyList({
   const [refreshCooldown, setRefreshCooldown] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const router = useRouter()
+  useArenaStatus()
 
   const fetchLobbies = async () => {
     setLoading(true)

@@ -108,6 +108,8 @@ export default function ArenaBattle({
   const introCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const rafRef = useRef<number>(0)
   const appliedRef = useRef<Set<number>>(new Set())
+  const displayHpRef = useRef(displayHp)
+  displayHpRef.current = displayHp
 
   // Matchups: prefer precomputed result, then server preview, then null
   const introMatchups: { pairs: [string, string][]; byeId: string | null } | null = precomputed ? {
@@ -284,20 +286,12 @@ export default function ArenaBattle({
           resultApplied = true
           if (!appliedRef.current.has(cardIdx) && precomputed) {
             appliedRef.current.add(cardIdx)
-            const heal = precomputed.flags?.healInstead
             setDisplayHp((prev) => {
               const updated = { ...prev }
               precomputed.matches.forEach((match, mi) => {
                 if (matchKo.has(mi)) return
-                const fo = match.faceOffs[cardIdx]
-                if (!fo) return
-                if (heal) {
-                  updated[match.player1Id] = Math.min(10, (updated[match.player1Id] || 0) + fo.damage1)
-                  updated[match.player2Id] = Math.min(10, (updated[match.player2Id] || 0) + fo.damage2)
-                } else {
-                  updated[match.player1Id] = Math.max(0, (updated[match.player1Id] || 0) - fo.damage1)
-                  updated[match.player2Id] = Math.max(0, (updated[match.player2Id] || 0) - fo.damage2)
-                }
+                const snap = match.hpSnapshots?.[cardIdx + 1]
+                if (snap) Object.assign(updated, snap)
               })
               return updated
             })
@@ -349,13 +343,15 @@ export default function ArenaBattle({
     }
   }, [displayHp, battlePhase])
 
-  // Round-end: sync HP to server + start countdown
+  // Round-end: check game over + start countdown
   useEffect(() => {
     if (battlePhase !== 'round-end') return
 
-    const gameOver = aliveCount() <= 1
-    if (gameOver && isServerMode) {
-      endArenaSession(sessionId!).then(() => onGameOver?.())
+    if (isServerMode) {
+      const alive = Object.values(displayHpRef.current).filter((hp) => hp > 0).length
+      if (alive <= 1) {
+        endArenaSession(sessionId!).then(() => onGameOver?.())
+      }
     }
 
     setRoundEndCountdown(20)
@@ -367,7 +363,8 @@ export default function ArenaBattle({
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
           setTimeout(() => {
-            if (gameOver) {
+            const currentAlive = Object.values(displayHpRef.current).filter((hp) => hp > 0).length
+            if (currentAlive <= 1) {
               setPhase('done')
             } else {
               setRoundNum((r) => r + 1)
@@ -799,11 +796,13 @@ export default function ArenaBattle({
 
                 <div className="mb-6 space-y-1">
                   {precomputed.matches.map((m, i) => {
-                    const fos = m.faceOffs as FaceOffDetail[]
+                    const playedCount = m.hpSnapshots ? m.hpSnapshots.length - 1 : m.faceOffs.length
+                    const fos = (m.faceOffs as FaceOffDetail[]).slice(0, playedCount)
                     const dmg1to2 = fos.reduce((s, fo) => s + fo.damage2, 0)
                     const dmg2to1 = fos.reduce((s, fo) => s + fo.damage1, 0)
-                    const p1Knocked = (displayHp[m.player1Id] ?? 0) <= 0
-                    const p2Knocked = (displayHp[m.player2Id] ?? 0) <= 0
+                    const finalSnap = m.hpSnapshots?.[m.hpSnapshots.length - 1]
+                    const p1Knocked = finalSnap ? finalSnap[m.player1Id] <= 0 : (displayHp[m.player1Id] ?? 0) <= 0
+                    const p2Knocked = finalSnap ? finalSnap[m.player2Id] <= 0 : (displayHp[m.player2Id] ?? 0) <= 0
                     return (
                       <div key={i} className="text-sm text-center space-y-0.5">
                         <div>
@@ -830,20 +829,10 @@ export default function ArenaBattle({
                   const imP1 = myMatch.player1Id === userId
                   const oppId = imP1 ? myMatch.player2Id : myMatch.player1Id
                   const oppName = getPlayer(oppId)?.name || 'Opponent'
-                  const allFos = myMatch.faceOffs as FaceOffDetail[]
-                  let tempOppHp = displayHp[oppId] ?? 0
-                  allFos.forEach((fo) => { tempOppHp += (imP1 ? fo.damage2 : fo.damage1) })
-                  let tempMyHp = displayHp[userId] ?? 0
-                  allFos.forEach((fo) => { tempMyHp += (imP1 ? fo.damage1 : fo.damage2) })
-                  const fos: FaceOffDetail[] = []
-                  let tempKo = false
-                  for (const fo of allFos) {
-                    if (tempKo) break
-                    fos.push(fo)
-                    tempOppHp -= (imP1 ? fo.damage2 : fo.damage1)
-                    tempMyHp -= (imP1 ? fo.damage1 : fo.damage2)
-                    if (tempOppHp <= 0 || tempMyHp <= 0) tempKo = true
-                  }
+                  const playedCount = myMatch.hpSnapshots ? myMatch.hpSnapshots.length - 1 : myMatch.faceOffs.length
+                  const fos = (myMatch.faceOffs as FaceOffDetail[]).slice(0, playedCount)
+                  const finalSnap = myMatch.hpSnapshots?.[myMatch.hpSnapshots.length - 1]
+                  const tempKo = finalSnap ? (finalSnap[userId] <= 0 || finalSnap[oppId] <= 0) : false
                   const dmgDealt = fos.reduce((s, fo) => s + (imP1 ? fo.damage2 : fo.damage1), 0)
                   const dmgTaken = fos.reduce((s, fo) => s + (imP1 ? fo.damage1 : fo.damage2), 0)
                   const wins = fos.filter((fo) => imP1 ? fo.damage2 > 0 : fo.damage1 > 0).length

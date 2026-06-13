@@ -9,6 +9,7 @@ import { resolveSkills, starCount } from '@/lib/battle-engine'
 import type { ActiveSkill } from '@/lib/skills'
 import { leaveLobby, toggleReady, kickPlayer, startGame } from '@/app/arena/lobby-actions'
 import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview, updateConnectedPlayers, checkActiveSession, getSessionHp } from '@/app/arena/actions'
+import { useArenaStatus } from '@/hooks/use-arena-status'
 import ArenaBattle from '@/components/arena/arena-battle'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -53,6 +54,7 @@ export default function LobbyRoom({
   activeSession: { sessionId: string; seed: number; players: any[]; hp: Record<string, number> } | null
 }) {
   const router = useRouter()
+  useArenaStatus()
   const [players, setPlayers] = useState<LobbyPlayer[]>([])
   const [hostId, setHostId] = useState(initialHostId)
   const [selectedDeck, setSelectedDeck] = useState<number | null>(null)

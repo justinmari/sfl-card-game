@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
+import { isArenaEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
+import DashboardToast from './dashboard-toast'
 
 export default async function DashboardPage() {
   const profile = await getProfile()
@@ -21,11 +23,13 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .in('status', ['waiting', 'active'])
 
+  const arenaEnabled = await isArenaEnabled()
   const isAdmin = profile.role === 'admin'
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <AppNavbar />
+      <DashboardToast />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <h2 className="mb-2 text-2xl font-bold">
@@ -73,18 +77,30 @@ export default async function DashboardPage() {
         {/* Arena */}
         <h3 className="mb-4 mt-10 text-lg font-semibold text-red-400">Arena</h3>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <a
-            href="/arena"
-            className="relative flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
-          >
-            <span className="text-3xl">⚔️</span>
-            <span className="text-sm font-medium">Arena</span>
-            {(lobbyCount ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {lobbyCount}
+          {arenaEnabled ? (
+            <a
+              href="/arena"
+              className="relative flex flex-col items-center justify-center gap-2 rounded-xl border border-red-800 bg-red-950/30 py-8 transition-colors hover:border-red-600"
+            >
+              <span className="text-3xl">⚔️</span>
+              <span className="text-sm font-medium">Arena</span>
+              {(lobbyCount ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {lobbyCount}
+                </span>
+              )}
+            </a>
+          ) : (
+            <div
+              className="group relative flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-8 opacity-50"
+            >
+              <span className="text-3xl">⚔️</span>
+              <span className="text-sm font-medium">Arena</span>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100">
+                Temporarily disabled
               </span>
-            )}
-          </a>
+            </div>
+          )}
 
           <a
             href="/decks"
@@ -145,6 +161,14 @@ export default async function DashboardPage() {
               >
                 <span className="text-3xl">🧪</span>
                 <span className="text-sm font-medium">Test Arena</span>
+              </a>
+
+              <a
+                href="/admin/arena"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-800 bg-amber-950/30 py-8 transition-colors hover:border-amber-600"
+              >
+                <span className="text-3xl">⚙️</span>
+                <span className="text-sm font-medium">Feature Settings</span>
               </a>
             </div>
           </>

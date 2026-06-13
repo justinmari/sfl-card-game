@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isArenaEnabled } from '@/lib/arena-settings'
 import { type BattlePlayer, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
 import { type ActiveSkill } from '@/lib/skills'
 import { createSeededRng } from '@/lib/seeded-random'
@@ -43,16 +44,21 @@ async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createCli
     for (const round of rounds) {
       const result = round.result as RoundResult
       for (const match of result.matches) {
-        // Apply damage from each face-off, stopping at KO
-        for (const fo of match.faceOffs) {
-          if (result.flags?.healInstead) {
-            hp[match.player1Id] = Math.min(10, (hp[match.player1Id] ?? 0) + fo.damage1)
-            hp[match.player2Id] = Math.min(10, (hp[match.player2Id] ?? 0) + fo.damage2)
-          } else {
-            hp[match.player1Id] = Math.max(0, (hp[match.player1Id] ?? 0) - fo.damage1)
-            hp[match.player2Id] = Math.max(0, (hp[match.player2Id] ?? 0) - fo.damage2)
+        if (match.hpSnapshots && match.hpSnapshots.length > 0) {
+          const finalSnap = match.hpSnapshots[match.hpSnapshots.length - 1]
+          Object.assign(hp, finalSnap)
+        } else {
+          // Legacy fallback for rounds computed before hpSnapshots
+          for (const fo of match.faceOffs) {
+            if (result.flags?.healInstead) {
+              hp[match.player1Id] = Math.min(10, (hp[match.player1Id] ?? 0) + fo.damage1)
+              hp[match.player2Id] = Math.min(10, (hp[match.player2Id] ?? 0) + fo.damage2)
+            } else {
+              hp[match.player1Id] = Math.max(0, (hp[match.player1Id] ?? 0) - fo.damage1)
+              hp[match.player2Id] = Math.max(0, (hp[match.player2Id] ?? 0) - fo.damage2)
+            }
+            if (hp[match.player1Id] <= 0 || hp[match.player2Id] <= 0) break
           }
-          if (hp[match.player1Id] <= 0 || hp[match.player2Id] <= 0) break
         }
       }
     }
@@ -183,6 +189,7 @@ export async function submitRoundReady(
   skillIds: string[],
   connectedPlayerIds?: string[],
 ) {
+  if (!(await isArenaEnabled())) return null
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
