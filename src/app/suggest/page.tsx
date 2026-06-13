@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
+import { isSuggestionsEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import SuggestForm from './suggest-form'
 
 export default async function SuggestPage() {
   const profile = await getProfile()
   if (!profile) redirect('/login')
+  if (!(await isSuggestionsEnabled())) redirect('/dashboard')
 
   const supabase = await createClient()
 

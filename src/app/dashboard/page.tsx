@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
-import { isArenaEnabled } from '@/lib/arena-settings'
+import { isArenaEnabled, isSuggestionsEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import DashboardToast from './dashboard-toast'
 
@@ -24,6 +24,7 @@ export default async function DashboardPage() {
     .in('status', ['waiting', 'active'])
 
   const arenaEnabled = await isArenaEnabled()
+  const suggestionsEnabled = await isSuggestionsEnabled()
   const isAdmin = profile.role === 'admin'
 
   return (
@@ -73,13 +74,25 @@ export default async function DashboardPage() {
             <span className="text-sm font-medium">Changelog</span>
           </a>
 
-          <a
-            href="/suggest"
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-800 bg-emerald-950/30 py-8 transition-colors hover:border-emerald-600"
-          >
-            <span className="text-3xl">💡</span>
-            <span className="text-sm font-medium">Suggest a Card</span>
-          </a>
+          {suggestionsEnabled ? (
+            <a
+              href="/suggest"
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 py-8 transition-colors hover:border-zinc-600"
+            >
+              <span className="text-3xl">💡</span>
+              <span className="text-sm font-medium">Suggest a Card</span>
+            </a>
+          ) : (
+            <div
+              className="group relative flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 py-8 opacity-50"
+            >
+              <span className="text-3xl">💡</span>
+              <span className="text-sm font-medium">Suggest a Card</span>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100">
+                Temporarily disabled
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Arena */}
