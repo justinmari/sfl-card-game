@@ -38,6 +38,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase db backups (never commit)
+supabase/backup_*.sql
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
