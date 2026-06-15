@@ -343,12 +343,37 @@ export default function ArenaBattle({
     }
   }, [displayHp, battlePhase])
 
+  // Compute authoritative HP from precomputed result (not animated displayHp)
+  const getAuthoritativeAlive = () => {
+    if (!precomputed) return Object.values(displayHpRef.current).filter((hp) => hp > 0).length
+    const hp = { ...displayHpRef.current }
+    for (const match of precomputed.matches) {
+      if (match.hpSnapshots && match.hpSnapshots.length > 0) {
+        Object.assign(hp, match.hpSnapshots[match.hpSnapshots.length - 1])
+      }
+    }
+    return Object.values(hp).filter((v) => v > 0).length
+  }
+
   // Round-end: check game over + start countdown
   useEffect(() => {
     if (battlePhase !== 'round-end') return
 
+    // Sync displayHp to authoritative values from precomputed result
+    if (precomputed) {
+      setDisplayHp((prev) => {
+        const updated = { ...prev }
+        for (const match of precomputed.matches) {
+          if (match.hpSnapshots && match.hpSnapshots.length > 0) {
+            Object.assign(updated, match.hpSnapshots[match.hpSnapshots.length - 1])
+          }
+        }
+        return updated
+      })
+    }
+
     if (isServerMode) {
-      const alive = Object.values(displayHpRef.current).filter((hp) => hp > 0).length
+      const alive = getAuthoritativeAlive()
       if (alive <= 1) {
         endArenaSession(sessionId!).then(() => onGameOver?.())
       }
@@ -363,7 +388,7 @@ export default function ArenaBattle({
         if (prev <= 1) {
           if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
           setTimeout(() => {
-            const currentAlive = Object.values(displayHpRef.current).filter((hp) => hp > 0).length
+            const currentAlive = getAuthoritativeAlive()
             if (currentAlive <= 1) {
               setPhase('done')
             } else {
