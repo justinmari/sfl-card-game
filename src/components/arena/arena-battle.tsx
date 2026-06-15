@@ -27,6 +27,24 @@ const rarityTextColor: Record<string, string> = {
   secret_rare: 'text-pink-400',
 }
 
+// Fast mode: compresses the arena's real-time countdowns/animations so e2e games
+// finish in seconds instead of minutes. Enabled ONLY for tests via the
+// NEXT_PUBLIC_ARENA_FAST env var (set by Playwright's webServer); production is unaffected.
+const ARENA_FAST = process.env.NEXT_PUBLIC_ARENA_FAST === '1'
+// Two e2e paces (both gated to ARENA_FAST; production is unaffected):
+//  • "fast" (default under ARENA_FAST): observable windows — skill-select/round-end stay long
+//    enough for the interactive specs (battle/skills) that click skills and watch mid-battle.
+//  • "instant" (opt-in per session via localStorage 'arena_pace'='instant'): near-zero windows.
+//    Used by full-game, which verifies consistency from window.__arenaRounds at game-over and
+//    never scrapes a transient screen, so the windows can be tiny.
+// Phase START values are the same for both paces; the speed difference comes from the tick rate
+// (computed per-component from the instant flag below).
+const SKILL_SELECT_SECONDS = ARENA_FAST ? 1 : 5
+const ROUND_INTRO_SECONDS = ARENA_FAST ? 1 : 3
+const FACEOFF_PHASES: [number, 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'][] = ARENA_FAST
+  ? [[0, 'enter'], [60, 'power'], [140, 'rolling'], [260, 'merge'], [340, 'result'], [480, 'done']]
+  : [[0, 'enter'], [500, 'power'], [1200, 'rolling'], [2400, 'merge'], [3100, 'result'], [4500, 'done']]
+
 export type ArenaBattleProps = {
   userId: string
   players: BattlePlayer[]
@@ -99,7 +117,7 @@ export default function ArenaBattle({
   const [localSkillIds, setLocalSkillIds] = useState<string[]>([])
   const [matchupPreview, setMatchupPreview] = useState<{ pairs: [string, string][]; byeId: string | null } | null>(null)
   const [activeRoundSkills, setActiveRoundSkills] = useState<ActiveSkill[]>(initialSkills ?? [])
-  const [introCountdown, setIntroCountdown] = useState(5)
+  const [introCountdown, setIntroCountdown] = useState(SKILL_SELECT_SECONDS)
   const [myReady, setMyReady] = useState(false)
   const [readyInfo, setReadyInfo] = useState<{ readyCount: number; aliveCount: number } | null>(null)
 
@@ -110,6 +128,20 @@ export default function ArenaBattle({
   const appliedRef = useRef<Set<number>>(new Set())
   const displayHpRef = useRef(displayHp)
   displayHpRef.current = displayHp
+
+  // Per-session e2e pace. "instant" (localStorage flag, full-game only) → ~100ms windows;
+  // otherwise the observable "fast" baseline. Read once synchronously; not rendered, so no
+  // hydration concern. Production (ARENA_FAST=false) always uses the normal 1s cadence.
+  const instantRef = useRef<boolean | null>(null)
+  if (instantRef.current === null) {
+    instantRef.current =
+      ARENA_FAST && typeof window !== 'undefined' && window.localStorage.getItem('arena_pace') === 'instant'
+  }
+  const instant = instantRef.current
+  const countdownTickMs = instant ? 100 : 1000
+  const roundEndStart = ARENA_FAST ? (instant ? 1 : 2) : 20
+  const koToRoundEndMs = ARENA_FAST ? (instant ? 150 : 300) : 2000
+  const readyPollMs = ARENA_FAST ? (instant ? 300 : 750) : 2000
 
   // Matchups: prefer precomputed result, then server preview, then null
   const introMatchups: { pairs: [string, string][]; byeId: string | null } | null = precomputed ? {
@@ -184,6 +216,25 @@ export default function ArenaBattle({
     // Guard against processing the same round twice (poll + Realtime race)
     if (handledRoundsRef.current.has(newRoundNum)) return
     handledRoundsRef.current.add(newRoundNum)
+
+    // E2E only: record this client's view of each round so the test can verify
+    // cross-client consistency by reading the full log once at game-over (no need to
+    // observe the transient round-end screen). Gated to fast mode; prod records nothing.
+    if (ARENA_FAST) {
+      const w = window as unknown as { __arenaRounds?: unknown[] }
+      if (!w.__arenaRounds) w.__arenaRounds = []
+      w.__arenaRounds.push({
+        round: newRoundNum,
+        byePlayerId: result.byePlayerId,
+        matches: result.matches.map((m) => ({
+          p1: m.player1Id,
+          p2: m.player2Id,
+          winnerId: m.winnerId,
+          finalHp: m.hpSnapshots[m.hpSnapshots.length - 1],
+        })),
+      })
+    }
+
     setRoundNum(newRoundNum)
     setPrecomputed(result)
     setActiveRoundSkills(skills)
@@ -193,7 +244,7 @@ export default function ArenaBattle({
     setMyReady(false)
     setReadyInfo(null)
     setLocalSkillIds([])
-    setIntroCountdown(3) // brief intro before fighting
+    setIntroCountdown(ROUND_INTRO_SECONDS) // brief intro before fighting
     setBattlePhase('round-intro')
     skills.forEach((s) => {
       if (s.activatedBy === userId) {
@@ -214,7 +265,7 @@ export default function ArenaBattle({
   // Skill select countdown → submit ready
   useEffect(() => {
     if (battlePhase !== 'skill-select') return
-    setIntroCountdown(5)
+    setIntroCountdown(SKILL_SELECT_SECONDS)
     if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null }
     introCountdownRef.current = setInterval(() => {
       setIntroCountdown((prev) => {
@@ -238,7 +289,7 @@ export default function ArenaBattle({
         }
         return prev - 1
       })
-    }, 1000)
+    }, countdownTickMs)
     return () => { if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null } }
   }, [battlePhase === 'skill-select', roundNum])
 
@@ -255,7 +306,7 @@ export default function ArenaBattle({
         }
         return prev - 1
       })
-    }, 1000)
+    }, countdownTickMs)
     return () => { if (introCountdownRef.current) { clearInterval(introCountdownRef.current); introCountdownRef.current = null } }
   }, [battlePhase === 'round-intro', roundNum])
 
@@ -266,9 +317,7 @@ export default function ArenaBattle({
     setRollElapsed(0)
 
     const startTime = performance.now()
-    const phases: [number, 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'][] = [
-      [0, 'enter'], [500, 'power'], [1200, 'rolling'], [2400, 'merge'], [3100, 'result'], [4500, 'done'],
-    ]
+    const phases = FACEOFF_PHASES
     let currentPhaseIdx = 0
     let rollingStart = 0
     let resultApplied = false
@@ -338,7 +387,7 @@ export default function ArenaBattle({
       setMatchKo(newKos)
       if (newKos.size >= precomputed.matches.length) {
         clearTimer()
-        timerRef.current = setTimeout(() => setBattlePhase('round-end'), 2000)
+        timerRef.current = setTimeout(() => setBattlePhase('round-end'), koToRoundEndMs)
       }
     }
   }, [displayHp, battlePhase])
@@ -379,7 +428,7 @@ export default function ArenaBattle({
       }
     }
 
-    setRoundEndCountdown(20)
+    setRoundEndCountdown(roundEndStart)
     setMyReady(false)
     setReadyInfo(null)
     setLocalSkillIds([])
@@ -400,7 +449,7 @@ export default function ArenaBattle({
         }
         return prev - 1
       })
-    }, 1000)
+    }, countdownTickMs)
     return () => { if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null } }
   }, [battlePhase === 'round-end'])
 
@@ -471,7 +520,7 @@ export default function ArenaBattle({
           }
         }
       }
-    }, 2000)
+    }, readyPollMs)
     return () => clearInterval(interval)
   }, [battlePhase === 'waiting-for-round'])
 

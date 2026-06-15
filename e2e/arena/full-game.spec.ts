@@ -1,4 +1,4 @@
-import { test, expect, type Page, type BrowserContext } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { login, loginNewContext, cleanupArena, resetArenaEnabled, joinLobbyFromList } from '../helpers'
 
 const LOCAL_URL = 'http://127.0.0.1:54321'
@@ -71,23 +71,11 @@ async function setupPlayer(userId: string, name: string, deckName: string) {
   })
 }
 
-async function extractMatchups(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const h3 = Array.from(document.querySelectorAll('h3')).find(h => h.textContent?.includes('Complete'))
-    if (!h3) return []
-    const container = h3.closest('div.rounded-xl')
-    if (!container) return []
-    const resultDiv = container.querySelector('.space-y-1')
-    if (!resultDiv) return []
-    return Array.from(resultDiv.querySelectorAll(':scope > div > div:first-child'))
-      .map(el => {
-        const spans = Array.from(el.querySelectorAll('span.font-medium'))
-        if (spans.length < 2) return ''
-        return `${spans[0].textContent?.trim()} vs ${spans[1].textContent?.trim()}`
-      })
-      .filter(Boolean)
-      .sort()
-  })
+// Each client records its view of every round to window.__arenaRounds (fast-mode only).
+// Reading it at game-over lets us verify per-round consistency without observing the
+// transient round-end screens — so the in-app round countdowns can be near-zero.
+async function readRoundLog(p: Page): Promise<unknown[]> {
+  return p.evaluate(() => (window as unknown as { __arenaRounds?: unknown[] }).__arenaRounds || [])
 }
 
 async function extractFinalRankings(page: Page) {
@@ -127,27 +115,34 @@ test.describe('8-Player Full Arena Game', () => {
   test('all 8 players see consistent round data — no desync', async ({ page, browser }) => {
     test.setTimeout(600000)
 
+    // Run this game at the "instant" pace (~100ms round windows). full-game verifies
+    // consistency from window.__arenaRounds at game-over, so it doesn't need observable
+    // screens — unlike the interactive battle/skills specs, which stay at the normal fast pace.
+    const setInstantPace = () => { try { localStorage.setItem('arena_pace', 'instant') } catch { /* ignore */ } }
+
     // === LOBBY SETUP ===
+    await page.context().addInitScript(setInstantPace)
     await login(page, HOST)
     await page.goto('/arena')
     await page.click('button:has-text("Create")')
     await page.waitForURL(/\/arena\/lobby\//, { timeout: 10000 })
 
-    const contexts: { page: Page; context: BrowserContext; info: Player }[] = []
-    for (const joiner of JOINERS) {
+    // Log all joiners in and join the lobby concurrently (was sequential — ~16s of UI logins)
+    const contexts = await Promise.all(JOINERS.map(async (joiner) => {
       const ctx = await loginNewContext(browser, joiner)
+      await ctx.context.addInitScript(setInstantPace)
       await joinLobbyFromList(ctx.page)
-      contexts.push({ ...ctx, info: joiner })
-    }
+      return { ...ctx, info: joiner }
+    }))
 
     await expect(page.getByText('Players (8/8)')).toBeVisible({ timeout: 30000 })
     await test.info().attach('lobby-8-players', { body: await page.screenshot(), contentType: 'image/png' })
 
-    // === READY UP ===
-    for (const ctx of contexts) {
+    // === READY UP (concurrently) ===
+    await Promise.all(contexts.map(async (ctx) => {
       await ctx.page.click(`button:has-text("${ctx.info.deckName}")`)
       await ctx.page.click('button:has-text("Ready Up")')
-    }
+    }))
     await page.click('button:has-text("Admin Deck")')
     await expect(page.locator('button:has-text("Start Game"):not([disabled])')).toBeVisible({ timeout: 30000 })
     await test.info().attach('all-8-ready', { body: await page.screenshot(), contentType: 'image/png' })
@@ -156,64 +151,35 @@ test.describe('8-Player Full Arena Game', () => {
     await page.click('button:has-text("Start Game")')
     await expect(page.locator('text=/Round 1|VS|Skills|Fight/i').first()).toBeVisible({ timeout: 30000 })
 
-    // === ROUND-BY-ROUND VERIFICATION ===
-    const allPages = [{ page, label: 'host' }, ...contexts.map((c, i) => ({ page: c.page, label: `player-${i + 1}` }))]
-    let round = 0
+    // === PLAY TO COMPLETION ===
+    // Rounds auto-advance (fast mode compresses the countdowns to ~100ms). Each client
+    // records its view of every round to window.__arenaRounds, so we verify per-round
+    // consistency by comparing those logs at game-over — no transient-screen scraping.
+    await expect(page.getByText('Wins!')).toBeVisible({ timeout: 120000 })
+    await Promise.all(contexts.map((c) => expect(c.page.getByText('Wins!')).toBeVisible({ timeout: 120000 })))
 
-    while (true) {
-      round++
-
-      // Wait for host to see this SPECIFIC round complete, or game-over
-      await expect(
-        page.getByText(new RegExp(`Round ${round} Complete|Wins!`)).first()
-      ).toBeVisible({ timeout: 120000 })
-
-      if (await page.getByText('Wins!').isVisible()) break
-
-      // Wait for ALL players to see the SAME specific round complete
-      for (const ctx of contexts) {
-        await expect(
-          ctx.page.getByText(new RegExp(`Round ${round} Complete|Wins!`)).first()
-        ).toBeVisible({ timeout: 60000 })
-      }
-
-      // Extract match results from "Round X Complete" section on each client
-      const hostResults = await extractMatchups(page)
-      expect(hostResults.length, `Round ${round}: host has no match results`).toBeGreaterThan(0)
-
-      for (let i = 0; i < contexts.length; i++) {
-        const playerResults = await extractMatchups(contexts[i].page)
-        expect(playerResults, `Round ${round}: ${contexts[i].info.name} sees different match results than host`).toEqual(hostResults)
-      }
-
-      // Screenshot all 8 perspectives
-      for (const p of allPages) {
-        await test.info().attach(`round-${round}-${p.label}`, {
-          body: await p.page.screenshot(), contentType: 'image/png',
-        })
-      }
-
-      // Wait for the round to advance on the host
-      await expect(page.getByText(`Round ${round} Complete`).first()).not.toBeVisible({ timeout: 25000 })
-    }
+    // === ROUND-LOG CONSISTENCY (every round, every client) ===
+    const hostLog = await readRoundLog(page)
+    expect(hostLog.length, 'host recorded no rounds').toBeGreaterThan(0)
+    const clientLogs = await Promise.all(contexts.map((c) => readRoundLog(c.page)))
+    clientLogs.forEach((log, i) => {
+      expect(log, `${contexts[i].info.name} has a different round log than host`).toEqual(hostLog)
+    })
 
     // === FINAL GAME-OVER VERIFICATION ===
     await test.info().attach('final-host', { body: await page.screenshot(), contentType: 'image/png' })
-
     const hostResults = await extractFinalRankings(page)
     expect(hostResults.rankings).toHaveLength(8)
 
-    for (let i = 0; i < contexts.length; i++) {
-      await expect(contexts[i].page.getByText('Wins!')).toBeVisible({ timeout: 60000 })
-      await test.info().attach(`final-player-${i + 1}`, {
-        body: await contexts[i].page.screenshot(), contentType: 'image/png',
-      })
-
-      const playerResults = await extractFinalRankings(contexts[i].page)
+    await Promise.all(contexts.map((c, i) =>
+      c.page.screenshot().then((body) => test.info().attach(`final-player-${i + 1}`, { body, contentType: 'image/png' }))
+    ))
+    const finalAll = await Promise.all(contexts.map((c) => extractFinalRankings(c.page)))
+    finalAll.forEach((playerResults, i) => {
       expect(playerResults.winner, `Player ${i + 1} (${contexts[i].info.name}) sees different winner`).toBe(hostResults.winner)
       expect(playerResults.rounds, `Player ${i + 1} (${contexts[i].info.name}) sees different round count`).toBe(hostResults.rounds)
       expect(playerResults.rankings, `Player ${i + 1} (${contexts[i].info.name}) has different rankings`).toEqual(hostResults.rankings)
-    }
+    })
 
     for (const ctx of contexts) {
       try { await ctx.context.close() } catch {}

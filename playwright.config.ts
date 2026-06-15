@@ -23,7 +23,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_SUPABASE_URL=${LOCAL_SUPABASE_URL} NEXT_PUBLIC_SUPABASE_ANON_KEY=${LOCAL_ANON_KEY} npx next dev --port 3001`,
+    command: `NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_ARENA_FAST=1 NEXT_PUBLIC_SUPABASE_URL=${LOCAL_SUPABASE_URL} NEXT_PUBLIC_SUPABASE_ANON_KEY=${LOCAL_ANON_KEY} npx next dev --port 3001`,
     port: 3001,
     reuseExistingServer: true,
     timeout: 60000,
