@@ -260,32 +260,26 @@ export default function TradingCard({
             )}
           </div>
 
-          {/* Types */}
-          {card.typeNames && card.typeNames.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {card.typeNames.map((name, i) => (
-                <span
-                  key={i}
-                  className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/40 px-1.5 py-0.5 font-medium text-cyan-300`}
-                >
-                  {name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Stars + Skills */}
-          <div className={`mt-auto flex items-center justify-between pt-2`}>
-            <div className={`flex items-center gap-[3px] ${s.stars} ${rarityStarColor[card.rarity]}`}>
+          {/* Stars + Skills + Types */}
+          <div className={`mt-auto flex items-center justify-between gap-2 pt-2`}>
+            <div className={`flex flex-shrink-0 items-center gap-[3px] ${s.stars} ${rarityStarColor[card.rarity]}`}>
               {Array.from({ length: stars }).map((_, i) => (
                 <span key={i}>★</span>
               ))}
             </div>
-            {card.skillNames && card.skillNames.length > 0 && (
-              <div className="flex items-center gap-1">
-                {card.skillNames.map((name, i) => (
+            {((card.skillNames && card.skillNames.length > 0) || (card.typeNames && card.typeNames.length > 0)) && (
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {card.skillNames && card.skillNames.length > 0 && card.skillNames.map((name, i) => (
                   <span key={i} className={`${s.desc} flex items-center gap-0.5 text-pink-400 font-medium`}>
                     <span>✦</span>{name}
+                  </span>
+                ))}
+                {card.typeNames && card.typeNames.map((name, i) => (
+                  <span
+                    key={i}
+                    className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/40 px-1.5 py-0.5 font-medium text-cyan-300`}
+                  >
+                    {name}
                   </span>
                 ))}
               </div>

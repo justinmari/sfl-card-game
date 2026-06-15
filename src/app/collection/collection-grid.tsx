@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import TradingCard, { rarityStarCount, rarityStarColor } from '@/components/trading-card'
-import { rarityLabel } from '@/lib/rarities'
+import { rarityLabel, RARITIES } from '@/lib/rarities'
+import { CompactFilterBar, type FilterSelect } from '@/components/card-filters'
+import { usePreferences } from '@/lib/preferences'
 
 type Card = {
   id: string
@@ -49,39 +51,25 @@ export default function CollectionGrid({
   creatures: Creature[]
   totalCards: number
 }) {
+  const { preferences } = usePreferences()
+  const compact = preferences.compactCards
+  const desktopSize = compact ? 'sm' : 'md'
+
   const [selected, setSelected] = useState<{ card: Card; count: number } | null>(null)
+  const [search, setSearch] = useState('')
   const [activePack, setActivePack] = useState<string | null>(null)
+  const [activeRarity, setActiveRarity] = useState<string | null>(null)
   const [activeCreature, setActiveCreature] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
   const [sort, setSort] = useState<SortOption>('rarity')
-  const [packSearch, setPackSearch] = useState('')
-  const [packDropdownOpen, setPackDropdownOpen] = useState(false)
-  const packRef = useRef<HTMLDivElement>(null)
-  const [creatureSearch, setCreatureSearch] = useState('')
-  const [creatureDropdownOpen, setCreatureDropdownOpen] = useState(false)
-  const creatureRef = useRef<HTMLDivElement>(null)
-  const [typeSearch, setTypeSearch] = useState('')
-  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
-  const typeRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (packRef.current && !packRef.current.contains(e.target as Node)) {
-        setPackDropdownOpen(false)
-      }
-      if (creatureRef.current && !creatureRef.current.contains(e.target as Node)) {
-        setCreatureDropdownOpen(false)
-      }
-      if (typeRef.current && !typeRef.current.contains(e.target as Node)) {
-        setTypeDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const filtered = useMemo(() => {
     let result = cardCounts
+
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(({ card }) => card.name.toLowerCase().includes(q))
+    }
 
     if (activePack) {
       const pack = packFilters.find((p) => p.id === activePack)
@@ -89,6 +77,10 @@ export default function CollectionGrid({
         const cardIdSet = new Set(pack.cardIds)
         result = result.filter(({ card }) => cardIdSet.has(card.id))
       }
+    }
+
+    if (activeRarity) {
+      result = result.filter(({ card }) => card.rarity === activeRarity)
     }
 
     if (activeCreature) {
@@ -108,7 +100,7 @@ export default function CollectionGrid({
     }
 
     return result
-  }, [cardCounts, activePack, activeCreature, activeType, packFilters])
+  }, [cardCounts, search, activePack, activeRarity, activeCreature, activeType, packFilters])
 
   const sorted = useMemo(() => {
     const items = [...filtered]
@@ -157,7 +149,7 @@ export default function CollectionGrid({
 
   const filteredTotal = sorted.reduce((sum, { count }) => sum + count, 0)
 
-  // Get creatures that appear in the user's collection
+  // Creatures present in the user's collection
   const collectionCreatures = useMemo(() => {
     const names = new Set<string>()
     let hasUnknown = false
@@ -168,7 +160,7 @@ export default function CollectionGrid({
     return { names: [...names].sort(), hasUnknown }
   }, [cardCounts])
 
-  // Get types that appear in the user's collection
+  // Types present in the user's collection
   const collectionTypes = useMemo(() => {
     const names = new Set<string>()
     let hasUntyped = false
@@ -179,214 +171,72 @@ export default function CollectionGrid({
     return { names: [...names].sort(), hasUntyped }
   }, [cardCounts])
 
+  const selects = useMemo(() => {
+    const list: FilterSelect[] = [
+      {
+        ariaLabel: 'Filter by pack',
+        placeholder: 'All packs',
+        value: activePack,
+        onChange: setActivePack,
+        options: packFilters.map((p) => {
+          const owned = cardCounts.filter(({ card }) => p.cardIds.includes(card.id)).length
+          return { value: p.id, label: `${p.name} (${owned}/${p.cardIds.length})` }
+        }),
+      },
+      {
+        ariaLabel: 'Filter by rarity',
+        placeholder: 'All rarities',
+        value: activeRarity,
+        onChange: setActiveRarity,
+        options: RARITIES.map((r) => ({ value: r.value, label: r.label })),
+      },
+    ]
+
+    if (collectionCreatures.names.length > 0 || collectionCreatures.hasUnknown) {
+      list.push({
+        ariaLabel: 'Filter by creature',
+        placeholder: 'All creatures',
+        value: activeCreature,
+        onChange: setActiveCreature,
+        options: [
+          ...collectionCreatures.names.map((n) => ({ value: n, label: n })),
+          ...(collectionCreatures.hasUnknown ? [{ value: '__unknown__', label: 'Unknown' }] : []),
+        ],
+      })
+    }
+
+    if (collectionTypes.names.length > 0 || collectionTypes.hasUntyped) {
+      list.push({
+        ariaLabel: 'Filter by type',
+        placeholder: 'All types',
+        value: activeType,
+        onChange: setActiveType,
+        options: [
+          ...collectionTypes.names.map((n) => ({ value: n, label: n })),
+          ...(collectionTypes.hasUntyped ? [{ value: '__untyped__', label: 'Untyped' }] : []),
+        ],
+      })
+    }
+
+    return list
+  }, [packFilters, cardCounts, activePack, activeRarity, activeCreature, activeType, collectionCreatures, collectionTypes])
+
   return (
     <>
-    <div className="flex flex-col gap-6 lg:flex-row">
-      {/* Sidebar — horizontal on mobile, vertical on desktop */}
-      <div className="w-full flex-shrink-0 lg:w-56">
-        <div className="space-y-5 lg:sticky lg:top-6">
-
-      {/* Pack filter typeahead */}
-      <div>
-        <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Pack</div>
-        <div ref={packRef} className="relative">
-          <input
-            type="text"
-            value={activePack ? packFilters.find((p) => p.id === activePack)?.name || '' : packSearch}
-            onChange={(e) => {
-              setPackSearch(e.target.value)
-              setActivePack(null)
-              setPackDropdownOpen(true)
-            }}
-            onFocus={() => setPackDropdownOpen(true)}
-            placeholder="All packs"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-          />
-          {activePack && (
-            <button
-              onClick={() => { setActivePack(null); setPackSearch('') }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-            >
-              ×
-            </button>
-          )}
-          {packDropdownOpen && (
-            <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
-              <button
-                onClick={() => { setActivePack(null); setPackSearch(''); setPackDropdownOpen(false) }}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activePack ? 'text-white font-medium' : 'text-zinc-300'}`}
-              >
-                All packs
-              </button>
-              {packFilters
-                .filter((p) => !packSearch || p.name.toLowerCase().includes(packSearch.toLowerCase()))
-                .map((pack) => {
-                  const ownedFromPack = cardCounts.filter(({ card }) =>
-                    pack.cardIds.includes(card.id)
-                  ).length
-                  return (
-                    <button
-                      key={pack.id}
-                      onClick={() => { setActivePack(pack.id); setPackSearch(''); setPackDropdownOpen(false) }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activePack === pack.id ? 'text-white font-medium' : 'text-zinc-300'}`}
-                    >
-                      {pack.name} <span className="text-zinc-500">({ownedFromPack}/{pack.cardIds.length})</span>
-                    </button>
-                  )
-                })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Creature filter */}
-      {(collectionCreatures.names.length > 0 || collectionCreatures.hasUnknown) && (
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Creature</div>
-          <div ref={creatureRef} className="relative">
-            <input
-              type="text"
-              value={activeCreature ? (activeCreature === '__unknown__' ? 'Unknown' : activeCreature) : creatureSearch}
-              onChange={(e) => {
-                setCreatureSearch(e.target.value)
-                setActiveCreature(null)
-                setCreatureDropdownOpen(true)
-              }}
-              onFocus={() => setCreatureDropdownOpen(true)}
-              placeholder="All creatures"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-            />
-            {activeCreature && (
-              <button
-                onClick={() => { setActiveCreature(null); setCreatureSearch('') }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-              >
-                ×
-              </button>
-            )}
-            {creatureDropdownOpen && (
-              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
-                <button
-                  onClick={() => { setActiveCreature(null); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activeCreature ? 'text-white font-medium' : 'text-zinc-300'}`}
-                >
-                  All creatures
-                </button>
-                {collectionCreatures.names
-                  .filter((n) => !creatureSearch || n.toLowerCase().includes(creatureSearch.toLowerCase()))
-                  .map((name) => (
-                    <button
-                      key={name}
-                      onClick={() => { setActiveCreature(name); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activeCreature === name ? 'text-white font-medium' : 'text-zinc-300'}`}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                {collectionCreatures.hasUnknown && (!creatureSearch || 'unknown'.includes(creatureSearch.toLowerCase())) && (
-                  <button
-                    onClick={() => { setActiveCreature('__unknown__'); setCreatureSearch(''); setCreatureDropdownOpen(false) }}
-                    className={`w-full px-3 py-2 text-left text-sm italic hover:bg-zinc-800 ${activeCreature === '__unknown__' ? 'text-white font-medium' : 'text-zinc-400'}`}
-                  >
-                    Unknown
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Type filter */}
-      {(collectionTypes.names.length > 0 || collectionTypes.hasUntyped) && (
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Type</div>
-          <div ref={typeRef} className="relative">
-            <input
-              type="text"
-              value={activeType ? (activeType === '__untyped__' ? 'Untyped' : activeType) : typeSearch}
-              onChange={(e) => {
-                setTypeSearch(e.target.value)
-                setActiveType(null)
-                setTypeDropdownOpen(true)
-              }}
-              onFocus={() => setTypeDropdownOpen(true)}
-              placeholder="All types"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
-            />
-            {activeType && (
-              <button
-                onClick={() => { setActiveType(null); setTypeSearch('') }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-              >
-                ×
-              </button>
-            )}
-            {typeDropdownOpen && (
-              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
-                <button
-                  onClick={() => { setActiveType(null); setTypeSearch(''); setTypeDropdownOpen(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activeType ? 'text-white font-medium' : 'text-zinc-300'}`}
-                >
-                  All types
-                </button>
-                {collectionTypes.names
-                  .filter((n) => !typeSearch || n.toLowerCase().includes(typeSearch.toLowerCase()))
-                  .map((name) => (
-                    <button
-                      key={name}
-                      onClick={() => { setActiveType(name); setTypeSearch(''); setTypeDropdownOpen(false) }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activeType === name ? 'text-white font-medium' : 'text-zinc-300'}`}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                {collectionTypes.hasUntyped && (!typeSearch || 'untyped'.includes(typeSearch.toLowerCase())) && (
-                  <button
-                    onClick={() => { setActiveType('__untyped__'); setTypeSearch(''); setTypeDropdownOpen(false) }}
-                    className={`w-full px-3 py-2 text-left text-sm italic hover:bg-zinc-800 ${activeType === '__untyped__' ? 'text-white font-medium' : 'text-zinc-400'}`}
-                  >
-                    Untyped
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Sort */}
-      <div>
-        <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Sort</div>
-        <div className="flex flex-col gap-1">
-          {(['rarity', 'name', 'count', 'date'] as SortOption[]).map((opt) => (
-            <button
-              key={opt}
-              onClick={() => setSort(opt)}
-              className={`rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
-                sort === opt
-                  ? 'bg-zinc-700 text-white font-medium'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-              }`}
-            >
-              {opt === 'count' ? 'Quantity' : opt === 'date' ? 'Acquired' : opt.charAt(0).toUpperCase() + opt.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <p className="text-xs text-zinc-500">
-        {filteredTotal} card{filteredTotal !== 1 ? 's' : ''} ({sorted.length} unique)
-      </p>
-
-        </div>
-      </div>
-
-      {/* Right: card grid */}
-      <div className="flex-1 min-w-0">
-
-      </div>
-      </div>
+      <CompactFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        selects={selects}
+        sortOptions={[
+          { value: 'rarity', label: 'Rarity' },
+          { value: 'name', label: 'Name' },
+          { value: 'count', label: 'Quantity' },
+          { value: 'date', label: 'Acquired' },
+        ]}
+        sort={sort}
+        onSortChange={(v) => setSort(v as SortOption)}
+        countLabel={`${filteredTotal} card${filteredTotal !== 1 ? 's' : ''} (${sorted.length} unique)`}
+      />
 
       {/* Preview modal */}
       {selected && (
@@ -432,6 +282,7 @@ export default function CollectionGrid({
       )}
 
       {/* Card grid */}
+      <div data-testid="collection-cards" data-compact={compact ? 'true' : 'false'}>
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-zinc-500">No cards match this filter.</p>
       ) : dateSections ? (
@@ -454,7 +305,7 @@ export default function CollectionGrid({
                     <div className="hidden sm:block">
                       <TradingCard
                         card={card}
-                        size="md"
+                        size={desktopSize}
                         count={count}
                         onClick={() => setSelected({ card, count })}
                       />
@@ -481,7 +332,7 @@ export default function CollectionGrid({
               <div className="hidden sm:block">
                 <TradingCard
                   card={card}
-                  size="md"
+                  size={desktopSize}
                   count={count}
                   onClick={() => setSelected({ card, count })}
                 />
@@ -490,6 +341,7 @@ export default function CollectionGrid({
           ))}
         </div>
       )}
+      </div>
     </>
   )
 }

@@ -111,4 +111,89 @@ export function CardFilterBar({
   )
 }
 
+export type FilterSelect = {
+  ariaLabel: string
+  placeholder: string
+  value: string | null
+  onChange: (v: string | null) => void
+  options: { value: string; label: string }[]
+}
+
+export type SortChoice = { value: string; label: string }
+
+/**
+ * Compact, responsive filter + sort bar shared by the collection and admin
+ * card pages. Renders a single wrapping row: search, native-select filters,
+ * compact sort buttons, an optional extras slot, and a count — staying tight
+ * on both desktop and mobile.
+ */
+export function CompactFilterBar({
+  search,
+  onSearchChange,
+  selects = [],
+  sortOptions,
+  sort,
+  onSortChange,
+  countLabel,
+  children,
+}: {
+  search: string
+  onSearchChange: (v: string) => void
+  selects?: FilterSelect[]
+  sortOptions: SortChoice[]
+  sort: string
+  onSortChange: (v: string) => void
+  countLabel: string
+  children?: React.ReactNode
+}) {
+  const selectClass =
+    'min-w-0 max-w-[8.5rem] rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-sm text-white focus:border-zinc-500 focus:outline-none'
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search cards..."
+        className="w-full min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none sm:w-auto sm:max-w-[12rem]"
+      />
+
+      {selects.map((sel) => (
+        <select
+          key={sel.ariaLabel}
+          aria-label={sel.ariaLabel}
+          value={sel.value || ''}
+          onChange={(e) => sel.onChange(e.target.value || null)}
+          className={selectClass}
+        >
+          <option value="">{sel.placeholder}</option>
+          {sel.options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      ))}
+
+      <div className="flex items-center gap-0.5 rounded-lg border border-zinc-800 bg-zinc-900 p-0.5">
+        {sortOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onSortChange(opt.value)}
+            className={`rounded px-2 py-1 text-xs transition-colors ${
+              sort === opt.value ? 'bg-zinc-700 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {children}
+
+      <span className="ml-auto whitespace-nowrap text-xs text-zinc-500">{countLabel}</span>
+    </div>
+  )
+}
+
 export type { SortOption }

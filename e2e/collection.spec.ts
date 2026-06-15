@@ -66,16 +66,33 @@ test.describe('Collection', () => {
     await expect(page.getByText(/Owned: x\d+/)).not.toBeVisible()
   })
 
+  test('can search cards by name', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await page.getByPlaceholder('Search cards...').fill('Fire')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible()
+    await test.info().attach('search-fire', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+
+  test('can filter by rarity', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await page.getByLabel('Filter by rarity').selectOption({ index: 1 })
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible()
+    await test.info().attach('filter-rarity', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+
   test('can filter by creature', async ({ page }) => {
     await login(page, TEST_PLAYER)
     await page.goto('/collection')
     await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
 
-    await page.getByPlaceholder('All creatures').click()
-    // Dropdown opens; pick first available creature from the list
-    const creatureBtn = page.locator('.absolute.z-30 button').nth(1)
-    await expect(creatureBtn).toBeVisible({ timeout: 5000 })
-    await creatureBtn.click()
+    await page.getByLabel('Filter by creature').selectOption({ index: 1 })
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible()
     await test.info().attach('filter-creature', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
@@ -84,9 +101,8 @@ test.describe('Collection', () => {
     await page.goto('/collection')
     await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
 
-    await page.getByPlaceholder('All packs').click()
-    await expect(page.locator('button:has-text("Starter Pack")')).toBeVisible({ timeout: 5000 })
-    await page.locator('button:has-text("Starter Pack")').click()
+    await page.getByLabel('Filter by pack').selectOption({ index: 1 })
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible()
     await test.info().attach('filter-pack', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
@@ -106,11 +122,7 @@ test.describe('Collection', () => {
     await page.goto('/collection')
     await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
 
-    await page.getByPlaceholder('All types').click()
-    // Dropdown opens; pick first available type from the list (index 0 is "All types")
-    const typeBtn = page.locator('.absolute.z-30 button').nth(1)
-    await expect(typeBtn).toBeVisible({ timeout: 5000 })
-    await typeBtn.click()
+    await page.getByLabel('Filter by type').selectOption({ index: 1 })
     await expect(page.locator('text=/\\d+ card/')).toBeVisible()
     await test.info().attach('filter-type', { body: await page.screenshot(), contentType: 'image/png' })
   })

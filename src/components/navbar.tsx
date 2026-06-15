@@ -94,6 +94,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Account menu"
               className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-zinc-700 transition-colors hover:border-zinc-500"
             >
               {avatarUrl ? (
@@ -111,6 +112,13 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
                   className="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800"
                 >
                   Profile
+                </Link>
+                <Link
+                  href="/preferences"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800"
+                >
+                  Preferences
                 </Link>
                 <Link
                   href="/settings"

@@ -6,7 +6,7 @@ import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
-import { CardFilterBar, useCardFilters, type SortOption } from '@/components/card-filters'
+import { CompactFilterBar, useCardFilters, type SortOption, type FilterSelect } from '@/components/card-filters'
 
 type Creature = {
   id: string
@@ -45,15 +45,50 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterRarity, setFilterRarity] = useState<string | null>(null)
+  const [filterCreature, setFilterCreature] = useState<string | null>(null)
+  const [filterType, setFilterType] = useState<string | null>(null)
   const [sort, setSort] = useState<SortOption>('date')
   const router = useRouter()
   const { sortCards, filterCards } = useCardFilters(cards)
 
   const filteredCards = useMemo(() => {
     let result = filterCards(cards, search, filterRarity)
+    if (filterCreature) result = result.filter((c) => c.creature_id === filterCreature)
+    if (filterType) result = result.filter((c) => (c.card_types || []).some((ct) => ct.type_id === filterType))
     if (filterNotInPack) result = result.filter((c) => !cardsInPacksSet.has(c.id))
     return sortCards(result, sort)
-  }, [cards, search, filterRarity, sort, filterNotInPack])
+  }, [cards, search, filterRarity, filterCreature, filterType, sort, filterNotInPack])
+
+  const filterSelects = useMemo(() => {
+    const list: FilterSelect[] = [
+      {
+        ariaLabel: 'Filter by rarity',
+        placeholder: 'All rarities',
+        value: filterRarity,
+        onChange: setFilterRarity,
+        options: RARITIES.map((r) => ({ value: r.value, label: r.label })),
+      },
+    ]
+    if (creatures.length > 0) {
+      list.push({
+        ariaLabel: 'Filter by creature',
+        placeholder: 'All creatures',
+        value: filterCreature,
+        onChange: setFilterCreature,
+        options: creatures.map((c) => ({ value: c.id, label: c.name })),
+      })
+    }
+    if (types.length > 0) {
+      list.push({
+        ariaLabel: 'Filter by type',
+        placeholder: 'All types',
+        value: filterType,
+        onChange: setFilterType,
+        options: types.map((t) => ({ value: t.id, label: t.name })),
+      })
+    }
+    return list
+  }, [creatures, types, filterRarity, filterCreature, filterType])
 
   const startEdit = (card: Card) => {
     setEditingId(card.id)
@@ -169,23 +204,27 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
   return (
     <div>
       <h2 className="mb-4 text-lg font-semibold">All Cards ({cards.length})</h2>
-      <CardFilterBar
+      <CompactFilterBar
         search={search}
         onSearchChange={setSearch}
-        rarity={filterRarity}
-        onRarityChange={setFilterRarity}
+        selects={filterSelects}
+        sortOptions={[
+          { value: 'rarity', label: 'Rarity' },
+          { value: 'name', label: 'Name' },
+          { value: 'date', label: 'Date' },
+        ]}
         sort={sort}
-        onSortChange={setSort}
-        count={filteredCards.length}
-      />
-      <div className="mb-4 flex items-center gap-2">
+        onSortChange={(v) => setSort(v as SortOption)}
+        countLabel={`${filteredCards.length} cards`}
+      >
         <button
+          type="button"
           onClick={() => setFilterNotInPack(!filterNotInPack)}
           className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${filterNotInPack ? 'bg-amber-600 text-white' : 'border border-zinc-700 text-zinc-400 hover:bg-zinc-800'}`}
         >
           Not in any pack {filterNotInPack ? `(${filteredCards.length})` : ''}
         </button>
-      </div>
+      </CompactFilterBar>
 
       {/* Edit modal */}
       {editingId && (
