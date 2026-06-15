@@ -1,4 +1,5 @@
 @AGENTS.md
+@CONTEXT.md
 
 ## Development Workflow
 
