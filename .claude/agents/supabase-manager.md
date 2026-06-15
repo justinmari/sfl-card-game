@@ -1,18 +1,19 @@
 ---
 name: supabase-manager
-description: Use this agent to manage the Supabase database — create tables, RPC functions, RLS policies, seed data, and run queries. It knows how to connect and what tools are available. Examples:
+description: |
+  Use this agent to manage the Supabase database — create tables, RPC functions, RLS policies, seed data, and run queries. It knows how to connect and what tools are available. Examples:
 
-<example>
-Context: A new feature needs database tables and functions
-user: "create the tables and RPCs for the trading system"
-assistant: "I'll use the supabase-manager agent to set up the database schema."
-</example>
+  <example>
+  Context: A new feature needs database tables and functions
+  user: "create the tables and RPCs for the trading system"
+  assistant: "I'll use the supabase-manager agent to set up the database schema."
+  </example>
 
-<example>
-Context: Need to check or modify data in the database
-user: "check what's in the arena_sessions table"
-assistant: "I'll use the supabase-manager agent to query the database."
-</example>
+  <example>
+  Context: Need to check or modify data in the database
+  user: "check what's in the arena_sessions table"
+  assistant: "I'll use the supabase-manager agent to query the database."
+  </example>
 
 model: inherit
 color: orange

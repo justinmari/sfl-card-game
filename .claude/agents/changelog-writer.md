@@ -1,18 +1,19 @@
 ---
 name: changelog-writer
-description: Use this agent to write a changelog entry and bump the app version. It updates both the database and the navbar version number. Examples:
+description: |
+  Use this agent to write a changelog entry and bump the app version. It updates both the database and the navbar version number. Examples:
 
-<example>
-Context: New features have been added and need to be documented
-user: "write a changelog for the latest changes"
-assistant: "I'll use the changelog-writer agent to create and publish the changelog."
-</example>
+  <example>
+  Context: New features have been added and need to be documented
+  user: "write a changelog for the latest changes"
+  assistant: "I'll use the changelog-writer agent to create and publish the changelog."
+  </example>
 
-<example>
-Context: User wants to bump the version
-user: "bump to 0.2.0 and write a changelog"
-assistant: "I'll use the changelog-writer agent to update the version and changelog."
-</example>
+  <example>
+  Context: User wants to bump the version
+  user: "bump to 0.2.0 and write a changelog"
+  assistant: "I'll use the changelog-writer agent to update the version and changelog."
+  </example>
 
 model: inherit
 color: green

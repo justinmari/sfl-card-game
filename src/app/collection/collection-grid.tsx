@@ -131,15 +131,23 @@ export default function CollectionGrid({
     return items
   }, [filtered, sort])
 
-  const dateSections = useMemo(() => {
-    if (sort !== 'date') return null
+  // Group cards into labeled sections for the Acquired (by day) and Rarity (by tier) sorts.
+  const sections = useMemo(() => {
+    if (sort !== 'date' && sort !== 'rarity') return null
     const groups: { label: string; items: typeof sorted }[] = []
-    let currentDay = ''
+    let currentKey = ''
     for (const item of sorted) {
-      const day = item.obtainedAt ? item.obtainedAt.slice(0, 10) : 'Unknown'
-      if (day !== currentDay) {
-        currentDay = day
-        const label = day === 'Unknown' ? 'Unknown' : new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      let key: string
+      let label: string
+      if (sort === 'date') {
+        key = item.obtainedAt ? item.obtainedAt.slice(0, 10) : 'Unknown'
+        label = key === 'Unknown' ? 'Unknown' : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      } else {
+        key = item.card.rarity
+        label = rarityLabel[item.card.rarity] || item.card.rarity
+      }
+      if (key !== currentKey) {
+        currentKey = key
         groups.push({ label, items: [] })
       }
       groups[groups.length - 1].items.push(item)
@@ -285,9 +293,9 @@ export default function CollectionGrid({
       <div data-testid="collection-cards" data-compact={compact ? 'true' : 'false'}>
       {sorted.length === 0 ? (
         <p className="py-10 text-center text-zinc-500">No cards match this filter.</p>
-      ) : dateSections ? (
+      ) : sections ? (
         <div className="space-y-8">
-          {dateSections.map((section) => (
+          {sections.map((section) => (
             <div key={section.label}>
               <h3 className="mb-3 border-b border-zinc-800 pb-2 text-sm font-semibold text-zinc-400">{section.label}</h3>
               <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">

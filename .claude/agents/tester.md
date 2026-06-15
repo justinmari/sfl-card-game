@@ -1,18 +1,19 @@
 ---
 name: tester
-description: Use this agent to run the full test suite — unit tests (Vitest) and e2e tests (Playwright). It syncs the local schema with production first, then flags any failures. Examples:
+description: |
+  Use this agent to run the full test suite — unit tests (Vitest) and e2e tests (Playwright). It syncs the local schema with production first, then flags any failures. Examples:
 
-<example>
-Context: After making code changes, verify nothing is broken
-user: "run the tests"
-assistant: "I'll use the tester agent to run the full test suite."
-</example>
+  <example>
+  Context: After making code changes, verify nothing is broken
+  user: "run the tests"
+  assistant: "I'll use the tester agent to run the full test suite."
+  </example>
 
-<example>
-Context: Want to check if a specific area is working
-user: "run the arena tests"
-assistant: "I'll use the tester agent to run the arena-related tests."
-</example>
+  <example>
+  Context: Want to check if a specific area is working
+  user: "run the arena tests"
+  assistant: "I'll use the tester agent to run the arena-related tests."
+  </example>
 ---
 
 # Tester Agent

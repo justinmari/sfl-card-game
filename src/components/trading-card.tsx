@@ -92,6 +92,7 @@ type CardData = {
   rarity: string
   creature_name?: string | null
   skillNames?: string[]
+  skillDescriptions?: string[]
   typeNames?: string[]
 }
 
@@ -188,8 +189,8 @@ export default function TradingCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`${s.wrapper} ${onClick ? 'cursor-pointer' : ''} select-none ${className}`}
-      style={{ perspective: '800px' }}
+      className={`${s.wrapper} relative ${onClick ? 'cursor-pointer' : ''} select-none ${className}`}
+      style={{ perspective: '800px', zIndex: isHovered ? 40 : undefined }}
     >
       <div
         className={`relative flex flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
@@ -242,11 +243,29 @@ export default function TradingCard({
             <span className={`${s.label} font-medium uppercase tracking-wider ${rarityStarColor[card.rarity]}`}>
               {rarityLabel[card.rarity] || card.rarity}
             </span>
-            <p className={`${s.label} truncate mt-0.5`} style={{ fontFamily: 'Georgia, serif' }}>
+            <p
+              className={`${s.label} truncate mt-0.5 ${card.typeNames && card.typeNames.length > 0 ? 'pr-12' : ''}`}
+              style={{ fontFamily: 'Georgia, serif' }}
+            >
               <span className="text-zinc-400 italic">Creature: </span>
               <span className="text-zinc-200">{card.creature_name || 'Unknown'}</span>
             </p>
           </div>
+
+          {/* Types — pinned to the image's bottom-right, absolutely positioned so they
+              never push the rarity/creature labels */}
+          {card.typeNames && card.typeNames.length > 0 && (
+            <div className="absolute bottom-1.5 right-1.5 z-10 flex max-w-[70%] flex-wrap justify-end gap-1">
+              {card.typeNames.map((name, i) => (
+                <span
+                  key={i}
+                  className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/60 px-1.5 py-0.5 font-medium text-cyan-300 backdrop-blur-sm`}
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Card info */}
@@ -260,29 +279,17 @@ export default function TradingCard({
             )}
           </div>
 
-          {/* Stars + Skills + Types */}
+          {/* Stars + Skill indicator (icon only; details in hover tooltip) */}
           <div className={`mt-auto flex items-center justify-between gap-2 pt-2`}>
             <div className={`flex flex-shrink-0 items-center gap-[3px] ${s.stars} ${rarityStarColor[card.rarity]}`}>
               {Array.from({ length: stars }).map((_, i) => (
                 <span key={i}>★</span>
               ))}
             </div>
-            {((card.skillNames && card.skillNames.length > 0) || (card.typeNames && card.typeNames.length > 0)) && (
-              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                {card.skillNames && card.skillNames.length > 0 && card.skillNames.map((name, i) => (
-                  <span key={i} className={`${s.desc} flex items-center gap-0.5 text-pink-400 font-medium`}>
-                    <span>✦</span>{name}
-                  </span>
-                ))}
-                {card.typeNames && card.typeNames.map((name, i) => (
-                  <span
-                    key={i}
-                    className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/40 px-1.5 py-0.5 font-medium text-cyan-300`}
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
+            {card.skillNames && card.skillNames.length > 0 && (
+              <span className={`${s.stars} flex-shrink-0 font-medium text-pink-400`} aria-label="Has a skill">
+                ✦{card.skillNames.length > 1 ? `×${card.skillNames.length}` : ''}
+              </span>
             )}
           </div>
         </div>
@@ -295,6 +302,20 @@ export default function TradingCard({
         )}
         {children}
       </div>
+
+      {/* Skill tooltip on hover (outside the overflow-hidden card so it isn't clipped) */}
+      {isHovered && card.skillNames && card.skillNames.length > 0 && (
+        <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-48 -translate-x-1/2 rounded-lg border border-pink-800/60 bg-zinc-900/95 p-2.5 text-left shadow-xl backdrop-blur-sm">
+          {card.skillNames.map((name, i) => (
+            <div key={i} className={i > 0 ? 'mt-2 border-t border-zinc-800 pt-2' : ''}>
+              <p className="text-xs font-bold text-pink-400">✦ {name}</p>
+              {card.skillDescriptions?.[i] && (
+                <p className="mt-0.5 text-[10px] leading-snug text-zinc-400">{card.skillDescriptions[i]}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

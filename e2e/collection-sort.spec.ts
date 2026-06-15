@@ -35,3 +35,18 @@ test.describe('Collection Acquired Sort', () => {
     await test.info().attach('date-sections-rarity', { body: await page.screenshot(), contentType: 'image/png' })
   })
 })
+
+test.describe('Collection Rarity Sort', () => {
+  test('rarity sort groups cards into rarity sections', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await page.click('button:has-text("Rarity")')
+
+    // Rarity section headers (the player owns cards across every rarity)
+    await expect(page.getByRole('heading', { name: 'Secret Rare', exact: true })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Common', exact: true })).toBeVisible()
+    await test.info().attach('rarity-sections', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+})
