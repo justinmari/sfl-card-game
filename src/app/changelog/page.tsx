@@ -14,20 +14,20 @@ export default async function ChangelogPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/dashboard" title="Changelog" />
 
       <main className="mx-auto max-w-2xl px-6 py-10">
-        <h2 className="mb-6 text-2xl font-bold">Changelog</h2>
+        <h2 className="font-display mb-6 text-2xl font-bold tracking-tight">Changelog</h2>
 
         {(!logs || logs.length === 0) ? (
           <p className="py-10 text-center text-sm text-zinc-500">No updates yet.</p>
         ) : (
           <div className="space-y-6">
             {logs.map((log, i) => (
-              <div key={log.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+              <div key={log.id} className="surface rounded-2xl p-5">
                 <div className="mb-2 flex items-center gap-2">
-                  {i === 0 && <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white">LATEST</span>}
+                  {i === 0 && <span className="rounded bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-[0_0_10px_-2px_rgba(245,158,11,0.6)]">LATEST</span>}
                   {log.version && <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] font-mono text-zinc-300">v{log.version}</span>}
                   <h3 className="text-sm font-bold text-white">{log.title}</h3>
                 </div>

@@ -30,11 +30,11 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
       {selectedPlayer && (
         <div
           data-testid="player-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
           onClick={() => setSelectedPlayer(null)}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6"
+            className="surface w-full max-w-2xl rounded-2xl p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-6 flex items-center gap-4">
@@ -49,7 +49,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
                   {selectedPlayer.id === currentUserId && <span className="ml-2 text-sm text-zinc-500">(You)</span>}
                 </h2>
                 {selectedPlayer.role === 'admin' && (
-                  <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-medium">Admin</span>
+                  <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-white text-[10px] font-medium">Admin</span>
                 )}
               </div>
             </div>
@@ -79,7 +79,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
 
             <button
               onClick={() => setSelectedPlayer(null)}
-              className="mt-6 w-full rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+              className="mt-6 w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
             >
               Close
             </button>
@@ -93,7 +93,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
           <button
             key={player.id}
             onClick={() => setSelectedPlayer(player)}
-            className="cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left transition-colors hover:border-zinc-600"
+            className="tile-arcade cursor-pointer rounded-2xl p-6 text-left"
           >
             {/* Player info */}
             <div className="mb-4 flex items-center gap-4">
@@ -108,7 +108,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
                   {player.id === currentUserId && <span className="ml-1 text-sm text-zinc-500">(You)</span>}
                 </p>
                 {player.role === 'admin' && (
-                  <span className="rounded bg-amber-600 px-1.5 py-0.5 text-[9px] font-medium">Admin</span>
+                  <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-white text-[9px] font-medium">Admin</span>
                 )}
               </div>
             </div>

@@ -104,10 +104,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     <div>
       {/* Edit modal */}
       {editingSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="surface max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Edit Deck</h3>
+              <h3 className="font-display text-lg font-semibold">Edit Deck</h3>
               <span className="text-sm text-zinc-400">{editCardIds.length}/5 cards</span>
             </div>
 
@@ -123,7 +123,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder={`Deck ${editingSlot}`}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+                className="input-arcade w-full px-3 py-2 text-sm"
               />
             </div>
 
@@ -167,7 +167,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 value={cardSearch}
                 onChange={(e) => setCardSearch(e.target.value)}
                 placeholder="Search cards..."
-                className="mb-3 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+                className="input-arcade mb-3 w-full px-3 py-2 text-sm"
               />
               <div className="max-h-48 overflow-y-auto">
                 <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
@@ -205,13 +205,13 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-lg bg-white px-6 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+                className="btn-arcade rounded-lg px-6 py-2 text-sm"
               >
                 {saving ? 'Saving...' : 'Save Deck'}
               </button>
               <button
                 onClick={cancelEdit}
-                className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+                className="rounded-lg border border-white/10 px-6 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
               >
                 Cancel
               </button>
@@ -229,10 +229,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
           const power = getDeckPower(deck.cardIds)
 
           return (
-            <div key={deck.slot} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <div key={deck.slot} className="surface rounded-2xl p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">{deck.name}</h3>
+                  <h3 className="font-display text-lg font-semibold">{deck.name}</h3>
                   <div className="flex items-center gap-3 text-sm text-zinc-400">
                     <span>{cards.length}/5 cards</span>
                     {cards.length > 0 && <span className="text-amber-400">⚡ {power} power</span>}
@@ -240,7 +240,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 </div>
                 <button
                   onClick={() => startEdit(deck)}
-                  className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+                  className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   Edit
                 </button>

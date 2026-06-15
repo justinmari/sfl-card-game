@@ -42,8 +42,8 @@ export default function ChangePassword() {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="mb-4 text-lg font-semibold">Change Password</h2>
+    <div className="surface rounded-2xl p-6">
+      <h2 className="font-display mb-4 text-lg font-semibold">Change Password</h2>
 
       {success && (
         <div className="mb-4 rounded-lg bg-green-900/50 px-4 py-2 text-sm text-green-300">
@@ -67,7 +67,7 @@ export default function ChangePassword() {
             required
             minLength={6}
             placeholder="At least 6 characters"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            className="input-arcade w-full px-4 py-2.5 text-sm"
           />
         </div>
         <div>
@@ -79,13 +79,13 @@ export default function ChangePassword() {
             required
             minLength={6}
             placeholder="Repeat password"
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            className="input-arcade w-full px-4 py-2.5 text-sm"
           />
         </div>
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+          className="btn-arcade w-full rounded-lg px-6 py-2.5 text-sm"
         >
           {saving ? 'Updating...' : 'Update Password'}
         </button>

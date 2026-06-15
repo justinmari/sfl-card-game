@@ -81,6 +81,24 @@ body {
   cursor: not-allowed;
 }
 
+/* Form input — glassy field with violet focus ring. Pair with sizing
+   utilities (w-full, px-*, py-*) on the element itself. */
+.input-arcade {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background-color: rgba(0, 0, 0, 0.30);
+  color: #fff;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-arcade::placeholder {
+  color: #71717a;
+}
+.input-arcade:focus {
+  outline: none;
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.30);
+}
+
 /* Glassy surface panel */
 .surface {
   background-color: rgba(20, 20, 33, 0.62);

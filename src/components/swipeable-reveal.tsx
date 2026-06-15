@@ -175,7 +175,7 @@ export default function SwipeableReveal({
             </div>
           </div>
           <div className="flex justify-center pt-3">
-            <button onClick={onDone} className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200">Done</button>
+            <button onClick={onDone} className="btn-arcade rounded-lg px-6 py-2.5 text-sm">Done</button>
           </div>
         </div>
         {/* Desktop: contained overlay */}
@@ -190,7 +190,7 @@ export default function SwipeableReveal({
               </div>
             </div>
             <div className="flex justify-center pt-4">
-              <button onClick={onDone} className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200">Done</button>
+              <button onClick={onDone} className="btn-arcade rounded-lg px-6 py-2.5 text-sm">Done</button>
             </div>
           </div>
         </div>
@@ -287,7 +287,7 @@ export default function SwipeableReveal({
         {isLast ? (
           <button
             onClick={handleFlipAll}
-            className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+            className="btn-arcade rounded-lg px-6 py-2.5 text-sm"
           >
             View All
           </button>
@@ -295,7 +295,7 @@ export default function SwipeableReveal({
           <>
             <button
               onClick={handleFlipAll}
-              className="rounded-lg border border-zinc-600 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+              className="rounded-lg border border-white/10 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
             >
               Skip &amp; View All
             </button>
@@ -304,7 +304,7 @@ export default function SwipeableReveal({
               className={`rounded-lg px-5 py-2.5 text-sm font-medium transition-colors ${
                 autoMode
                   ? 'bg-amber-600 text-white hover:bg-amber-500'
-                  : 'border border-zinc-600 text-zinc-300 hover:bg-zinc-800'
+                  : 'border border-white/10 text-zinc-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               {autoMode ? 'Stop' : 'Auto'}

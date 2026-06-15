@@ -11,7 +11,7 @@ export default function PreferencesForm() {
         These preferences are saved on this device.
       </p>
 
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      <div className="surface flex items-center justify-between gap-4 rounded-xl p-4">
         <div className="min-w-0">
           <p className="text-sm font-medium text-white">Compact cards</p>
           <p className="mt-0.5 text-xs text-zinc-500">
@@ -26,7 +26,7 @@ export default function PreferencesForm() {
           disabled={!loaded}
           onClick={() => setPreference('compactCards', !preferences.compactCards)}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-            preferences.compactCards ? 'bg-cyan-600' : 'bg-zinc-700'
+            preferences.compactCards ? 'bg-violet-600 shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]' : 'bg-zinc-700'
           }`}
         >
           <span

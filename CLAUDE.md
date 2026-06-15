@@ -43,7 +43,9 @@ When asked to use the Playwright MCP to look at the running app:
 
 - **Browser**: use **Firefox** (the MCP server is configured with `--browser firefox`).
 - **Server**: run the preview server on **port 3002** against **local** Supabase (override the env vars) so clicking around doesn't mutate production. Test accounts: `player@test.com` / `admin@test.com`, password `password123`.
+  Set `NEXT_DIST_DIR=.next-preview` so it doesn't fight the port-3000 server over the shared `.next` build dir (`.next-preview/` is gitignored):
   ```bash
+  NEXT_DIST_DIR=.next-preview \
   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key from `npx supabase status`> \
   npx next dev -p 3002

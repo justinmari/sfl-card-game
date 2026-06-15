@@ -97,8 +97,10 @@ export default function SetupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-sm px-6">
-      <h1 className="mb-2 text-2xl font-bold text-white">Welcome to SFL TCG!</h1>
+    <form onSubmit={handleSubmit} className="surface mx-6 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+      <h1 className="font-display mb-2 text-2xl font-bold tracking-tight">
+        Welcome to <span className="text-arcade-gradient">SFL TCG</span>!
+      </h1>
       <p className="mb-8 text-sm text-zinc-400">Set up your profile to get started.</p>
 
       {error && (
@@ -115,7 +117,7 @@ export default function SetupForm() {
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="What should we call you?"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+          className="input-arcade w-full px-4 py-3"
         />
       </div>
 
@@ -128,7 +130,7 @@ export default function SetupForm() {
           required
           minLength={6}
           placeholder="At least 6 characters"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+          className="input-arcade w-full px-4 py-3"
         />
       </div>
 
@@ -141,7 +143,7 @@ export default function SetupForm() {
           required
           minLength={6}
           placeholder="Repeat password"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+          className="input-arcade w-full px-4 py-3"
         />
       </div>
 
@@ -159,7 +161,7 @@ export default function SetupForm() {
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-zinc-600"
+            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600/80 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-violet-600"
           />
         </div>
       </div>
@@ -167,7 +169,7 @@ export default function SetupForm() {
       <button
         type="submit"
         disabled={saving || !name.trim() || !newPassword}
-        className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+        className="btn-arcade w-full rounded-lg px-6 py-3 text-sm"
       >
         {saving ? 'Setting up...' : 'Get Started'}
       </button>
