@@ -5,5 +5,11 @@ export const SKILL_BEATDOWN: Skill = {
   name: 'Beatdown',
   description: 'Losers take 3 damage no matter the total — for both players',
   usesPerBattle: 1,
-  effect: { type: 'flat-damage', damage: 3 },
+  hooks: {
+    onDamage: (state) => ({
+      ...state,
+      damage1: state.damage1 > 0 ? 3 : 0,
+      damage2: state.damage2 > 0 ? 3 : 0,
+    }),
+  },
 }

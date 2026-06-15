@@ -294,7 +294,7 @@ export async function submitRoundReady(
     allSkills.length > 0 ? allSkills : undefined, rng,
   )
 
-  // Store round via SECURITY DEFINER RPC
+  // Store round via SECURITY DEFINER RPC (ON CONFLICT DO NOTHING — first writer wins)
   await supabase.rpc('rpc_insert_arena_round', {
     p_session_id: sessionId,
     p_round_num: targetRound,
@@ -302,7 +302,15 @@ export async function submitRoundReady(
     p_skills_used: allSkills as unknown as Record<string, unknown>[],
   })
 
-  return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: result, skills: allSkills }
+  // Re-read the authoritative stored result (another concurrent call may have stored first)
+  const { data: authoritative } = await supabase
+    .from('arena_rounds')
+    .select('result, skills_used')
+    .eq('session_id', sessionId)
+    .eq('round_num', targetRound)
+    .single()
+
+  return { ready: true, allReady: true, readyCount: readyIds.size, aliveCount: aliveIds.length, round: (authoritative?.result ?? result) as RoundResult, skills: ((authoritative?.skills_used || allSkills) as unknown) as ActiveSkill[] }
 }
 
 // Get fresh HP computed from round history

@@ -1,0 +1,948 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Full round snapshots — exact precompute output > 2-player heal-instead with low HP — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": {
+    "healInstead": true,
+  },
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 1,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 2,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 1,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 3,
+          "b": 4,
+        },
+        {
+          "a": 3,
+          "b": 5,
+        },
+        {
+          "a": 3,
+          "b": 7,
+        },
+        {
+          "a": 4,
+          "b": 7,
+        },
+        {
+          "a": 4,
+          "b": 7,
+        },
+        {
+          "a": 4,
+          "b": 8,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "b",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player round no skills — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 1,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 2,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 1,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 9,
+        },
+        {
+          "a": 10,
+          "b": 7,
+        },
+        {
+          "a": 9,
+          "b": 7,
+        },
+        {
+          "a": 9,
+          "b": 7,
+        },
+        {
+          "a": 9,
+          "b": 6,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "a",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player round no skills — seed 99 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "b-card-1",
+          "card2Id": "a-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-0",
+          "card2Id": "a-card-2",
+          "damage1": 2,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-3",
+          "card2Id": "a-card-3",
+          "damage1": 3,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-2",
+          "card2Id": "a-card-0",
+          "damage1": 2,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-4",
+          "card2Id": "a-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 7,
+          "b": 8,
+        },
+        {
+          "a": 7,
+          "b": 8,
+        },
+        {
+          "a": 7,
+          "b": 6,
+        },
+        {
+          "a": 7,
+          "b": 3,
+        },
+        {
+          "a": 7,
+          "b": 1,
+        },
+        {
+          "a": 7,
+          "b": 1,
+        },
+      ],
+      "player1Id": "b",
+      "player2Id": "a",
+      "winnerId": "a",
+    },
+  ],
+  "round": 3,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with double-edge — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 2,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 4,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 2,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 2,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 8,
+        },
+        {
+          "a": 10,
+          "b": 4,
+        },
+        {
+          "a": 8,
+          "b": 4,
+        },
+        {
+          "a": 8,
+          "b": 4,
+        },
+        {
+          "a": 8,
+          "b": 2,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "a",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with leveler — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 1,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 9,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "a",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with reverse-uno + all-or-nothing — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 2,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 4,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 0,
+          "damage2": 2,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 2,
+          "damage2": 0,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 8,
+          "b": 6,
+        },
+        {
+          "a": 6,
+          "b": 6,
+        },
+        {
+          "a": 2,
+          "b": 6,
+        },
+        {
+          "a": 2,
+          "b": 4,
+        },
+        {
+          "a": 2,
+          "b": 4,
+        },
+        {
+          "a": 0,
+          "b": 4,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "b",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with scramble + final-form — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 0,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 9,
+          "b": 10,
+        },
+        {
+          "a": 9,
+          "b": 10,
+        },
+        {
+          "a": 9,
+          "b": 10,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "b",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with snake-eyes + beatdown combo — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 3,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 3,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 0,
+          "damage2": 3,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 3,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 3,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 7,
+        },
+        {
+          "a": 10,
+          "b": 4,
+        },
+        {
+          "a": 10,
+          "b": 1,
+        },
+        {
+          "a": 10,
+          "b": 0,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "a",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 2-player with underdog + loaded-dice — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "b-card-0",
+          "damage1": 0,
+          "damage2": 3,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "b-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "b-card-3",
+          "damage1": 0,
+          "damage2": 7,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "b-card-1",
+          "damage1": 0,
+          "damage2": 6,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "b-card-2",
+          "damage1": 0,
+          "damage2": 1,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "b": 10,
+        },
+        {
+          "a": 10,
+          "b": 7,
+        },
+        {
+          "a": 10,
+          "b": 7,
+        },
+        {
+          "a": 10,
+          "b": 0,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "b",
+      "winnerId": "a",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 3-player round (1 bye) with gift-exchange — seed 42 1`] = `
+{
+  "byePlayerId": "b",
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "c-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-1",
+          "card2Id": "a-card-4",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "a-card-0",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-4",
+          "card2Id": "c-card-3",
+          "damage1": 0,
+          "damage2": 1,
+        },
+        {
+          "card1Id": "c-card-2",
+          "card2Id": "b-card-3",
+          "damage1": 0,
+          "damage2": 2,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "c": 10,
+        },
+        {
+          "a": 10,
+          "c": 10,
+        },
+        {
+          "a": 10,
+          "c": 9,
+        },
+        {
+          "a": 10,
+          "c": 9,
+        },
+        {
+          "a": 9,
+          "c": 9,
+        },
+        {
+          "a": 7,
+          "c": 9,
+        },
+      ],
+      "player1Id": "c",
+      "player2Id": "a",
+      "winnerId": "c",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Full round snapshots — exact precompute output > 4-player round no skills — seed 42 1`] = `
+{
+  "byePlayerId": null,
+  "flags": undefined,
+  "matches": [
+    {
+      "faceOffs": [
+        {
+          "card1Id": "a-card-2",
+          "card2Id": "d-card-2",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-4",
+          "card2Id": "d-card-0",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "a-card-1",
+          "card2Id": "d-card-1",
+          "damage1": 0,
+          "damage2": 1,
+        },
+        {
+          "card1Id": "a-card-0",
+          "card2Id": "d-card-4",
+          "damage1": 0,
+          "damage2": 1,
+        },
+        {
+          "card1Id": "a-card-3",
+          "card2Id": "d-card-3",
+          "damage1": 0,
+          "damage2": 0,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "a": 10,
+          "d": 10,
+        },
+        {
+          "a": 9,
+          "d": 10,
+        },
+        {
+          "a": 8,
+          "d": 10,
+        },
+        {
+          "a": 8,
+          "d": 9,
+        },
+        {
+          "a": 8,
+          "d": 8,
+        },
+        {
+          "a": 8,
+          "d": 8,
+        },
+      ],
+      "player1Id": "a",
+      "player2Id": "d",
+      "winnerId": "a",
+    },
+    {
+      "faceOffs": [
+        {
+          "card1Id": "b-card-4",
+          "card2Id": "c-card-1",
+          "damage1": 4,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-2",
+          "card2Id": "c-card-3",
+          "damage1": 3,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-1",
+          "card2Id": "c-card-4",
+          "damage1": 0,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-0",
+          "card2Id": "c-card-2",
+          "damage1": 1,
+          "damage2": 0,
+        },
+        {
+          "card1Id": "b-card-3",
+          "card2Id": "c-card-0",
+          "damage1": 4,
+          "damage2": 0,
+        },
+      ],
+      "hpSnapshots": [
+        {
+          "b": 10,
+          "c": 10,
+        },
+        {
+          "b": 6,
+          "c": 10,
+        },
+        {
+          "b": 3,
+          "c": 10,
+        },
+        {
+          "b": 3,
+          "c": 10,
+        },
+        {
+          "b": 2,
+          "c": 10,
+        },
+        {
+          "b": 0,
+          "c": 10,
+        },
+      ],
+      "player1Id": "b",
+      "player2Id": "c",
+      "winnerId": "c",
+    },
+  ],
+  "round": 1,
+}
+`;
+
+exports[`Skill Snapshots — exact output for refactor verification > gift-exchange (round-level deck swap) > full round — 2 players — seed 42 1`] = `
+[
+  "b-card-4",
+  "a-card-0",
+  "b-card-3",
+  "a-card-2",
+  "b-card-1",
+]
+`;
+
+exports[`Skill Snapshots — exact output for refactor verification > gift-exchange (round-level deck swap) > full round — 2 players — seed 42 2`] = `
+[
+  "a-card-3",
+  "a-card-1",
+  "b-card-0",
+  "b-card-2",
+  "a-card-4",
+]
+`;
+
+exports[`Skill Snapshots — exact output for refactor verification > gift-exchange (round-level deck swap) > full round — 2 players — seed 42 3`] = `
+[
+  {
+    "a": 10,
+    "b": 10,
+  },
+  {
+    "a": 7,
+    "b": 10,
+  },
+  {
+    "a": 7,
+    "b": 10,
+  },
+  {
+    "a": 7,
+    "b": 10,
+  },
+  {
+    "a": 7,
+    "b": 9,
+  },
+  {
+    "a": 7,
+    "b": 9,
+  },
+]
+`;
+
+exports[`Skill Snapshots — exact output for refactor verification > heal-instead (round-level) > full round — players at 5hp — seed 42 1`] = `
+[
+  {
+    "a": 5,
+    "b": 5,
+  },
+  {
+    "a": 5,
+    "b": 6,
+  },
+  {
+    "a": 5,
+    "b": 8,
+  },
+  {
+    "a": 6,
+    "b": 8,
+  },
+  {
+    "a": 6,
+    "b": 8,
+  },
+  {
+    "a": 6,
+    "b": 9,
+  },
+]
+`;
+
+exports[`Skill combo snapshots > scramble + underdog — seed 42 1`] = `
+{
+  "damage1": 8,
+  "damage2": 0,
+  "effective1": 4,
+  "effective2": 12,
+  "roll1": 0,
+  "roll2": 9,
+  "star1": 4,
+  "star2": 3,
+}
+`;

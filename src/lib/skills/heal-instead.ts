@@ -5,5 +5,10 @@ export const SKILL_HEAL_INSTEAD: Skill = {
   name: 'Fountain of Youth',
   description: 'All players heal damage taken this round instead of losing HP',
   usesPerBattle: 1,
-  effect: { type: 'heal-instead' },
+  hooks: {
+    onRound: (ctx) => ({
+      ...ctx,
+      flags: { ...ctx.flags, healInstead: true },
+    }),
+  },
 }

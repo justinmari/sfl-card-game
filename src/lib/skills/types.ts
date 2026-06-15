@@ -1,28 +1,45 @@
-export type SkillEffect =
-  | { type: 'multiply-totals'; factor: number; target: 'both' }
-  | { type: 'dice-bonus'; bonus: number; target: 'both' }
-  | { type: 'no-dice' }
-  | { type: 'multiply-damage'; factor: number; target: 'both' }
-  | { type: 'scramble-rarities' }
-  | { type: 'leveler'; rarity: string }
-  | { type: 'flat-damage'; damage: number }
-  | { type: 'reverse-damage' }
-  | { type: 'big-dice'; range: number }
-  | { type: 'heal-instead' }
-  | { type: 'visual'; css: string }
-  | { type: 'gift-exchange' }
-  | { type: 'promote-rarity'; from: string; to: string }
+import type { BattleCard, BattlePlayer } from '@/lib/battle-engine'
+
+export type FaceOffState = {
+  card1: BattleCard
+  card2: BattleCard
+  star1: number
+  star2: number
+  roll1: number
+  roll2: number
+  effective1: number
+  effective2: number
+  damage1: number
+  damage2: number
+  rand: () => number
+}
+
+export type RoundContext = {
+  players: BattlePlayer[]
+  decks: Map<string, BattleCard[]>
+  flags: { healInstead?: boolean; visualEffect?: string }
+  rand: () => number
+}
+
+export type SkillHooks = {
+  onStars?: (state: FaceOffState) => FaceOffState
+  onDiceOverride?: (state: FaceOffState) => FaceOffState
+  onDice?: (state: FaceOffState) => FaceOffState
+  onTotals?: (state: FaceOffState) => FaceOffState
+  onDamage?: (state: FaceOffState) => FaceOffState
+  onRound?: (ctx: RoundContext) => RoundContext
+}
 
 export type Skill = {
   id: string
   name: string
   description: string
   usesPerBattle: number
-  effect: SkillEffect
+  hooks: SkillHooks
 }
 
 export type ActiveSkill = {
   skill: Skill
-  activatedBy: string // player id
+  activatedBy: string
   roundActivated: number
 }

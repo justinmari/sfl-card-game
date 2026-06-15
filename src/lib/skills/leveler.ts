@@ -5,5 +5,7 @@ export const SKILL_LEVELER: Skill = {
   name: 'Leveler',
   description: 'All cards are treated as commons — pure dice rolls for both',
   usesPerBattle: 1,
-  effect: { type: 'leveler', rarity: 'common' },
+  hooks: {
+    onStars: (state) => ({ ...state, star1: 1, star2: 1 }),
+  },
 }

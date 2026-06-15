@@ -1,4 +1,4 @@
-export type { Skill, SkillEffect, ActiveSkill } from './types'
+export type { Skill, SkillHooks, FaceOffState, RoundContext, ActiveSkill } from './types'
 export { SKILL_DOUBLE_EDGE } from './double-edge'
 export { SKILL_LOADED_DICE } from './loaded-dice'
 export { SKILL_SNAKE_EYES } from './snake-eyes'

@@ -5,5 +5,11 @@ export const SKILL_DOUBLE_EDGE: Skill = {
   name: 'Double Edge',
   description: 'All totals are doubled this round — for both players',
   usesPerBattle: 1,
-  effect: { type: 'multiply-totals', factor: 2, target: 'both' },
+  hooks: {
+    onTotals: (state) => ({
+      ...state,
+      effective1: Math.round(state.effective1 * 2),
+      effective2: Math.round(state.effective2 * 2),
+    }),
+  },
 }

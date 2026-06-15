@@ -5,5 +5,7 @@ export const SKILL_SNAKE_EYES: Skill = {
   name: 'Snake Eyes',
   description: 'No dice rolls this round — base stars only, for both players',
   usesPerBattle: 1,
-  effect: { type: 'no-dice' },
+  hooks: {
+    onDiceOverride: (state) => ({ ...state, roll1: 0, roll2: 0 }),
+  },
 }

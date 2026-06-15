@@ -163,17 +163,17 @@ test.describe('8-Player Full Arena Game', () => {
     while (true) {
       round++
 
-      // Wait for host to see "Round X Complete" or game-over
+      // Wait for host to see this SPECIFIC round complete, or game-over
       await expect(
-        page.getByText(/Round \d+ Complete|Wins!/).first()
+        page.getByText(new RegExp(`Round ${round} Complete|Wins!`)).first()
       ).toBeVisible({ timeout: 120000 })
 
       if (await page.getByText('Wins!').isVisible()) break
 
-      // Wait for ALL players to also see "Round X Complete"
+      // Wait for ALL players to see the SAME specific round complete
       for (const ctx of contexts) {
         await expect(
-          ctx.page.getByText(/Round \d+ Complete|Wins!/).first()
+          ctx.page.getByText(new RegExp(`Round ${round} Complete|Wins!`)).first()
         ).toBeVisible({ timeout: 60000 })
       }
 
@@ -194,7 +194,7 @@ test.describe('8-Player Full Arena Game', () => {
       }
 
       // Wait for the round to advance on the host
-      await expect(page.getByText(/Round \d+ Complete/).first()).not.toBeVisible({ timeout: 25000 })
+      await expect(page.getByText(`Round ${round} Complete`).first()).not.toBeVisible({ timeout: 25000 })
     }
 
     // === FINAL GAME-OVER VERIFICATION ===

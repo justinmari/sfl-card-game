@@ -5,5 +5,11 @@ export const SKILL_ALL_OR_NOTHING: Skill = {
   name: 'All or Nothing',
   description: 'All damage this round is doubled — for both players',
   usesPerBattle: 1,
-  effect: { type: 'multiply-damage', factor: 2, target: 'both' },
+  hooks: {
+    onDamage: (state) => ({
+      ...state,
+      damage1: Math.round(state.damage1 * 2),
+      damage2: Math.round(state.damage2 * 2),
+    }),
+  },
 }

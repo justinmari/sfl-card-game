@@ -1,7 +1,7 @@
-export type { Skill, SkillEffect, ActiveSkill } from '@/lib/skills'
+export type { Skill, SkillHooks, FaceOffState, RoundContext, ActiveSkill } from '@/lib/skills'
 export { SKILL_REGISTRY, resolveSkills } from '@/lib/skills'
 
-import type { Skill, ActiveSkill } from '@/lib/skills'
+import type { Skill, ActiveSkill, FaceOffState, RoundContext } from '@/lib/skills'
 import { seededShuffle } from '@/lib/seeded-random'
 
 export type BattleCard = {
@@ -40,7 +40,7 @@ export type MatchResult = {
 
 export type RoundFlags = {
   healInstead?: boolean
-  visualEffect?: string // CSS filter to apply to cards
+  visualEffect?: string
 }
 
 export type RoundResult = {
@@ -78,142 +78,100 @@ export type FaceOffDetail = FaceOff & {
   effective2: number
 }
 
-const allRarities = Object.keys(starCount)
+// --- Phase functions ---
+
+function resolveStars(state: FaceOffState): FaceOffState {
+  return state
+}
+
+function resolveBaseDice(state: FaceOffState): FaceOffState {
+  const { star1, star2, rand } = state
+  const diff = Math.abs(star1 - star2)
+  let roll1 = 0
+  let roll2 = 0
+
+  if (star1 === star2) {
+    roll1 = Math.floor(rand() * 2)
+    roll2 = Math.floor(rand() * 2)
+  } else if (star1 < star2) {
+    roll1 = Math.floor(rand() * (diff + 2))
+  } else {
+    roll2 = Math.floor(rand() * (diff + 2))
+  }
+
+  return { ...state, roll1, roll2 }
+}
+
+function resolveEffective(state: FaceOffState): FaceOffState {
+  return {
+    ...state,
+    effective1: state.star1 + state.roll1,
+    effective2: state.star2 + state.roll2,
+  }
+}
+
+function resolveBaseDamage(state: FaceOffState): FaceOffState {
+  const finalDiff = Math.abs(state.effective1 - state.effective2)
+  return {
+    ...state,
+    damage1: state.effective2 > state.effective1 ? finalDiff : 0,
+    damage2: state.effective1 > state.effective2 ? finalDiff : 0,
+  }
+}
+
+function applyHooks(skills: ActiveSkill[] | undefined, phase: 'onStars' | 'onDiceOverride' | 'onDice' | 'onTotals' | 'onDamage', state: FaceOffState): FaceOffState {
+  if (!skills) return state
+  for (const s of skills) {
+    const hook = s.skill.hooks[phase]
+    if (hook) state = hook(state)
+  }
+  return state
+}
 
 export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[], rng?: () => number): FaceOffDetail {
   const rand = rng || Math.random
 
-  // --- Phase 1: Determine star values (can be modified by skills) ---
-  let s1 = starCount[card1.rarity] || 1
-  let s2 = starCount[card2.rarity] || 1
-
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      const e = as.skill.effect
-      // Scramble: randomize both rarities
-      if (e.type === 'scramble-rarities') {
-        const r1 = allRarities[Math.floor(rand() * allRarities.length)]
-        const r2 = allRarities[Math.floor(rand() * allRarities.length)]
-        s1 = starCount[r1] || 1
-        s2 = starCount[r2] || 1
-      }
-      // Leveler: all cards treated as a specific rarity
-      if (e.type === 'leveler') {
-        s1 = starCount[e.rarity] || 1
-        s2 = starCount[e.rarity] || 1
-      }
-      // Promote rarity: change one rarity to another
-      if (e.type === 'promote-rarity') {
-        if (card1.rarity === e.from) s1 = starCount[e.to] || s1
-        if (card2.rarity === e.from) s2 = starCount[e.to] || s2
-      }
-    }
+  let state: FaceOffState = {
+    card1, card2,
+    star1: starCount[card1.rarity] || 1,
+    star2: starCount[card2.rarity] || 1,
+    roll1: 0, roll2: 0,
+    effective1: 0, effective2: 0,
+    damage1: 0, damage2: 0,
+    rand,
   }
 
-  // --- Phase 2: Dice rolls ---
-  let roll1 = 0
-  let roll2 = 0
-  let noDice = false
-  let bigDiceRange = 0
+  // Phase 1: Stars
+  state = resolveStars(state)
+  state = applyHooks(activeSkills, 'onStars', state)
 
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      const e = as.skill.effect
-      if (e.type === 'no-dice') noDice = true
-      if (e.type === 'big-dice') bigDiceRange = Math.max(bigDiceRange, e.range)
-    }
-  }
-
-  if (noDice) {
-    roll1 = 0
-    roll2 = 0
-  } else if (bigDiceRange > 0) {
-    // Lower rarity card gets big dice range
-    if (s1 < s2) {
-      roll1 = Math.floor(rand() * (bigDiceRange + 1))
-    } else if (s2 < s1) {
-      roll2 = Math.floor(rand() * (bigDiceRange + 1))
-    } else {
-      // Equal: both get big dice
-      roll1 = Math.floor(rand() * (bigDiceRange + 1))
-      roll2 = Math.floor(rand() * (bigDiceRange + 1))
-    }
+  // Phase 2: Dice — override hooks replace base dice entirely
+  const hasDiceOverride = activeSkills?.some(s => s.skill.hooks.onDiceOverride)
+  if (hasDiceOverride) {
+    state = applyHooks(activeSkills, 'onDiceOverride', state)
   } else {
-    const diff = Math.abs(s1 - s2)
-    if (s1 === s2) {
-      roll1 = Math.floor(rand() * 2)
-      roll2 = Math.floor(rand() * 2)
-    } else if (s1 < s2) {
-      roll1 = Math.floor(rand() * (diff + 2))
-    } else {
-      roll2 = Math.floor(rand() * (diff + 2))
-    }
+    state = resolveBaseDice(state)
   }
+  state = applyHooks(activeSkills, 'onDice', state)
 
-  // Apply dice bonus
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      const e = as.skill.effect
-      if (e.type === 'dice-bonus' && e.target === 'both') {
-        if (roll1 > 0 || s1 <= s2) roll1 += e.bonus
-        if (roll2 > 0 || s2 <= s1) roll2 += e.bonus
-      }
-    }
-  }
+  // Phase 3: Effective totals
+  state = resolveEffective(state)
+  state = applyHooks(activeSkills, 'onTotals', state)
 
-  // --- Phase 3: Effective totals ---
-  let effective1 = s1 + roll1
-  let effective2 = s2 + roll2
-
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      const e = as.skill.effect
-      if (e.type === 'multiply-totals' && e.target === 'both') {
-        effective1 = Math.round(effective1 * e.factor)
-        effective2 = Math.round(effective2 * e.factor)
-      }
-    }
-  }
-
-  // --- Phase 4: Damage calculation ---
-  const finalDiff = Math.abs(effective1 - effective2)
-  let damage1 = effective2 > effective1 ? finalDiff : 0
-  let damage2 = effective1 > effective2 ? finalDiff : 0
-
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      const e = as.skill.effect
-      // Flat damage: loser always takes fixed damage
-      if (e.type === 'flat-damage') {
-        if (damage1 > 0) damage1 = e.damage
-        if (damage2 > 0) damage2 = e.damage
-      }
-      // Multiply damage
-      if (e.type === 'multiply-damage' && e.target === 'both') {
-        damage1 = Math.round(damage1 * e.factor)
-        damage2 = Math.round(damage2 * e.factor)
-      }
-      // Reverse: damage goes to the winner instead
-      if (e.type === 'reverse-damage') {
-        const tmp1 = damage1
-        const tmp2 = damage2
-        damage1 = tmp2
-        damage2 = tmp1
-      }
-    }
-  }
+  // Phase 4: Damage
+  state = resolveBaseDamage(state)
+  state = applyHooks(activeSkills, 'onDamage', state)
 
   return {
     card1, card2,
-    star1: s1, star2: s2,
-    roll1, roll2,
-    effective1, effective2,
-    damage1, damage2,
+    star1: state.star1, star2: state.star2,
+    roll1: state.roll1, roll2: state.roll2,
+    effective1: state.effective1, effective2: state.effective2,
+    damage1: state.damage1, damage2: state.damage2,
   }
 }
 
 export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs: [string, string][]; byeId: string | null } {
-  // Sort by ID first for canonical order across all clients before shuffling
   const alive = shuffle(players.filter((p) => !p.eliminated).sort((a, b) => a.id.localeCompare(b.id)), rng)
   const pairs: [string, string][] = []
   let byeId: string | null = null
@@ -229,6 +187,15 @@ export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs
   return { pairs, byeId }
 }
 
+function applyRoundHooks(skills: ActiveSkill[] | undefined, ctx: RoundContext): RoundContext {
+  if (!skills) return ctx
+  for (const s of skills) {
+    const hook = s.skill.hooks.onRound
+    if (hook) ctx = hook(ctx)
+  }
+  return ctx
+}
+
 export function precomputeRound(
   players: BattlePlayer[],
   currentHp: Record<string, number>,
@@ -237,38 +204,27 @@ export function precomputeRound(
   activeSkills?: ActiveSkill[],
   rng?: () => number,
 ): RoundResult {
+  const rand = rng || Math.random
   const { pairs, byeId } = fixedPairings || randomPair(players, rng)
 
-  // Gift Exchange: pool all alive players' cards, shuffle, redistribute
-  let giftDecks: Map<string, BattleCard[]> | null = null
-  if (activeSkills?.some((s) => s.skill.effect.type === 'gift-exchange')) {
-    const alivePlayers = players.filter((p) => !p.eliminated)
-    const allCards = alivePlayers.flatMap((p) => [...p.deck]).sort((a, b) => a.id.localeCompare(b.id))
-    const shuffled = shuffle(allCards, rng)
-    giftDecks = new Map()
-    let cardIdx = 0
-    for (const p of alivePlayers) {
-      const dealt = shuffled.slice(cardIdx, cardIdx + 5)
-      giftDecks.set(p.id, dealt.length === 5 ? dealt : [...dealt, ...p.deck.slice(dealt.length)])
-      cardIdx += 5
-    }
+  // Build round context and let round-level skills modify it
+  const initialDecks = new Map<string, BattleCard[]>()
+  let roundCtx: RoundContext = {
+    players,
+    decks: initialDecks,
+    flags: {},
+    rand,
   }
+  roundCtx = applyRoundHooks(activeSkills, roundCtx)
 
-  // Extract round-level flags before match computation so healInstead affects HP snapshots
-  const flags: RoundFlags = {}
-  if (activeSkills) {
-    for (const as of activeSkills) {
-      if (as.skill.effect.type === 'heal-instead') flags.healInstead = true
-      if (as.skill.effect.type === 'visual') flags.visualEffect = as.skill.effect.css
-    }
-  }
+  const flags: RoundFlags = roundCtx.flags
   const healInstead = flags.healInstead ?? false
 
   const matches: MatchResult[] = pairs.map(([id1, id2]) => {
     const p1 = players.find((p) => p.id === id1)!
     const p2 = players.find((p) => p.id === id2)!
-    const deck1 = giftDecks?.get(id1) || shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
-    const deck2 = giftDecks?.get(id2) || shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const deck1 = roundCtx.decks.get(id1) || shuffle([...p1.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
+    const deck2 = roundCtx.decks.get(id2) || shuffle([...p2.deck].sort((a, b) => a.id.localeCompare(b.id)), rng)
     const faceOffs: FaceOff[] = []
 
     const matchSkills = activeSkills?.filter((s) => s.activatedBy === id1 || s.activatedBy === id2)
@@ -277,7 +233,6 @@ export function precomputeRound(
       faceOffs.push(resolveFaceOff(deck1[i], deck2[i], matchSkills, rng))
     }
 
-    // Compute HP snapshots: one before any face-off, one after each
     let hp1 = currentHp[id1] || 0
     let hp2 = currentHp[id2] || 0
     const hpSnapshots: Record<string, number>[] = [{ [id1]: hp1, [id2]: hp2 }]
@@ -299,7 +254,7 @@ export function precomputeRound(
     let winnerId: string | null = null
     if (finalHp1 > finalHp2) winnerId = id1
     else if (finalHp2 > finalHp1) winnerId = id2
-    else winnerId = (rng || Math.random)() > 0.5 ? id1 : id2
+    else winnerId = rand() > 0.5 ? id1 : id2
 
     return { player1Id: id1, player2Id: id2, faceOffs, winnerId, hpSnapshots }
   })

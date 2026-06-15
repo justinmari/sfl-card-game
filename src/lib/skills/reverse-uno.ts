@@ -5,5 +5,11 @@ export const SKILL_REVERSE_UNO: Skill = {
   name: 'Reverse Uno',
   description: 'Damage is dealt to the winner of each face-off instead',
   usesPerBattle: 1,
-  effect: { type: 'reverse-damage' },
+  hooks: {
+    onDamage: (state) => ({
+      ...state,
+      damage1: state.damage2,
+      damage2: state.damage1,
+    }),
+  },
 }
