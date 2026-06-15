@@ -61,7 +61,7 @@ test.describe('Arena Toggle', () => {
   test('arena tile is disabled on dashboard when arena is off', async ({ page }) => {
     await setArenaDisabled()
     await login(page, TEST_PLAYER)
-    await expect(page.locator('div.cursor-not-allowed:has-text("Arena")')).toBeVisible()
+    await expect(page.getByTestId('arena-tile-disabled')).toBeVisible()
   })
 
   test('arena tile is clickable on dashboard when arena is on', async ({ page }) => {

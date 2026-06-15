@@ -29,6 +29,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
       {/* Player detail modal */}
       {selectedPlayer && (
         <div
+          data-testid="player-modal"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={() => setSelectedPlayer(null)}
         >
@@ -87,7 +88,7 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
       )}
 
       {/* Player grid — 2 per row */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div data-testid="player-grid" className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {players.map((player) => (
           <button
             key={player.id}

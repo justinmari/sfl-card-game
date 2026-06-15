@@ -76,7 +76,7 @@ export default function CreatureList({ creatures }: { creatures: Creature[] }) {
       ) : (
         <div className="space-y-2">
           {creatures.map((creature) => (
-            <div key={creature.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3">
+            <div key={creature.id} data-testid="creature-row" className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3">
               {editingId === creature.id ? (
                 <div className="flex flex-1 items-center gap-3">
                   <input

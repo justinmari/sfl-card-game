@@ -140,6 +140,7 @@ export default function TradingCard({
   className = '',
   children,
   animated = false,
+  testId,
 }: {
   card: CardData
   size?: Size
@@ -148,6 +149,7 @@ export default function TradingCard({
   className?: string
   children?: React.ReactNode
   animated?: boolean
+  testId?: string
 }) {
   const s = sizeClasses[size]
   const stars = rarityStarCount[card.rarity] || 1
@@ -185,6 +187,7 @@ export default function TradingCard({
   return (
     <div
       ref={cardRef}
+      data-testid={testId}
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
@@ -259,6 +262,7 @@ export default function TradingCard({
               {card.typeNames.map((name, i) => (
                 <span
                   key={i}
+                  data-testid="card-type"
                   className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/60 px-1.5 py-0.5 font-medium text-cyan-300 backdrop-blur-sm`}
                 >
                   {name}

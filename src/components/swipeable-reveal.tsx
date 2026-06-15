@@ -179,7 +179,7 @@ export default function SwipeableReveal({
           </div>
         </div>
         {/* Desktop: contained overlay */}
-        <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center bg-black/80" onClick={onDone}>
+        <div data-testid="reveal-summary-desktop" className="fixed inset-0 z-50 hidden sm:flex items-center justify-center bg-black/80" onClick={onDone}>
           <div className="max-w-3xl w-full mx-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-4 text-center text-xl font-bold text-white">You pulled:</h2>
             <div className="max-h-[60vh] overflow-y-auto">

@@ -323,7 +323,7 @@ export default function LobbyRoom({
       {/* Starting overlay */}
       {starting && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-          <span className="text-4xl font-black text-white animate-pulse">Starting...</span>
+          <span data-testid="starting-overlay" className="text-4xl font-black text-white animate-pulse">Starting...</span>
         </div>
       )}
 
@@ -388,6 +388,7 @@ export default function LobbyRoom({
 
             return (
               <button key={deck.slot}
+                aria-pressed={isSelected}
                 onClick={() => !myReady && !illegal && setSelectedDeck(isSelected ? null : deck.slot)}
                 disabled={myReady}
                 className={`rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed ${

@@ -249,7 +249,7 @@ export default function CollectionGrid({
       {/* Preview modal */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
           onClick={() => setSelected(null)}
         >
           <div
@@ -281,7 +281,7 @@ export default function CollectionGrid({
             )}
             <button
               onClick={() => setSelected(null)}
-              className="mt-4 rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+              className="mt-4 rounded-lg border border-white/10 px-6 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
             >
               Close
             </button>
@@ -297,7 +297,7 @@ export default function CollectionGrid({
         <div className="space-y-8">
           {sections.map((section) => (
             <div key={section.label}>
-              <h3 className="mb-3 border-b border-zinc-800 pb-2 text-sm font-semibold text-zinc-400">{section.label}</h3>
+              <h3 className="font-display mb-3 flex items-center gap-2 border-b border-white/10 pb-2 text-sm font-bold uppercase tracking-wider text-zinc-300"><span className="h-3 w-1 rounded-full bg-gradient-to-b from-violet-400 to-fuchsia-500" />{section.label}</h3>
               <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
                 {section.items.map(({ card, count }) => (
                   <div key={card.id} className="sm:contents">
@@ -310,7 +310,7 @@ export default function CollectionGrid({
                         className="!w-full"
                       />
                     </div>
-                    <div className="hidden sm:block">
+                    <div className="hidden sm:block" data-testid="collection-card-desktop">
                       <TradingCard
                         card={card}
                         size={desktopSize}

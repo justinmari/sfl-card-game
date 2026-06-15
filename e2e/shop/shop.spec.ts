@@ -103,7 +103,7 @@ test.describe('Shop', () => {
     }
 
     // Summary "You pulled:" has mobile/desktop versions — use the desktop container
-    const desktop = page.locator('.hidden.sm\\:flex')
+    const desktop = page.getByTestId('reveal-summary-desktop')
     await expect(desktop.getByText('You pulled:')).toBeVisible({ timeout: 10000 })
     await test.info().attach('view-all', { body: await page.screenshot(), contentType: 'image/png' })
 
@@ -128,7 +128,7 @@ test.describe('Shop', () => {
     }
 
     // Done button is inside the desktop summary container
-    const desktop = page.locator('.hidden.sm\\:flex')
+    const desktop = page.getByTestId('reveal-summary-desktop')
     await expect(desktop.getByText('You pulled:')).toBeVisible({ timeout: 15000 })
     await desktop.locator('button:has-text("Done")').click()
     await expect(page.getByText('Starter Pack')).toBeVisible({ timeout: 10000 })

@@ -228,7 +228,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
 
       {/* Edit modal */}
       {editingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div data-testid="edit-card-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
             <h3 className="mb-4 text-lg font-semibold">Edit Card</h3>
             <div className="space-y-4">
@@ -340,7 +340,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
 
       <div className="flex flex-wrap gap-4">
         {filteredCards.map((card) => (
-          <TradingCard key={card.id} card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size="md" className="group">
+          <TradingCard key={card.id} testId="admin-card" card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size="md" className="group">
             <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button
                 onClick={() => startEdit(card)}

@@ -59,7 +59,7 @@ async function deleteTestUser(email: string) {
 }
 
 function userRow(page: any, name: string) {
-  return page.locator('.rounded-xl.border.border-zinc-800').filter({ hasText: name })
+  return page.getByTestId('user-row').filter({ hasText: name })
 }
 
 test.describe('Admin Users', () => {

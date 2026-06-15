@@ -62,7 +62,7 @@ export default async function CollectionPage() {
   }))
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/dashboard" title="My Collection" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
@@ -75,7 +75,7 @@ export default async function CollectionPage() {
             </p>
             <Link
               href="/shop"
-              className="rounded-lg bg-white px-5 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200"
+              className="btn-arcade rounded-lg px-5 py-2 text-sm"
             >
               Visit Shop
             </Link>

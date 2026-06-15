@@ -26,3 +26,26 @@ When working on features or bug fixes, follow this workflow:
 - Migrations must be idempotent when possible (use `IF NOT EXISTS`, `CREATE OR REPLACE`)
 - Test both unit and e2e before reporting a feature as complete
 - Never add `Co-Authored-By` lines to commit messages
+
+## Local Servers / Ports
+
+Three dev servers have dedicated ports so they never collide. Keep them separate.
+
+| Port | Purpose | Database | Notes |
+|------|---------|----------|-------|
+| **3000** | Regular dev server (`npx next dev`) | **Live** (via `.env.local`) | The normal local build the user runs. Leave it alone; don't override its env. |
+| **3001** | E2E tests (Playwright `webServer`) | Local Supabase | Started automatically by `npx playwright test`. Uses `NEXT_DIST_DIR=.next-e2e`. Don't run a manual server here. |
+| **3002** | Playwright MCP preview | Local Supabase | Spun up on demand for visual previews driven by the Playwright MCP. |
+
+### Playwright MCP preview (port 3002)
+
+When asked to use the Playwright MCP to look at the running app:
+
+- **Browser**: use **Firefox** (the MCP server is configured with `--browser firefox`).
+- **Server**: run the preview server on **port 3002** against **local** Supabase (override the env vars) so clicking around doesn't mutate production. Test accounts: `player@test.com` / `admin@test.com`, password `password123`.
+  ```bash
+  NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key from `npx supabase status`> \
+  npx next dev -p 3002
+  ```
+- Navigate Playwright MCP to `http://localhost:3002`.

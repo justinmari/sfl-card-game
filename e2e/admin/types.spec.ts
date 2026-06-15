@@ -17,7 +17,7 @@ async function deleteTypeByName(name: string) {
 }
 
 function typeRow(page: any, name: string) {
-  return page.locator('.rounded-lg.border.border-zinc-800').filter({ hasText: name })
+  return page.getByTestId('type-row').filter({ hasText: name })
 }
 
 async function ensureTypesExist() {
@@ -104,10 +104,10 @@ test.describe('Admin Types', () => {
     await row.locator('button:has-text("Edit")').click()
 
     // After clicking Edit, the name span becomes inputs; grab the first (name) input in the row.
-    const editInput = page.locator('.rounded-lg.border.border-zinc-800 input[type="text"]').first()
+    const editInput = page.getByTestId('type-row').locator('input[type="text"]').first()
     await editInput.clear()
     await editInput.fill('Renamed Type')
-    await page.locator('.rounded-lg.border.border-zinc-800 button:has-text("Save")').click()
+    await page.getByTestId('type-row').locator('button:has-text("Save")').click()
 
     await expect(page.getByText('Renamed Type')).toBeVisible({ timeout: 10000 })
     await test.info().attach('type-renamed', { body: await page.screenshot(), contentType: 'image/png' })
@@ -120,7 +120,7 @@ test.describe('Admin Types', () => {
 
     const row = typeRow(page, 'Fire')
     await row.locator('button:has-text("Edit")').click()
-    await page.locator('.rounded-lg.border.border-zinc-800 button:has-text("Cancel")').click()
+    await page.getByTestId('type-row').locator('button:has-text("Cancel")').click()
     await expect(page.getByText('Fire', { exact: true })).toBeVisible()
   })
 
@@ -152,14 +152,14 @@ test.describe('Admin Types', () => {
     await expect(page.getByText('Manage Cards')).toBeVisible({ timeout: 10000 })
 
     // Hover the first card and click Edit
-    const firstCard = page.locator('.group').first()
+    const firstCard = page.getByTestId('admin-card').first()
     await firstCard.hover()
     await firstCard.locator('button:has-text("Edit")').click()
 
     await expect(page.getByText('Edit Card')).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Types', { exact: true })).toBeVisible()
     // Type chips render inside the modal
-    await expect(page.locator('.fixed button:has-text("Fire")')).toBeVisible()
+    await expect(page.getByTestId('edit-card-modal').locator('button:has-text("Fire")')).toBeVisible()
     await test.info().attach('card-edit-types', { body: await page.screenshot(), contentType: 'image/png' })
   })
 })

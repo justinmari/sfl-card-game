@@ -79,7 +79,7 @@ async function readRoundLog(p: Page): Promise<unknown[]> {
 }
 
 async function extractFinalRankings(page: Page) {
-  const rows = page.locator('.mb-2.flex.items-center.justify-center.gap-3')
+  const rows = page.getByTestId('battle-ranking-row')
   const count = await rows.count()
   const rankings: { rank: string; name: string; hp: string }[] = []
   for (let i = 0; i < count; i++) {

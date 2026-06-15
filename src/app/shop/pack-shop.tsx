@@ -112,14 +112,14 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
       {/* Buy modal */}
       {selectedPack && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           onClick={() => !buying && setSelectedPack(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6"
+            className="surface w-full max-w-sm rounded-2xl p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-1 text-lg font-bold">{selectedPack.name}</h3>
+            <h3 className="font-display mb-1 text-lg font-bold">{selectedPack.name}</h3>
             {selectedPack.description && (
               <p className="mb-4 text-sm text-zinc-400">{selectedPack.description}</p>
             )}
@@ -159,14 +159,14 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
                     key={qty}
                     onClick={() => handleBuy(selectedPack.id, qty)}
                     disabled={!affordable || buying}
-                    className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium ${
                       affordable
-                        ? 'bg-zinc-800 text-white hover:bg-zinc-700'
-                        : 'cursor-not-allowed bg-zinc-800/50 text-zinc-600'
+                        ? 'btn-arcade'
+                        : 'cursor-not-allowed bg-zinc-800/50 text-zinc-600 transition-colors'
                     } disabled:opacity-50`}
                   >
                     <span>Buy {qty} pack{qty > 1 ? 's' : ''}</span>
-                    <span className={affordable ? 'text-amber-400' : 'text-zinc-600'}>
+                    <span className={affordable ? 'font-semibold text-white/95' : 'text-zinc-600'}>
                       {cost.toLocaleString()} G
                     </span>
                   </button>
@@ -181,7 +181,7 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
             <button
               onClick={() => setSelectedPack(null)}
               disabled={buying}
-              className="mt-4 w-full rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="mt-4 w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
             >
               Cancel
             </button>

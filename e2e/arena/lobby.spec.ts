@@ -59,10 +59,10 @@ test.describe('Arena Lobby', () => {
     await page.click('button:has-text("Create")')
     await page.waitForURL(/\/arena\/lobby\//, { timeout: 10000 })
 
-    // Click on the deck to select it — button gets border-red-500 class when selected
+    // Click on the deck to select it — button exposes aria-pressed=true when selected
     await page.click('button:has-text("Admin Deck")')
     const deckBtn = page.locator('button:has-text("Admin Deck")')
-    await expect(deckBtn).toHaveClass(/border-red-500/)
+    await expect(deckBtn).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('player can ready up after selecting deck', async ({ page, browser }) => {

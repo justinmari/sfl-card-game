@@ -24,7 +24,7 @@ test.describe('Authentication', () => {
     await page.fill('input[type="email"]', TEST_ADMIN.email)
     await page.fill('input[type="password"]', 'wrongpassword')
     await page.click('button[type="submit"]')
-    await expect(page.locator('.text-red-400')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('login-error')).toBeVisible({ timeout: 5000 })
   })
 
   test('admin sees admin section on dashboard', async ({ page }) => {

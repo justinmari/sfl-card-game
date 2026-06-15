@@ -1008,7 +1008,7 @@ export default function ArenaBattle({
           <p className="mb-6 text-xs text-zinc-500">Completed in {roundNum} rounds</p>
           <div className="mb-8">
             {sortedByHp.map((p, i) => (
-              <div key={p.id} className="mb-2 flex items-center justify-center gap-3">
+              <div key={p.id} data-testid="battle-ranking-row" className="mb-2 flex items-center justify-center gap-3">
                 <span className="w-6 text-right text-sm font-bold text-zinc-500">#{i + 1}</span>
                 <span className={`text-sm ${i === 0 ? 'text-amber-400 font-bold' : 'text-zinc-300'}`}>{p.name}</span>
                 <span className={`text-sm ${(displayHp[p.id] ?? 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>{displayHp[p.id] ?? 0} HP</span>

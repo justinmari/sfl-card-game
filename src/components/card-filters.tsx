@@ -147,16 +147,16 @@ export function CompactFilterBar({
   children?: React.ReactNode
 }) {
   const selectClass =
-    'min-w-0 max-w-[8.5rem] rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-sm text-white focus:border-zinc-500 focus:outline-none'
+    'min-w-0 max-w-[8.5rem] rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white transition-colors focus:border-violet-400/70 focus:outline-none focus:ring-2 focus:ring-violet-500/30'
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="surface mb-6 flex flex-wrap items-center gap-2 rounded-xl p-2.5">
       <input
         type="text"
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder="Search cards..."
-        className="w-full min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none sm:w-auto sm:max-w-[12rem]"
+        className="w-full min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white placeholder-zinc-500 transition-colors focus:border-violet-400/70 focus:outline-none focus:ring-2 focus:ring-violet-500/30 sm:w-auto sm:max-w-[12rem]"
       />
 
       {selects.map((sel) => (
@@ -174,14 +174,16 @@ export function CompactFilterBar({
         </select>
       ))}
 
-      <div className="flex items-center gap-0.5 rounded-lg border border-zinc-800 bg-zinc-900 p-0.5">
+      <div className="flex items-center gap-0.5 rounded-lg border border-white/10 bg-black/30 p-0.5">
         {sortOptions.map((opt) => (
           <button
             key={opt.value}
             type="button"
             onClick={() => onSortChange(opt.value)}
-            className={`rounded px-2 py-1 text-xs transition-colors ${
-              sort === opt.value ? 'bg-zinc-700 text-white font-medium' : 'text-zinc-400 hover:text-zinc-200'
+            className={`rounded-md px-2 py-1 text-xs transition-colors ${
+              sort === opt.value
+                ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 font-semibold text-white shadow-[0_0_10px_-2px_rgba(167,139,250,0.6)]'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {opt.label}
