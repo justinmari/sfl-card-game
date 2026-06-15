@@ -13,6 +13,11 @@ type Creature = {
   name: string
 }
 
+type CardType = {
+  id: string
+  name: string
+}
+
 type Card = {
   id: string
   name: string
@@ -21,10 +26,12 @@ type Card = {
   rarity: string
   creature_id: string | null
   creatures: { name: string } | null
+  card_types: { type_id: string }[]
   created_at: string
 }
 
-export default function CardList({ cards, creatures, cardsInPacks = [] }: { cards: Card[]; creatures: Creature[]; cardsInPacks?: string[] }) {
+export default function CardList({ cards, creatures, types, cardsInPacks = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[] }) {
+  const typeNameMap = useMemo(() => new Map(types.map((t) => [t.id, t.name])), [types])
   const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
   const [filterNotInPack, setFilterNotInPack] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -32,6 +39,7 @@ export default function CardList({ cards, creatures, cardsInPacks = [] }: { card
   const [editDescription, setEditDescription] = useState('')
   const [editRarity, setEditRarity] = useState('')
   const [editCreatureId, setEditCreatureId] = useState('')
+  const [editTypeIds, setEditTypeIds] = useState<Set<string>>(new Set())
   const [editFile, setEditFile] = useState<File | null>(null)
   const [editPreview, setEditPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -53,8 +61,18 @@ export default function CardList({ cards, creatures, cardsInPacks = [] }: { card
     setEditDescription(card.description || '')
     setEditRarity(card.rarity)
     setEditCreatureId(card.creature_id || '')
+    setEditTypeIds(new Set((card.card_types || []).map((ct) => ct.type_id)))
     setEditFile(null)
     setEditPreview(null)
+  }
+
+  const toggleEditType = (typeId: string) => {
+    setEditTypeIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(typeId)) next.delete(typeId)
+      else next.add(typeId)
+      return next
+    })
   }
 
   const cancelEdit = () => {
@@ -102,6 +120,19 @@ export default function CardList({ cards, creatures, cardsInPacks = [] }: { card
       }
 
       await supabase.from('cards').update(updates).eq('id', card.id)
+
+      // Diff type assignments
+      const currentTypeIds = new Set((card.card_types || []).map((ct) => ct.type_id))
+      const newTypeIds = editTypeIds
+      const typesToRemove = [...currentTypeIds].filter((id) => !newTypeIds.has(id))
+      if (typesToRemove.length > 0) {
+        await supabase.from('card_types').delete().eq('card_id', card.id).in('type_id', typesToRemove)
+      }
+      const typesToAdd = [...newTypeIds].filter((id) => !currentTypeIds.has(id))
+      if (typesToAdd.length > 0) {
+        await supabase.from('card_types').insert(typesToAdd.map((type_id) => ({ card_id: card.id, type_id })))
+      }
+
       setEditingId(null)
       setEditFile(null)
       setEditPreview(null)
@@ -205,6 +236,30 @@ export default function CardList({ cards, creatures, cardsInPacks = [] }: { card
                   ))}
                 </select>
               </div>
+              {types.length > 0 && (
+                <div>
+                  <label className="mb-1 block text-sm text-zinc-400">Types</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {types.map((t) => {
+                      const active = editTypeIds.has(t.id)
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleEditType(t.id)}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            active
+                              ? 'border-cyan-600 bg-cyan-950/50 text-cyan-300'
+                              : 'border-zinc-600 text-zinc-400 hover:bg-zinc-800'
+                          }`}
+                        >
+                          {active ? '✓ ' : ''}{t.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-sm text-zinc-400">Replace Image (optional)</label>
                 <input
@@ -246,7 +301,7 @@ export default function CardList({ cards, creatures, cardsInPacks = [] }: { card
 
       <div className="flex flex-wrap gap-4">
         {filteredCards.map((card) => (
-          <TradingCard key={card.id} card={{ ...card, creature_name: card.creatures?.name || null }} size="md" className="group">
+          <TradingCard key={card.id} card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size="md" className="group">
             <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button
                 onClick={() => startEdit(card)}

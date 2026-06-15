@@ -10,6 +10,7 @@ type CardData = {
   rarity: string
   description?: string | null
   creature_name?: string | null
+  typeNames?: string[]
   is_new?: boolean
 }
 

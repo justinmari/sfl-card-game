@@ -14,6 +14,7 @@ type Card = {
   image_url: string | null
   rarity: string
   creature_name: string | null
+  typeNames?: string[]
 }
 
 export default function ProfileForm({

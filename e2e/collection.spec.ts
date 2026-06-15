@@ -89,4 +89,29 @@ test.describe('Collection', () => {
     await page.locator('button:has-text("Starter Pack")').click()
     await test.info().attach('filter-pack', { body: await page.screenshot(), contentType: 'image/png' })
   })
+
+  test('shows type labels on cards', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    // Seeded cards carry types (e.g. Fire Drake Common -> Fire). Type chips render in cyan.
+    // Cards render both a mobile (sm:hidden) and desktop (hidden sm:block) copy, so target a visible one.
+    await expect(page.locator('span.text-cyan-300:visible').first()).toBeVisible({ timeout: 5000 })
+    await test.info().attach('collection-types', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+
+  test('can filter by type', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await page.getByPlaceholder('All types').click()
+    // Dropdown opens; pick first available type from the list (index 0 is "All types")
+    const typeBtn = page.locator('.absolute.z-30 button').nth(1)
+    await expect(typeBtn).toBeVisible({ timeout: 5000 })
+    await typeBtn.click()
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible()
+    await test.info().attach('filter-type', { body: await page.screenshot(), contentType: 'image/png' })
+  })
 })

@@ -60,13 +60,15 @@ Invite-only. Admins create accounts via `admin_create_user` RPC. Auth is email+p
 
 ## Data Model
 
-### Key Tables (18 total)
+### Key Tables (20 total)
 
 - **`profiles`** — id (= auth.users.id), full_name, role, gruten, last_daily_claim, top_cards, hidden
 - **`cards`** — id, name, rarity, image_url, description, creature_id
 - **`creatures`** — id, name (cards belong to creatures)
 - **`skills`** — id, name, description, is_active (admin-togglable)
 - **`card_skills`** — card_id, skill_id (junction)
+- **`types`** — id, name (unique), description (pure labels, no battle effect yet — see Types below)
+- **`card_types`** — card_id, type_id (junction; a card can have 0, 1, or many types)
 - **`user_cards`** — user_id, card_id, **count** (single row per card, count increments — not one row per copy)
 - **`decks`** — user_id, slot, name, card_ids (uuid array, 5 cards)
 - **`packs`** — name, price, cards_per_pack, is_active
@@ -82,6 +84,10 @@ Invite-only. Admins create accounts via `admin_create_user` RPC. Auth is email+p
 `common` → `uncommon` → `rare` → `ultra_rare` → `legendary` → `secret_rare`
 
 Defined in `src/lib/rarities.ts`. Pack pull weights are per-card in `pack_cards.pull_percentage`, not global rarity tiers.
+
+### Card Types
+
+Types are **pure labels** on cards (many-to-many via `card_types`). A card can have 0, 1, or many types. They have **no battle effect today** — they exist so a future mechanic can read them (e.g. a passive/power that triggers when N cards in a deck share a type). Managed admin-side via direct table CRUD (like creatures), not RPCs. Admin assigns types per-card in the card upload form and edit modal; type chips render on `TradingCard` (cyan) and the collection has a type filter. Distinct from `creatures`, which is a single label identifying who's on the card.
 
 ### Gruten (Currency)
 
@@ -105,15 +111,15 @@ Defined in `src/lib/rarities.ts`. Pack pull weights are per-card in `pack_cards.
 | `src/app/players/` | Friends page (public profiles) |
 | `src/app/profile/` | Profile editor with top cards |
 | `src/app/suggest/` | Card suggestion form |
-| `src/app/admin/` | Admin pages: cards, creatures, packs, skills, users, suggestions, arena, settings |
+| `src/app/admin/` | Admin pages: cards, creatures, types, packs, skills, users, suggestions, arena, settings |
 | `src/lib/battle-engine.ts` | Core battle logic: `precomputeRound()`, `randomPair()`, `applyHooks()` |
 | `src/lib/skills/` | 13 skill implementations, each exports hooks (onStars, onDice, onDiceOverride, onTotals, onDamage, onRound) |
 | `src/lib/skills/types.ts` | `Skill`, `SkillHooks`, `FaceOffState`, `RoundContext`, `ActiveSkill` types |
 | `src/lib/seeded-random.ts` | Deterministic RNG from seed (used for reproducible arena rounds) |
 | `src/lib/supabase/server.ts` | Server-side Supabase client factory |
 | `src/lib/supabase/client.ts` | Client-side Supabase client factory |
-| `supabase/migrations/` | 8 migration files (baseline through gruten_transactions) |
-| `supabase/seed.sql` | Test data: 5 creatures, 10 cards, 1 pack, arena settings |
+| `supabase/migrations/` | 9 migration files (baseline through card_types) |
+| `supabase/seed.sql` | Test data: 5 creatures, 3 types, 10 cards, 1 pack, arena settings |
 
 ## Development
 

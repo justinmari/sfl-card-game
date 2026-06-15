@@ -12,12 +12,17 @@ export default async function AdminCardsPage() {
   const supabase = await createClient()
   const { data: cards } = await supabase
     .from('cards')
-    .select('*, creatures(name)')
+    .select('*, creatures(name), card_types(type_id)')
     .order('created_at', { ascending: false })
 
   const { data: creatures } = await supabase
     .from('creatures')
     .select('*')
+    .order('name')
+
+  const { data: types } = await supabase
+    .from('types')
+    .select('id, name')
     .order('name')
 
   // Get all card IDs that are in at least one pack
@@ -31,8 +36,8 @@ export default async function AdminCardsPage() {
       <AppNavbar backHref="/dashboard" title="Manage Cards" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <CardUploadForm creatures={creatures || []} />
-        <CardList cards={cards || []} creatures={creatures || []} cardsInPacks={[...cardsInPacks] as string[]} />
+        <CardUploadForm creatures={creatures || []} types={types || []} />
+        <CardList cards={cards || []} creatures={creatures || []} types={types || []} cardsInPacks={[...cardsInPacks] as string[]} />
       </main>
     </div>
   )

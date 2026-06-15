@@ -92,6 +92,7 @@ type CardData = {
   rarity: string
   creature_name?: string | null
   skillNames?: string[]
+  typeNames?: string[]
 }
 
 type Size = 'sm' | 'md' | 'lg'
@@ -258,6 +259,20 @@ export default function TradingCard({
               <p className={`${s.desc} text-zinc-700 italic leading-snug`}>No description</p>
             )}
           </div>
+
+          {/* Types */}
+          {card.typeNames && card.typeNames.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {card.typeNames.map((name, i) => (
+                <span
+                  key={i}
+                  className={`${s.label} rounded-full border border-cyan-700/60 bg-cyan-950/40 px-1.5 py-0.5 font-medium text-cyan-300`}
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Stars + Skills */}
           <div className={`mt-auto flex items-center justify-between pt-2`}>

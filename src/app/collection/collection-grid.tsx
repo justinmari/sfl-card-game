@@ -13,6 +13,7 @@ type Card = {
   creature_name?: string | null
   skillNames?: string[]
   skillDescriptions?: string[]
+  typeNames?: string[]
 }
 
 type PackFilter = {
@@ -51,6 +52,7 @@ export default function CollectionGrid({
   const [selected, setSelected] = useState<{ card: Card; count: number } | null>(null)
   const [activePack, setActivePack] = useState<string | null>(null)
   const [activeCreature, setActiveCreature] = useState<string | null>(null)
+  const [activeType, setActiveType] = useState<string | null>(null)
   const [sort, setSort] = useState<SortOption>('rarity')
   const [packSearch, setPackSearch] = useState('')
   const [packDropdownOpen, setPackDropdownOpen] = useState(false)
@@ -58,6 +60,9 @@ export default function CollectionGrid({
   const [creatureSearch, setCreatureSearch] = useState('')
   const [creatureDropdownOpen, setCreatureDropdownOpen] = useState(false)
   const creatureRef = useRef<HTMLDivElement>(null)
+  const [typeSearch, setTypeSearch] = useState('')
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
+  const typeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -66,6 +71,9 @@ export default function CollectionGrid({
       }
       if (creatureRef.current && !creatureRef.current.contains(e.target as Node)) {
         setCreatureDropdownOpen(false)
+      }
+      if (typeRef.current && !typeRef.current.contains(e.target as Node)) {
+        setTypeDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -91,8 +99,16 @@ export default function CollectionGrid({
       }
     }
 
+    if (activeType) {
+      if (activeType === '__untyped__') {
+        result = result.filter(({ card }) => !card.typeNames || card.typeNames.length === 0)
+      } else {
+        result = result.filter(({ card }) => card.typeNames?.includes(activeType))
+      }
+    }
+
     return result
-  }, [cardCounts, activePack, activeCreature, packFilters])
+  }, [cardCounts, activePack, activeCreature, activeType, packFilters])
 
   const sorted = useMemo(() => {
     const items = [...filtered]
@@ -150,6 +166,17 @@ export default function CollectionGrid({
       else hasUnknown = true
     }
     return { names: [...names].sort(), hasUnknown }
+  }, [cardCounts])
+
+  // Get types that appear in the user's collection
+  const collectionTypes = useMemo(() => {
+    const names = new Set<string>()
+    let hasUntyped = false
+    for (const { card } of cardCounts) {
+      if (card.typeNames && card.typeNames.length > 0) card.typeNames.forEach((n) => names.add(n))
+      else hasUntyped = true
+    }
+    return { names: [...names].sort(), hasUntyped }
   }, [cardCounts])
 
   return (
@@ -262,6 +289,64 @@ export default function CollectionGrid({
                     className={`w-full px-3 py-2 text-left text-sm italic hover:bg-zinc-800 ${activeCreature === '__unknown__' ? 'text-white font-medium' : 'text-zinc-400'}`}
                   >
                     Unknown
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Type filter */}
+      {(collectionTypes.names.length > 0 || collectionTypes.hasUntyped) && (
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">Type</div>
+          <div ref={typeRef} className="relative">
+            <input
+              type="text"
+              value={activeType ? (activeType === '__untyped__' ? 'Untyped' : activeType) : typeSearch}
+              onChange={(e) => {
+                setTypeSearch(e.target.value)
+                setActiveType(null)
+                setTypeDropdownOpen(true)
+              }}
+              onFocus={() => setTypeDropdownOpen(true)}
+              placeholder="All types"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            />
+            {activeType && (
+              <button
+                onClick={() => { setActiveType(null); setTypeSearch('') }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+              >
+                ×
+              </button>
+            )}
+            {typeDropdownOpen && (
+              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                <button
+                  onClick={() => { setActiveType(null); setTypeSearch(''); setTypeDropdownOpen(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${!activeType ? 'text-white font-medium' : 'text-zinc-300'}`}
+                >
+                  All types
+                </button>
+                {collectionTypes.names
+                  .filter((n) => !typeSearch || n.toLowerCase().includes(typeSearch.toLowerCase()))
+                  .map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => { setActiveType(name); setTypeSearch(''); setTypeDropdownOpen(false) }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-800 ${activeType === name ? 'text-white font-medium' : 'text-zinc-300'}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                {collectionTypes.hasUntyped && (!typeSearch || 'untyped'.includes(typeSearch.toLowerCase())) && (
+                  <button
+                    onClick={() => { setActiveType('__untyped__'); setTypeSearch(''); setTypeDropdownOpen(false) }}
+                    className={`w-full px-3 py-2 text-left text-sm italic hover:bg-zinc-800 ${activeType === '__untyped__' ? 'text-white font-medium' : 'text-zinc-400'}`}
+                  >
+                    Untyped
                   </button>
                 )}
               </div>

@@ -13,7 +13,7 @@ export default async function CollectionPage() {
   const supabase = await createClient()
   const { data: userCards } = await supabase
     .from('user_cards')
-    .select('card_id, count, obtained_at, cards(*, creatures(name), card_skills(skill_id))')
+    .select('card_id, count, obtained_at, cards(*, creatures(name), card_skills(skill_id), card_types(types(name)))')
     .eq('user_id', profile.id)
     .gt('count', 0)
     .order('obtained_at', { ascending: false })
@@ -37,7 +37,7 @@ export default async function CollectionPage() {
   const totalCards = rows.reduce((sum, uc) => sum + uc.count, 0)
 
   const cardCounts = rows.map((uc) => {
-    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[] }
+    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[]; card_types: { types: { name: string } | null }[] }
     return {
       card: {
         id: uc.card_id,
@@ -48,6 +48,7 @@ export default async function CollectionPage() {
         creature_name: c.creatures?.name || null,
         skillNames: (c.card_skills || []).map((s) => skillNameMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.name || s.skill_id),
         skillDescriptions: (c.card_skills || []).map((s) => skillDescMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.description || ''),
+        typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
       },
       count: uc.count,
       obtainedAt: uc.obtained_at as string,

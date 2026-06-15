@@ -23,6 +23,21 @@ INSERT INTO cards (id, name, rarity, creature_id) VALUES
   ('dddddddd-0009-0000-0000-000000000000', 'Thunder Bird Legendary', 'legendary', 'cccccccc-0004-0000-0000-000000000000'),
   ('dddddddd-0010-0000-0000-000000000000', 'Earth Worm Secret', 'secret_rare', 'cccccccc-0005-0000-0000-000000000000');
 
+-- Create types (pure labels, many-to-many with cards)
+INSERT INTO types (id, name, description) VALUES
+  ('ffff0001-0000-0000-0000-000000000000', 'Fire', 'Burning hot cards'),
+  ('ffff0002-0000-0000-0000-000000000000', 'Ice', 'Frozen cards'),
+  ('ffff0003-0000-0000-0000-000000000000', 'Flying', 'Airborne cards');
+
+-- Assign types to cards (0, 1, or multiple per card)
+INSERT INTO card_types (card_id, type_id) VALUES
+  ('dddddddd-0001-0000-0000-000000000000', 'ffff0001-0000-0000-0000-000000000000'), -- Fire Drake Common: Fire
+  ('dddddddd-0006-0000-0000-000000000000', 'ffff0001-0000-0000-0000-000000000000'), -- Fire Drake Rare: Fire
+  ('dddddddd-0002-0000-0000-000000000000', 'ffff0002-0000-0000-0000-000000000000'), -- Ice Golem Common: Ice
+  ('dddddddd-0004-0000-0000-000000000000', 'ffff0003-0000-0000-0000-000000000000'), -- Thunder Bird Uncommon: Flying
+  ('dddddddd-0009-0000-0000-000000000000', 'ffff0002-0000-0000-0000-000000000000'), -- Thunder Bird Legendary: Ice + Flying
+  ('dddddddd-0009-0000-0000-000000000000', 'ffff0003-0000-0000-0000-000000000000');
+
 -- Create a test pack
 INSERT INTO packs (id, name, description, price, cards_per_pack, is_active) VALUES
   ('eeeeeeee-0001-0000-0000-000000000000', 'Starter Pack', 'A basic starter pack', 100, 3, true);

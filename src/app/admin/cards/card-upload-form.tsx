@@ -12,6 +12,11 @@ type Creature = {
   name: string
 }
 
+type CardType = {
+  id: string
+  name: string
+}
+
 type PendingCard = {
   id: string
   file: File
@@ -20,9 +25,10 @@ type PendingCard = {
   description: string
   rarity: string
   creature_id: string
+  type_ids: string[]
 }
 
-export default function CardUploadForm({ creatures }: { creatures: Creature[] }) {
+export default function CardUploadForm({ creatures, types }: { creatures: Creature[]; types: CardType[] }) {
   const [pending, setPending] = useState<PendingCard[]>([])
   const [defaultRarity, setDefaultRarity] = useState('common')
   const [uploading, setUploading] = useState(false)
@@ -42,8 +48,19 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
       description: '',
       rarity: defaultRarity,
       creature_id: '',
+      type_ids: [],
     }))
     setPending((prev) => [...prev, ...newCards])
+  }
+
+  const toggleType = (cardId: string, typeId: string) => {
+    setPending((prev) =>
+      prev.map((c) =>
+        c.id === cardId
+          ? { ...c, type_ids: c.type_ids.includes(typeId) ? c.type_ids.filter((t) => t !== typeId) : [...c.type_ids, typeId] }
+          : c
+      )
+    )
   }
 
   const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,15 +106,22 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
           .from('card-images')
           .getPublicUrl(fileName)
 
-        const { error: insertError } = await supabase.from('cards').insert({
+        const { data: inserted, error: insertError } = await supabase.from('cards').insert({
           name: card.name,
           description: card.description || null,
           rarity: card.rarity,
           image_url: publicUrl,
           creature_id: card.creature_id || null,
-        })
+        }).select('id').single()
 
         if (insertError) throw new Error(`Failed to save "${card.name}": ${insertError.message}`)
+
+        if (inserted && card.type_ids.length > 0) {
+          const { error: typeError } = await supabase.from('card_types').insert(
+            card.type_ids.map((type_id) => ({ card_id: inserted.id, type_id }))
+          )
+          if (typeError) throw new Error(`Failed to set types for "${card.name}": ${typeError.message}`)
+        }
       }
 
       setPending([])
@@ -210,6 +234,27 @@ export default function CardUploadForm({ creatures }: { creatures: Creature[] })
                   <span className={`rounded px-1.5 py-0.5 text-xs ${rarityBadgeColors[card.rarity]}`}>
                     {card.rarity}
                   </span>
+                  {types.length > 0 && (
+                    <div className="flex w-full flex-wrap gap-1.5">
+                      {types.map((t) => {
+                        const active = card.type_ids.includes(t.id)
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => toggleType(card.id, t.id)}
+                            className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                              active
+                                ? 'border-cyan-600 bg-cyan-950/50 text-cyan-300'
+                                : 'border-zinc-600 text-zinc-400 hover:bg-zinc-700'
+                            }`}
+                          >
+                            {active ? '✓ ' : ''}{t.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
