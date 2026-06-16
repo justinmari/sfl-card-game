@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
   Swords, LayoutGrid,
-  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox,
+  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -125,6 +125,7 @@ export default async function DashboardPage() {
               <DashTile href="/arena/test" icon={FlaskConical} title="Test Arena" subtitle="Simulate battles" accent="amber" />
               <DashTile href="/admin/arena" icon={Settings} title="Feature Settings" subtitle="Toggle features" accent="amber" />
               <DashTile href="/admin/suggestions" icon={Inbox} title="Card Suggestions" subtitle="Review ideas" accent="amber" />
+              <DashTile href="/admin/care-packages" icon={Gift} title="Care Packages" subtitle="Send Gruten gifts" accent="amber" />
             </div>
           </>
         )}

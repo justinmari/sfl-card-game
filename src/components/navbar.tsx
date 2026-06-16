@@ -10,15 +10,19 @@ type NavbarProps = {
   isAdmin?: boolean
   gruten?: number
   canClaimDaily?: boolean
+  packageCount?: number
+  packageTotal?: number
   backHref?: string
   backLabel?: string
   title?: string
 }
 
-export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, backHref, backLabel, title }: NavbarProps) {
+export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, packageCount = 0, packageTotal = 0, backHref, backLabel, title }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [claimed, setClaimed] = useState(false)
   const [showReward, setShowReward] = useState(false)
+  const [packagesOpened, setPackagesOpened] = useState(false)
+  const [packageReward, setPackageReward] = useState<{ amount: number; opened: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -48,8 +52,20 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
     }
   }
 
+  const handleOpenPackages = async () => {
+    const res = await fetch('/api/care-package/open', { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      setPackagesOpened(true)
+      setPackageReward({ amount: data.amount ?? packageTotal, opened: data.opened ?? packageCount })
+      setTimeout(() => setPackageReward(null), 4000)
+      router.refresh()
+    }
+  }
+
   const grutenDisplay = gruten === undefined ? null : gruten === -1 ? 'Infinite' : gruten.toLocaleString()
   const showGift = canClaimDaily && !claimed
+  const showPackage = packageCount > 0 && !packagesOpened
 
   return (
     <>
@@ -63,13 +79,25 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
           )}
           <Link href="/dashboard" className="font-display text-xl font-bold tracking-tight">
             <span className="text-arcade-gradient">{title || 'SFL TCG'}</span>
-            {!title && <span className="ml-2 text-[10px] font-normal text-zinc-500">v0.3.1</span>}
+            {!title && <span className="ml-2 text-[10px] font-normal text-zinc-500">v0.4.0</span>}
           </Link>
         </div>
 
         <div className="flex items-center gap-3">
           {grutenDisplay !== null && (
             <div className="flex items-center gap-2">
+              {showPackage && (
+                <button
+                  onClick={handleOpenPackages}
+                  className="relative animate-bounce cursor-pointer text-lg transition-transform hover:scale-125"
+                  title={`Open ${packageCount} care package${packageCount > 1 ? 's' : ''} — ${packageTotal.toLocaleString()} Gruten`}
+                >
+                  📦
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-violet-300/40 bg-violet-500 px-1 text-[9px] font-bold text-white">
+                    {packageCount}
+                  </span>
+                </button>
+              )}
               {showGift && (
                 <button
                   onClick={handleClaim}
@@ -149,6 +177,20 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, back
           <div>
             <p className="text-sm font-semibold text-white">Daily Reward Claimed!</p>
             <p className="text-xs text-amber-400">+500 Gruten added to your balance</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {packageReward && (
+      <div className="surface fixed bottom-6 right-6 z-50 animate-[slideUp_0.3s_ease-out] rounded-xl border border-violet-400/40 px-5 py-3 shadow-[0_0_24px_-4px_rgba(139,92,246,0.55)]">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📦</span>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              {packageReward.opened > 1 ? `${packageReward.opened} Care Packages Opened!` : 'Care Package Opened!'}
+            </p>
+            <p className="text-xs text-violet-300">+{packageReward.amount.toLocaleString()} Gruten added to your balance</p>
           </div>
         </div>
       </div>
