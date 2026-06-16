@@ -1,11 +1,10 @@
 import type { Skill } from './types'
+import { FX_ZERO_DICE } from '@/lib/battle-effects'
 
 export const SKILL_SNAKE_EYES: Skill = {
   id: 'snake-eyes',
   name: 'Snake Eyes',
   description: 'No dice rolls this round — base stars only, for both players',
   usesPerBattle: 1,
-  hooks: {
-    onDiceOverride: (state) => ({ ...state, roll1: 0, roll2: 0 }),
-  },
+  effects: [FX_ZERO_DICE],
 }

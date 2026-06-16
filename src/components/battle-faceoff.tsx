@@ -3,8 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import CompactCard from './compact-card'
 import type { FaceOffDetail } from '@/lib/battle-engine'
-import { SKILL_REGISTRY } from '@/lib/skills'
-import { skillEffectKinds, rarityForStars, type EffectKind } from '@/lib/skill-visuals'
+import { type EffectKind } from '@/lib/skill-visuals'
 import { rarityLabel } from '@/lib/rarities'
 
 const rarityTextColor: Record<string, string> = {
@@ -33,21 +32,11 @@ const KIND_META: Record<EffectKind, { emoji: string; tint: string; glow: string;
 }
 
 // Which face-off phase each changed field becomes visible at.
-const FIELD_PHASE: Record<string, Phase> = { star: 'power', roll: 'rolling', effective: 'merge', damage: 'result' }
+const FIELD_PHASE: Record<string, Phase> = { star: 'power', rarity: 'power', roll: 'rolling', effective: 'merge', damage: 'result' }
 
-// A 'star' change can read as a rarity change, a base-power change, or both,
-// depending on the skill's descriptor. Other fields map directly to one kind.
-function fieldKinds(skillId: string, field: string): EffectKind[] {
-  if (field === 'roll') return ['dice']
-  if (field === 'effective') return ['total']
-  if (field === 'damage') return ['damage']
-  if (field === 'star') {
-    const skill = SKILL_REGISTRY[skillId]
-    const kinds = skill ? skillEffectKinds(skill).filter((k) => k === 'rarity' || k === 'power') : []
-    return kinds.length > 0 ? kinds : ['power']
-  }
-  return []
-}
+// Each changed field maps directly to one effect kind. (Rarity and power are
+// now distinct fields, so there's no ambiguity to resolve.)
+const FIELD_KIND: Record<string, EffectKind> = { star: 'power', rarity: 'rarity', roll: 'dice', effective: 'total', damage: 'damage' }
 
 // A number that counts from `from` to `to` when it mounts — used to show a
 // total/power/dice/damage value growing or shrinking as a skill applies.
@@ -325,10 +314,10 @@ export default function BattleFaceoff({
     for (const a of faceOff.activations) {
       for (const ch of a.changes) {
         if (FIELD_PHASE[ch.field] !== phase) continue
-        const key = `${ch.side}:${ch.field}:${a.skillId}`
+        const key = `${ch.side}:${ch.field}:${a.effectId}`
         if (skillFiredRef.current.has(key)) continue
         skillFiredRef.current.add(key)
-        const emoji = KIND_META[fieldKinds(a.skillId, ch.field)[0]]?.emoji ?? '✨'
+        const emoji = KIND_META[FIELD_KIND[ch.field]]?.emoji ?? '✨'
         const cardRef = ch.side === 1 ? card1DivRef.current : card2DivRef.current
         const sideStr = ch.side === 1 ? 'left' : 'right'
         requestAnimationFrame(() => { burst(cardRef, sideStr, emoji, 16, 18, 1.3); ensureLoop() })
@@ -344,10 +333,9 @@ export default function BattleFaceoff({
   const PHASE_ORDER: Phase[] = ['enter', 'power', 'rolling', 'merge', 'result', 'done']
   const phaseReached = (target: Phase) => PHASE_ORDER.indexOf(phase) >= PHASE_ORDER.indexOf(target)
 
-  const rarityChip = (stars: number) => {
-    const r = rarityForStars(stars)
-    return <span className={r ? rarityTextColor[r] : 'text-zinc-300'}>{r ? rarityLabel[r] : `${stars}★`}</span>
-  }
+  const rarityChip = (rarity: string) => (
+    <span className={rarityTextColor[rarity] ?? 'text-zinc-300'}>{rarityLabel[rarity] ?? rarity}</span>
+  )
 
   // Effect kinds that have fired on a side so far — drives the card aura + shake.
   const firedKinds = (side: 1 | 2): EffectKind[] => {
@@ -356,7 +344,7 @@ export default function BattleFaceoff({
     const out: EffectKind[] = []
     for (const a of acts) for (const ch of a.changes) {
       if (ch.side !== side || !phaseReached(FIELD_PHASE[ch.field])) continue
-      out.push(...fieldKinds(a.skillId, ch.field))
+      out.push(FIELD_KIND[ch.field])
     }
     return out
   }
@@ -373,14 +361,11 @@ export default function BattleFaceoff({
   const renderEffects = (side: 1 | 2) => {
     const acts = faceOff.activations
     if (!large || !acts || acts.length === 0) return null
-    const entries: { key: string; name: string; kind: EffectKind; phase: Phase; before: number; after: number }[] = []
+    const entries: { key: string; name: string; kind: EffectKind; phase: Phase; before: number | string; after: number | string }[] = []
     for (const a of acts) {
       for (const ch of a.changes) {
         if (ch.side !== side) continue
-        const ph = FIELD_PHASE[ch.field]
-        for (const kind of fieldKinds(a.skillId, ch.field)) {
-          entries.push({ key: `${a.skillId}:${ch.field}:${kind}`, name: a.skillName, kind, phase: ph, before: ch.before, after: ch.after })
-        }
+        entries.push({ key: `${a.effectId}:${ch.field}`, name: a.skillName, kind: FIELD_KIND[ch.field], phase: FIELD_PHASE[ch.field], before: ch.before, after: ch.after })
       }
     }
     const shown = entries.filter((e) => phaseReached(e.phase))
@@ -393,9 +378,9 @@ export default function BattleFaceoff({
             className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm animate-[skillPop_0.45s_cubic-bezier(0.34,1.56,0.64,1)_both] ${KIND_META[e.kind].tint}`}>
             <span>{KIND_META[e.kind].emoji} {e.name}</span>
             {e.kind === 'rarity' ? (
-              <span className="font-normal">{rarityChip(e.before)} → {rarityChip(e.after)}</span>
+              <span className="font-normal">{rarityChip(e.before as string)} → {rarityChip(e.after as string)}</span>
             ) : (
-              <span className="font-mono"><span className="opacity-50">{e.before}</span>→<CountTo from={e.before} to={e.after} className={e.after >= e.before ? 'text-green-300' : 'text-red-300'} /></span>
+              <span className="font-mono"><span className="opacity-50">{e.before}</span>→<CountTo from={e.before as number} to={e.after as number} className={(e.after as number) >= (e.before as number) ? 'text-green-300' : 'text-red-300'} /></span>
             )}
           </span>
         ))}

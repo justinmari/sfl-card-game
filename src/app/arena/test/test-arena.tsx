@@ -4,22 +4,27 @@ import { useState } from 'react'
 import {
   type BattlePlayer,
   type BattleCard,
+  type SkillEffectRows,
   createBot,
   starCount,
   resolveSkills,
 } from '@/lib/battle-engine'
 import ArenaBattle from '@/components/arena/arena-battle'
+import type { SynergyDefRow } from '@/lib/synergies/loader'
+import { recordMyMetSynergies } from '@/app/codex/actions'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
 
 type DeckOption = { slot: number; name: string; cards: BattleCard[] }
 
 export default function TestArena({
-  userId, userName, avatarUrl, adminDecks, allCards, dbSkills,
+  userId, userName, avatarUrl, adminDecks, allCards, dbSkills, skillEffectRows, synergyDefs,
 }: {
   userId: string; userName: string; avatarUrl: string | null
   adminDecks: DeckOption[]; allCards: BattleCard[]
   dbSkills?: { id: string; name: string; description: string }[]
+  skillEffectRows?: SkillEffectRows
+  synergyDefs?: SynergyDefRow[]
 }) {
   const [phase, setPhase] = useState<'setup' | 'battle'>('setup')
   const [selectedDeck, setSelectedDeck] = useState<number | null>(null)
@@ -29,7 +34,7 @@ export default function TestArena({
   const attachSkills = (cards: BattleCard[]): BattleCard[] =>
     cards.map((c) => ({
       ...c,
-      skills: c.dbSkillIds && c.dbSkillIds.length > 0 ? resolveSkills(c.dbSkillIds, dbSkills) : undefined,
+      skills: c.dbSkillIds && c.dbSkillIds.length > 0 ? resolveSkills(c.dbSkillIds, dbSkills, skillEffectRows) : undefined,
     }))
 
   const startBattle = () => {
@@ -43,6 +48,8 @@ export default function TestArena({
     })
     setBattlePlayers([admin, ...bots])
     setPhase('battle')
+    // Record any synergies this deck unlocks for the Codex (fire-and-forget).
+    void recordMyMetSynergies(deck.cards.map((c) => c.id))
   }
 
   if (phase === 'battle' && battlePlayers.length > 0) {
@@ -50,6 +57,7 @@ export default function TestArena({
       <ArenaBattle
         userId={userId}
         players={battlePlayers}
+        synergyDefs={synergyDefs}
         onBattleEnd={() => { setPhase('setup'); setBattlePlayers([]) }}
       />
     )

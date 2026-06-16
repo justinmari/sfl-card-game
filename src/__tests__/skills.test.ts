@@ -12,8 +12,13 @@ describe('SKILL_REGISTRY', () => {
       expect(skill.name).toBeTruthy()
       expect(skill.description).toBeTruthy()
       expect(skill.usesPerBattle).toBeGreaterThan(0)
-      expect(skill.hooks).toBeDefined()
-      expect(typeof skill.hooks).toBe('object')
+      expect(Array.isArray(skill.effects)).toBe(true)
+      expect(skill.effects.length).toBeGreaterThan(0)
+      for (const eff of skill.effects) {
+        expect(eff.id).toBeTruthy()
+        expect(Array.isArray(eff.kind)).toBe(true)
+        expect(typeof eff.hooks).toBe('object')
+      }
     }
   })
 
@@ -52,7 +57,7 @@ describe('resolveSkills', () => {
     const skills = resolveSkills(['double-edge'], dbSkills)
     expect(skills[0].name).toBe('Custom Name')
     expect(skills[0].description).toBe('Custom Desc')
-    expect(skills[0].hooks).toEqual(SKILL_REGISTRY['double-edge'].hooks)
+    expect(skills[0].effects).toEqual(SKILL_REGISTRY['double-edge'].effects)
   })
 
   it('keeps original name when no DB override exists', () => {

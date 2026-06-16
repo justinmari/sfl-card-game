@@ -16,6 +16,8 @@ import { createClient } from '@/lib/supabase/client'
 import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview } from '@/app/arena/actions'
 import { createSeededRng } from '@/lib/seeded-random'
 import { precomputeRound, randomPair, faceOffAtStep } from '@/lib/battle-engine'
+import { computeActiveSynergies } from '@/lib/synergies'
+import { buildSynergyDef, type SynergyDefRow } from '@/lib/synergies/loader'
 import BattleFaceoff from '@/components/battle-faceoff'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
@@ -61,6 +63,10 @@ export type ArenaBattleProps = {
   getConnectedIds?: () => string[]
   onGameOver?: () => Promise<void> | void
   onBattleEnd?: () => void
+  // When provided (client-authoritative play, e.g. the test arena), synergies
+  // are computed from deck composition and applied. Left undefined for
+  // server-authoritative multiplayer to avoid client/server desync.
+  synergyDefs?: SynergyDefRow[]
 }
 
 export default function ArenaBattle({
@@ -76,6 +82,7 @@ export default function ArenaBattle({
   getConnectedIds,
   onGameOver,
   onBattleEnd,
+  synergyDefs,
 }: ArenaBattleProps) {
   const isServerMode = !!sessionId
   const isReconnect = !!isRejoining
@@ -87,6 +94,11 @@ export default function ArenaBattle({
     return hpMap
   }
   const getLocalRng = (round: number) => seed != null ? createSeededRng(seed * 1000 + round) : undefined
+
+  // Synergies (client-authoritative play only): computed from deck composition.
+  const builtSynergies = (synergyDefs ?? []).map(buildSynergyDef)
+  const synergySkills = (ps: BattlePlayer[]): ActiveSkill[] =>
+    builtSynergies.length === 0 ? [] : computeActiveSynergies(ps.map((p) => ({ id: p.id, deck: p.deck })), builtSynergies)
 
   const [phase, setPhase] = useState<'battle' | 'done'>('battle')
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers)
@@ -191,7 +203,7 @@ export default function ArenaBattle({
       return ps ? { skill: ps.skill, activatedBy: userId, roundActivated: nextRound } : null
     }).filter(Boolean) as ActiveSkill[]
 
-    const result = precomputeRound(updated, displayHp, nextRound, undefined, skills.length > 0 ? skills : undefined, getLocalRng(nextRound))
+    const result = precomputeRound(updated, displayHp, nextRound, undefined, ((): ActiveSkill[] | undefined => { const all = [...skills, ...synergySkills(updated)]; return all.length > 0 ? all : undefined })(), getLocalRng(nextRound))
     handleNewRound(nextRound, result, skills)
   }
 
@@ -286,7 +298,7 @@ export default function ArenaBattle({
                 const ps = getPlayerSkills(userId).find(({ skill }) => skill.id === skillId)
                 return ps ? { skill: ps.skill, activatedBy: userId, roundActivated: roundNum } : null
               }).filter(Boolean) as ActiveSkill[]
-              const result = precomputeRound(updated, displayHp, roundNum, undefined, skills.length > 0 ? skills : undefined, getLocalRng(roundNum))
+              const result = precomputeRound(updated, displayHp, roundNum, undefined, ((): ActiveSkill[] | undefined => { const all = [...skills, ...synergySkills(updated)]; return all.length > 0 ? all : undefined })(), getLocalRng(roundNum))
               handleNewRound(roundNum, result, skills)
             }
           }, 0)
@@ -776,7 +788,7 @@ export default function ArenaBattle({
                         const ps = getPlayerSkills(userId).find(({ skill }) => skill.id === skillId)
                         return ps ? { skill: ps.skill, activatedBy: userId, roundActivated: roundNum } : null
                       }).filter(Boolean) as ActiveSkill[]
-                      const result = precomputeRound(updated, displayHp, roundNum, undefined, skills.length > 0 ? skills : undefined, getLocalRng(roundNum))
+                      const result = precomputeRound(updated, displayHp, roundNum, undefined, ((): ActiveSkill[] | undefined => { const all = [...skills, ...synergySkills(updated)]; return all.length > 0 ? all : undefined })(), getLocalRng(roundNum))
                       handleNewRound(roundNum, result, skills)
                     }} className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500">
                       Fight Now
@@ -822,6 +834,7 @@ export default function ArenaBattle({
                   // When I'm player2 the face-off is mirrored, so swap the trace sides too.
                   const displayFo: FaceOffDetail = imPlayer1 ? fo : {
                     ...fo, card1: fo.card2, card2: fo.card1, star1: fo.star2, star2: fo.star1,
+                    rarity1: fo.rarity2, rarity2: fo.rarity1,
                     roll1: fo.roll2, roll2: fo.roll1, effective1: fo.effective2, effective2: fo.effective1,
                     damage1: fo.damage2, damage2: fo.damage1,
                     activations: fo.activations?.map((a) => ({

@@ -1,15 +1,10 @@
 import type { Skill } from './types'
+import { FX_DOUBLE_TOTALS } from '@/lib/battle-effects'
 
 export const SKILL_DOUBLE_EDGE: Skill = {
   id: 'double-edge',
   name: 'Double Edge',
   description: 'All totals are doubled this round — for both players',
   usesPerBattle: 1,
-  hooks: {
-    onTotals: (state) => ({
-      ...state,
-      effective1: Math.round(state.effective1 * 2),
-      effective2: Math.round(state.effective2 * 2),
-    }),
-  },
+  effects: [FX_DOUBLE_TOTALS],
 }

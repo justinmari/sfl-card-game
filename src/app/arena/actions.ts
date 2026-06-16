@@ -5,7 +5,10 @@ import { isArenaEnabled } from '@/lib/arena-settings'
 import { type BattlePlayer, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
 import { type ActiveSkill } from '@/lib/skills'
 import { createSeededRng } from '@/lib/seeded-random'
-import { resolveSkills, SKILL_REGISTRY } from '@/lib/skills'
+import { resolveSkills } from '@/lib/skills'
+import { loadSkillEffectRows } from '@/lib/battle-effects/skill-effects'
+import { loadSynergyDefRows, buildSynergyDef } from '@/lib/synergies/loader'
+import { computeActiveSynergies } from '@/lib/synergies'
 
 type SessionPlayer = {
   id: string
@@ -254,9 +257,11 @@ export async function submitRoundReady(
     return { ready: true, allReady: false, readyCount: aliveReadyCount, aliveCount: waitingForIds.length }
   }
 
-  // Collect all skills from ready players (validated against their actual deck)
+  // Collect all skills from ready players (validated against their actual deck).
+  // Skills are composed from DB battle_effects when present, else the in-code
+  // registry (see resolveSkills).
   const { data: dbSkillRows } = await supabase.from('skills').select('id, name, description')
-  const dbSkillMap = new Map((dbSkillRows || []).map((s) => [s.id, s]))
+  const skillEffectRows = await loadSkillEffectRows(supabase)
 
   const allSkills: ActiveSkill[] = []
   for (const row of readyRows || []) {
@@ -269,13 +274,31 @@ export async function submitRoundReady(
     for (const skillId of playerSkillIds) {
       // Only allow skills the player's deck actually has
       if (!playerCardSkillIds.has(skillId)) continue
-      const base = SKILL_REGISTRY[skillId]
-      if (base) {
-        const dbOverride = dbSkillMap.get(skillId)
-        const skill = dbOverride ? { ...base, name: dbOverride.name, description: dbOverride.description } : base
+      const [skill] = resolveSkills([skillId], dbSkillRows || undefined, skillEffectRows)
+      if (skill) {
         allSkills.push({ skill, activatedBy: row.user_id, roundActivated: targetRound })
       }
     }
+  }
+
+  // Synergies are computed SERVER-SIDE from the authoritative session decks
+  // (never trusted from the client). Card types are re-fetched here so a client
+  // can't forge a synergy by claiming types it doesn't have.
+  const synergyDefs = (await loadSynergyDefRows(supabase)).map(buildSynergyDef).filter((d) => d.effects.length > 0)
+  if (synergyDefs.length > 0) {
+    const allCardIds = [...new Set(sessionPlayers.flatMap((p) => p.deck.map((c) => c.id)))]
+    const { data: cardTypeRows } = await supabase.from('card_types').select('card_id, type_id').in('card_id', allCardIds)
+    const typeMap = new Map<string, string[]>()
+    for (const r of (cardTypeRows || []) as { card_id: string; type_id: string }[]) {
+      const list = typeMap.get(r.card_id) ?? []
+      list.push(r.type_id)
+      typeMap.set(r.card_id, list)
+    }
+    const playersWithTypes = sessionPlayers.map((p) => ({
+      id: p.id,
+      deck: p.deck.map((c) => ({ ...c, types: typeMap.get(c.id) ?? [] })),
+    }))
+    allSkills.push(...computeActiveSynergies(playersWithTypes, synergyDefs))
   }
 
   // Use stored matchups as fixed pairings (same ones shown in skill-select)

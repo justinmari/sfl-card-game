@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
-  Swords, LayoutGrid,
-  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift,
+  Swords, LayoutGrid, BookOpen,
+  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -66,6 +66,7 @@ export default async function DashboardPage() {
           <DashTile href="/collection" icon={Library} title="Collection" subtitle="Browse your cards" />
           <DashTile href="/players" icon={Users} title="Friends" subtitle="See other players" />
           <DashTile href="/changelog" icon={ScrollText} title="Changelog" subtitle="What's new" />
+          <DashTile href="/codex" icon={BookOpen} title="Synergy Codex" subtitle="Discover combos" />
           {suggestionsEnabled ? (
             <DashTile href="/suggest" icon={Lightbulb} title="Suggest a Card" subtitle="Share an idea" />
           ) : (
@@ -122,6 +123,8 @@ export default async function DashboardPage() {
               <DashTile href="/admin/types" icon={Tags} title="Types" subtitle="Manage type labels" accent="amber" />
               <DashTile href="/admin/users" icon={Users} title="Users" subtitle="Manage accounts" accent="amber" />
               <DashTile href="/admin/skills" icon={Sparkles} title="Skills" subtitle="Card abilities" accent="amber" />
+              <DashTile href="/admin/battle-effects" icon={Zap} title="Battle Effects" subtitle="Compose effects" accent="amber" />
+              <DashTile href="/admin/synergies" icon={Combine} title="Synergies" subtitle="Deck-type combos" accent="amber" />
               <DashTile href="/arena/test" icon={FlaskConical} title="Test Arena" subtitle="Simulate battles" accent="amber" />
               <DashTile href="/admin/arena" icon={Settings} title="Feature Settings" subtitle="Toggle features" accent="amber" />
               <DashTile href="/admin/suggestions" icon={Inbox} title="Card Suggestions" subtitle="Review ideas" accent="amber" />
