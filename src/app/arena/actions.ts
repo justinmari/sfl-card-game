@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { isArenaEnabled } from '@/lib/arena-settings'
+import { isArenaAccessible } from '@/lib/arena-settings'
 import { type BattlePlayer, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
 import { type ActiveSkill } from '@/lib/skills'
 import { createSeededRng } from '@/lib/seeded-random'
@@ -192,7 +192,7 @@ export async function submitRoundReady(
   skillIds: string[],
   connectedPlayerIds?: string[],
 ) {
-  if (!(await isArenaEnabled())) return null
+  if (!(await isArenaAccessible())) return null
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null

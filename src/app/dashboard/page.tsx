@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
-  Swords, LayoutGrid, BookOpen,
+  Swords, LayoutGrid,
   Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
@@ -66,7 +66,6 @@ export default async function DashboardPage() {
           <DashTile href="/collection" icon={Library} title="Collection" subtitle="Browse your cards" />
           <DashTile href="/players" icon={Users} title="Friends" subtitle="See other players" />
           <DashTile href="/changelog" icon={ScrollText} title="Changelog" subtitle="What's new" />
-          <DashTile href="/codex" icon={BookOpen} title="Synergy Codex" subtitle="Discover combos" />
           {suggestionsEnabled ? (
             <DashTile href="/suggest" icon={Lightbulb} title="Suggest a Card" subtitle="Share an idea" />
           ) : (
@@ -85,12 +84,12 @@ export default async function DashboardPage() {
           <span className="h-px w-6 flex-none bg-gradient-to-r from-red-500 to-transparent" />Arena
         </h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:auto-rows-[9rem]">
-          {arenaEnabled ? (
+          {arenaEnabled || isAdmin ? (
             <DashTile
               href="/arena"
               icon={Swords}
               title="Arena"
-              subtitle="8-player auto-battler"
+              subtitle={arenaEnabled ? '8-player auto-battler' : 'Disabled for users (admin access)'}
               accent="red"
               hero
               badge={lobbyBadge}

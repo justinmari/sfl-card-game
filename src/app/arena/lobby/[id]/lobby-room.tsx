@@ -8,7 +8,6 @@ import type { BattlePlayer, BattleCard, RoundResult } from '@/lib/battle-engine'
 import { resolveSkills, starCount } from '@/lib/battle-engine'
 import type { ActiveSkill, SkillEffectRows } from '@/lib/skills'
 import { leaveLobby, toggleReady, kickPlayer, startGame } from '@/app/arena/lobby-actions'
-import { recordMyMetSynergies } from '@/app/codex/actions'
 import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview, updateConnectedPlayers, checkActiveSession, getSessionHp } from '@/app/arena/actions'
 import { useArenaStatus } from '@/hooks/use-arena-status'
 import ArenaBattle from '@/components/arena/arena-battle'
@@ -217,8 +216,6 @@ export default function LobbyRoom({
     const newReady = !myReady
     setMyReady(newReady)
     await toggleReady(lobbyId, newReady, selectedDeck ?? undefined, newReady ? deck?.cards : null)
-    // Unlock any synergies this deck satisfies in the player's Codex.
-    if (newReady && deck) void recordMyMetSynergies((deck.cards as { id: string }[]).map((c) => c.id))
     fetchPlayers()
     channelRef.current?.send({ type: 'broadcast', event: 'ready-change', payload: { userId, ready: newReady } })
   }

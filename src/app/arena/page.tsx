@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
-import { isArenaEnabled } from '@/lib/arena-settings'
+import { isArenaAccessible } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import Link from 'next/link'
 import { Lock, Swords } from 'lucide-react'
@@ -12,7 +12,7 @@ export default async function ArenaPage() {
   const profile = await getProfile()
   if (!profile) redirect('/login')
 
-  const arenaEnabled = await isArenaEnabled()
+  const arenaEnabled = await isArenaAccessible()
   if (!arenaEnabled) {
     return (
       <div className="min-h-screen text-white">
