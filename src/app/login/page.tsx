@@ -1,13 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+const FALLBACK_TAGLINE = 'Collect. Build. Battle.'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tagline, setTagline] = useState(FALLBACK_TAGLINE)
+
+  // Pull a random tagline from the DB (public-read; login is pre-auth).
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('login_taglines')
+      .select('text')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setTagline(data[Math.floor(Math.random() * data.length)].text)
+        }
+      })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +64,7 @@ export default function LoginPage() {
           <h1 className="font-display text-5xl font-bold tracking-tight">
             <span className="text-arcade-gradient drop-shadow-[0_0_24px_rgba(167,139,250,0.45)]">SFL TCG</span>
           </h1>
-          <p className="text-sm text-zinc-400">Collect. Build. Battle.</p>
+          <p data-testid="login-tagline" className="text-sm text-zinc-400">{tagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="surface flex w-full flex-col gap-3 rounded-2xl p-6 shadow-2xl">

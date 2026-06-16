@@ -23,11 +23,29 @@ export type BattlePlayer = {
   eliminated: boolean
 }
 
+// A single field a skill changed during a face-off, with before/after so the
+// UI can animate the transition. side 1 = card1, side 2 = card2.
+export type ActivationChange = {
+  side: 1 | 2
+  field: 'star' | 'roll' | 'effective' | 'damage'
+  before: number
+  after: number
+}
+export type ActivationPhase = 'onStars' | 'onDiceOverride' | 'onDice' | 'onTotals' | 'onDamage'
+export type SkillActivation = {
+  skillId: string
+  skillName: string
+  phase: ActivationPhase
+  changes: ActivationChange[]
+}
+
 export type FaceOff = {
   card1: BattleCard
   card2: BattleCard
   damage1: number
   damage2: number
+  // Per-skill before/after trace (deterministic; populated by resolveFaceOff).
+  activations?: SkillActivation[]
 }
 
 export type MatchResult = {
@@ -119,17 +137,36 @@ function resolveBaseDamage(state: FaceOffState): FaceOffState {
   }
 }
 
-function applyHooks(skills: ActiveSkill[] | undefined, phase: 'onStars' | 'onDiceOverride' | 'onDice' | 'onTotals' | 'onDamage', state: FaceOffState): FaceOffState {
+const ACTIVATION_FIELDS: [ActivationChange['field'], 'star1' | 'roll1' | 'effective1' | 'damage1', 'star2' | 'roll2' | 'effective2' | 'damage2'][] = [
+  ['star', 'star1', 'star2'],
+  ['roll', 'roll1', 'roll2'],
+  ['effective', 'effective1', 'effective2'],
+  ['damage', 'damage1', 'damage2'],
+]
+
+function applyHooks(skills: ActiveSkill[] | undefined, phase: ActivationPhase, state: FaceOffState, trace?: SkillActivation[]): FaceOffState {
   if (!skills) return state
   for (const s of skills) {
     const hook = s.skill.hooks[phase]
-    if (hook) state = hook(state)
+    if (!hook) continue
+    const after = hook(state)
+    if (trace) {
+      const changes: ActivationChange[] = []
+      for (const [field, k1, k2] of ACTIVATION_FIELDS) {
+        if (state[k1] !== after[k1]) changes.push({ side: 1, field, before: state[k1], after: after[k1] })
+        if (state[k2] !== after[k2]) changes.push({ side: 2, field, before: state[k2], after: after[k2] })
+      }
+      if (changes.length > 0) trace.push({ skillId: s.skill.id, skillName: s.skill.name, phase, changes })
+    }
+    state = after
   }
   return state
 }
 
 export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkills?: ActiveSkill[], rng?: () => number): FaceOffDetail {
   const rand = rng || Math.random
+
+  const activations: SkillActivation[] = []
 
   let state: FaceOffState = {
     card1, card2,
@@ -143,24 +180,24 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
 
   // Phase 1: Stars
   state = resolveStars(state)
-  state = applyHooks(activeSkills, 'onStars', state)
+  state = applyHooks(activeSkills, 'onStars', state, activations)
 
   // Phase 2: Dice — override hooks replace base dice entirely
   const hasDiceOverride = activeSkills?.some(s => s.skill.hooks.onDiceOverride)
   if (hasDiceOverride) {
-    state = applyHooks(activeSkills, 'onDiceOverride', state)
+    state = applyHooks(activeSkills, 'onDiceOverride', state, activations)
   } else {
     state = resolveBaseDice(state)
   }
-  state = applyHooks(activeSkills, 'onDice', state)
+  state = applyHooks(activeSkills, 'onDice', state, activations)
 
   // Phase 3: Effective totals
   state = resolveEffective(state)
-  state = applyHooks(activeSkills, 'onTotals', state)
+  state = applyHooks(activeSkills, 'onTotals', state, activations)
 
   // Phase 4: Damage
   state = resolveBaseDamage(state)
-  state = applyHooks(activeSkills, 'onDamage', state)
+  state = applyHooks(activeSkills, 'onDamage', state, activations)
 
   return {
     card1, card2,
@@ -168,7 +205,38 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     roll1: state.roll1, roll2: state.roll2,
     effective1: state.effective1, effective2: state.effective2,
     damage1: state.damage1, damage2: state.damage2,
+    ...(activations.length > 0 ? { activations } : {}),
   }
+}
+
+// Build the face-off as it looks after `step` skill activations are applied:
+// cumulative star/roll/effective per side, plus only the activations revealed so
+// far (so the battle UI can reveal skills/totals progressively). step 0 = base
+// (pre-skill). step >= activation count returns the final face-off unchanged.
+export function faceOffAtStep(fo: FaceOffDetail, step: number): FaceOffDetail {
+  const acts = fo.activations ?? []
+  if (acts.length === 0 || step >= acts.length) return fo
+  const baseOf = (side: 1 | 2, field: ActivationChange['field'], fallback: number): number => {
+    for (const a of acts) for (const c of a.changes) if (c.side === side && c.field === field) return c.before
+    return fallback
+  }
+  let s1 = baseOf(1, 'star', fo.star1), r1 = baseOf(1, 'roll', fo.roll1)
+  let s2 = baseOf(2, 'star', fo.star2), r2 = baseOf(2, 'roll', fo.roll2)
+  let e1 = s1 + r1, e2 = s2 + r2
+  for (let i = 0; i < step; i++) {
+    for (const c of acts[i].changes) {
+      if (c.side === 1) {
+        if (c.field === 'star') { s1 = c.after; e1 = s1 + r1 }
+        else if (c.field === 'roll') { r1 = c.after; e1 = s1 + r1 }
+        else if (c.field === 'effective') { e1 = c.after }
+      } else {
+        if (c.field === 'star') { s2 = c.after; e2 = s2 + r2 }
+        else if (c.field === 'roll') { r2 = c.after; e2 = s2 + r2 }
+        else if (c.field === 'effective') { e2 = c.after }
+      }
+    }
+  }
+  return { ...fo, star1: s1, star2: s2, roll1: r1, roll2: r2, effective1: e1, effective2: e2, activations: acts.slice(0, step) }
 }
 
 export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs: [string, string][]; byeId: string | null } {

@@ -1,8 +1,11 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import CompactCard from './compact-card'
 import type { FaceOffDetail } from '@/lib/battle-engine'
+import { SKILL_REGISTRY } from '@/lib/skills'
+import { skillEffectKinds, rarityForStars, type EffectKind } from '@/lib/skill-visuals'
+import { rarityLabel } from '@/lib/rarities'
 
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
@@ -14,6 +17,56 @@ const rarityTextColor: Record<string, string> = {
 }
 
 type Phase = 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'
+
+// Visual treatment per effect kind shown during a face-off. `glow` is the rgb
+// used for the card aura + chip glow; `shake` flags kinds that jolt the screen.
+const KIND_META: Record<EffectKind, { emoji: string; tint: string; glow: string; shake?: boolean }> = {
+  deck:      { emoji: '🔀', tint: 'border-indigo-400/50 bg-indigo-500/15 text-indigo-100', glow: '99,102,241' },
+  rarity:    { emoji: '💎', tint: 'border-fuchsia-400/50 bg-fuchsia-500/15 text-fuchsia-100', glow: '217,70,239' },
+  power:     { emoji: '⭐', tint: 'border-sky-400/50 bg-sky-500/15 text-sky-100', glow: '56,189,248' },
+  dice:      { emoji: '🎲', tint: 'border-amber-400/50 bg-amber-500/15 text-amber-100', glow: '251,191,36' },
+  extraDice: { emoji: '🎲', tint: 'border-amber-400/50 bg-amber-500/15 text-amber-100', glow: '251,191,36' },
+  total:     { emoji: '⚡', tint: 'border-violet-400/50 bg-violet-500/15 text-violet-100', glow: '167,139,250' },
+  damage:    { emoji: '💥', tint: 'border-red-400/50 bg-red-500/15 text-red-100', glow: '248,113,113', shake: true },
+  heal:      { emoji: '💚', tint: 'border-green-400/50 bg-green-500/15 text-green-100', glow: '74,222,128' },
+  visual:    { emoji: '🎨', tint: 'border-zinc-400/50 bg-zinc-500/15 text-zinc-100', glow: '161,161,170' },
+}
+
+// Which face-off phase each changed field becomes visible at.
+const FIELD_PHASE: Record<string, Phase> = { star: 'power', roll: 'rolling', effective: 'merge', damage: 'result' }
+
+// A 'star' change can read as a rarity change, a base-power change, or both,
+// depending on the skill's descriptor. Other fields map directly to one kind.
+function fieldKinds(skillId: string, field: string): EffectKind[] {
+  if (field === 'roll') return ['dice']
+  if (field === 'effective') return ['total']
+  if (field === 'damage') return ['damage']
+  if (field === 'star') {
+    const skill = SKILL_REGISTRY[skillId]
+    const kinds = skill ? skillEffectKinds(skill).filter((k) => k === 'rarity' || k === 'power') : []
+    return kinds.length > 0 ? kinds : ['power']
+  }
+  return []
+}
+
+// A number that counts from `from` to `to` when it mounts — used to show a
+// total/power/dice/damage value growing or shrinking as a skill applies.
+function CountTo({ from, to, className }: { from: number; to: number; className?: string }) {
+  const [val, setVal] = useState(from)
+  useEffect(() => {
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / 480, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setVal(Math.round(from + (to - from) * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [from, to])
+  return <span className={className}>{val}</span>
+}
 
 type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
 
@@ -50,6 +103,7 @@ export default function BattleFaceoff({
   const effectsAnimRef = useRef<number>(0)
   const spawnedRef = useRef(false)
   const setupRef = useRef<Set<string>>(new Set())
+  const skillFiredRef = useRef<Set<string>>(new Set())
 
   const fo = faceOff
 
@@ -190,74 +244,96 @@ export default function BattleFaceoff({
     })
   }
 
-  // Reset spawn flag when entering a new faceoff
+  // Reset spawn flags when entering a new faceoff
   if (phase === 'enter') {
     spawnedRef.current = false
     setupRef.current.clear()
+    skillFiredRef.current.clear()
   }
 
-  // Spawn particles on result (once)
+  // Shared particle render loop — used by both result bursts and skill sparkles.
+  const ensureLoop = () => {
+    if (effectsAnimRef.current) return
+    const animate = () => {
+      const canvas = effectsCanvasRef.current
+      if (!canvas || !containerRef.current) { effectsAnimRef.current = 0; return }
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { effectsAnimRef.current = 0; return }
+      const r = containerRef.current.getBoundingClientRect()
+      const d = window.devicePixelRatio || 1
+      canvas.width = r.width * d; canvas.height = r.height * d
+      canvas.style.width = `${r.width}px`; canvas.style.height = `${r.height}px`
+      ctx.scale(d, d); ctx.clearRect(0, 0, r.width, r.height)
+      const ps = particlesRef.current
+      for (let i = ps.length - 1; i >= 0; i--) {
+        const p = ps[i]
+        p.x += p.vx; p.y += p.vy; p.vy += 0.015; p.vx *= 0.997; p.age++; p.rotation += p.rs
+        const alpha = p.age < 40 ? 1 : Math.max(0, 1 - (p.age - 40) / 80)
+        if (alpha <= 0) { ps.splice(i, 1); continue }
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rotation * Math.PI) / 180)
+        ctx.globalAlpha = alpha; ctx.font = `${p.size}px serif`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText(p.emoji, 0, 0); ctx.restore()
+      }
+      if (ps.length > 0) effectsAnimRef.current = requestAnimationFrame(animate)
+      else effectsAnimRef.current = 0
+    }
+    effectsAnimRef.current = requestAnimationFrame(animate)
+  }
+
+  // Emit a small ring of particles centered on a card.
+  const burst = (cardRef: HTMLDivElement | null, side: 'left' | 'right', emoji: string, count: number, baseSize: number, spread: number) => {
+    if (!containerRef.current) return
+    const containerRect = containerRef.current.getBoundingClientRect()
+    let cx: number, cy: number
+    if (cardRef) {
+      const r = cardRef.getBoundingClientRect()
+      cx = r.left - containerRect.left + r.width / 2
+      cy = r.top - containerRect.top + r.height / 2
+    } else {
+      cx = side === 'left' ? containerRect.width * 0.25 : containerRect.width * 0.75
+      cy = containerRect.height * 0.4
+    }
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
+      const speed = 0.7 + Math.random() * spread
+      particlesRef.current.push({
+        emoji, x: cx + (Math.random() - 0.5) * 28, y: cy + (Math.random() - 0.5) * 22,
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 0.5,
+        size: baseSize + Math.random() * 8, age: 0,
+        rotation: Math.random() * 360, rs: (Math.random() - 0.5) * 5,
+      })
+    }
+  }
+
+  // Spawn celebration/impact particles on result (once)
   if ((phase === 'result') && large && !spawnedRef.current) {
     spawnedRef.current = true
     requestAnimationFrame(() => {
-      if (!containerRef.current) return
-      const containerRect = containerRef.current.getBoundingClientRect()
-
-      const spawn = (cardRef: HTMLDivElement | null, side: 'left' | 'right', isWinner: boolean, damage: number) => {
-        let cx: number, cy: number
-        if (cardRef) {
-          const r = cardRef.getBoundingClientRect()
-          cx = r.left - containerRect.left + r.width / 2
-          cy = r.top - containerRect.top + r.height / 2
-        } else {
-          cx = side === 'left' ? containerRect.width * 0.25 : containerRect.width * 0.75
-          cy = containerRect.height * 0.4
-        }
-        const emoji = isWinner ? '🎉' : '💥'
-        const count = Math.min(damage * 3, 18)
-        for (let i = 0; i < count; i++) {
-          const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
-          const speed = 0.8 + Math.random() * 1.2
-          particlesRef.current.push({
-            emoji, x: cx + (Math.random() - 0.5) * 30, y: cy + (Math.random() - 0.5) * 20,
-            vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 0.5,
-            size: 20 + Math.random() * (10 + damage * 3), age: 0,
-            rotation: Math.random() * 360, rs: (Math.random() - 0.5) * 4,
-          })
-        }
-      }
-
-      if (fo.damage2 > 0) { spawn(card1DivRef.current, 'left', true, fo.damage2); spawn(card2DivRef.current, 'right', false, fo.damage2) }
-      else if (fo.damage1 > 0) { spawn(card2DivRef.current, 'right', true, fo.damage1); spawn(card1DivRef.current, 'left', false, fo.damage1) }
-
-      if (!effectsAnimRef.current) {
-        const animate = () => {
-          const canvas = effectsCanvasRef.current
-          if (!canvas || !containerRef.current) return
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return
-          const r = containerRef.current.getBoundingClientRect()
-          const d = window.devicePixelRatio || 1
-          canvas.width = r.width * d; canvas.height = r.height * d
-          canvas.style.width = `${r.width}px`; canvas.style.height = `${r.height}px`
-          ctx.scale(d, d); ctx.clearRect(0, 0, r.width, r.height)
-          const ps = particlesRef.current
-          for (let i = ps.length - 1; i >= 0; i--) {
-            const p = ps[i]
-            p.x += p.vx; p.y += p.vy; p.vy += 0.015; p.vx *= 0.997; p.age++; p.rotation += p.rs
-            const alpha = p.age < 40 ? 1 : Math.max(0, 1 - (p.age - 40) / 80)
-            if (alpha <= 0) { ps.splice(i, 1); continue }
-            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.rotation * Math.PI) / 180)
-            ctx.globalAlpha = alpha; ctx.font = `${p.size}px serif`
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-            ctx.fillText(p.emoji, 0, 0); ctx.restore()
-          }
-          if (ps.length > 0) { effectsAnimRef.current = requestAnimationFrame(animate) }
-          else { effectsAnimRef.current = 0 }
-        }
-        effectsAnimRef.current = requestAnimationFrame(animate)
-      }
+      const win = (cardRef: HTMLDivElement | null, side: 'left' | 'right', damage: number) =>
+        burst(cardRef, side, '🎉', Math.min(damage * 3, 18), 20, 1.2)
+      const hit = (cardRef: HTMLDivElement | null, side: 'left' | 'right', damage: number) =>
+        burst(cardRef, side, '💥', Math.min(damage * 3, 18), 20, 1.2)
+      if (fo.damage2 > 0) { win(card1DivRef.current, 'left', fo.damage2); hit(card2DivRef.current, 'right', fo.damage2) }
+      else if (fo.damage1 > 0) { win(card2DivRef.current, 'right', fo.damage1); hit(card1DivRef.current, 'left', fo.damage1) }
+      ensureLoop()
     })
+  }
+
+  // Spawn skill-fire sparkles when a traced skill change applies at its phase.
+  if (large && faceOff.activations && faceOff.activations.length > 0) {
+    for (const a of faceOff.activations) {
+      for (const ch of a.changes) {
+        if (FIELD_PHASE[ch.field] !== phase) continue
+        const key = `${ch.side}:${ch.field}:${a.skillId}`
+        if (skillFiredRef.current.has(key)) continue
+        skillFiredRef.current.add(key)
+        const emoji = KIND_META[fieldKinds(a.skillId, ch.field)[0]]?.emoji ?? '✨'
+        const cardRef = ch.side === 1 ? card1DivRef.current : card2DivRef.current
+        const sideStr = ch.side === 1 ? 'left' : 'right'
+        requestAnimationFrame(() => { burst(cardRef, sideStr, emoji, 16, 18, 1.3); ensureLoop() })
+      }
+    }
   }
 
   const enterAnim1 = vertical ? 'animate-[slideFromTop_0.4s_ease-out]' : 'animate-[slideFromLeft_0.4s_ease-out]'
@@ -265,14 +341,77 @@ export default function BattleFaceoff({
   const knockP1 = vertical ? 'opacity-40 scale-90 -translate-y-3' : 'opacity-40 scale-90 translate-x-3'
   const knockP2 = vertical ? 'opacity-40 scale-90 translate-y-3' : 'opacity-40 scale-90 -translate-x-3'
 
+  const PHASE_ORDER: Phase[] = ['enter', 'power', 'rolling', 'merge', 'result', 'done']
+  const phaseReached = (target: Phase) => PHASE_ORDER.indexOf(phase) >= PHASE_ORDER.indexOf(target)
+
+  const rarityChip = (stars: number) => {
+    const r = rarityForStars(stars)
+    return <span className={r ? rarityTextColor[r] : 'text-zinc-300'}>{r ? rarityLabel[r] : `${stars}★`}</span>
+  }
+
+  // Effect kinds that have fired on a side so far — drives the card aura + shake.
+  const firedKinds = (side: 1 | 2): EffectKind[] => {
+    const acts = faceOff.activations
+    if (!large || !acts) return []
+    const out: EffectKind[] = []
+    for (const a of acts) for (const ch of a.changes) {
+      if (ch.side !== side || !phaseReached(FIELD_PHASE[ch.field])) continue
+      out.push(...fieldKinds(a.skillId, ch.field))
+    }
+    return out
+  }
+  const auraStyle = (side: 1 | 2): { boxShadow?: string } => {
+    const kinds = firedKinds(side)
+    if (kinds.length === 0) return {}
+    return { boxShadow: `0 0 22px 3px rgba(${KIND_META[kinds[kinds.length - 1]].glow}, 0.55)` }
+  }
+  // A damage-kind effect jolts the whole face-off.
+  const shouldShake = ([1, 2] as const).some((s) => firedKinds(s).some((k) => KIND_META[k].shake))
+
+  // Floating skill-effect labels above a card, derived from the activation trace:
+  // each change shows its skill name + value transition, appearing at its phase.
+  const renderEffects = (side: 1 | 2) => {
+    const acts = faceOff.activations
+    if (!large || !acts || acts.length === 0) return null
+    const entries: { key: string; name: string; kind: EffectKind; phase: Phase; before: number; after: number }[] = []
+    for (const a of acts) {
+      for (const ch of a.changes) {
+        if (ch.side !== side) continue
+        const ph = FIELD_PHASE[ch.field]
+        for (const kind of fieldKinds(a.skillId, ch.field)) {
+          entries.push({ key: `${a.skillId}:${ch.field}:${kind}`, name: a.skillName, kind, phase: ph, before: ch.before, after: ch.after })
+        }
+      }
+    }
+    const shown = entries.filter((e) => phaseReached(e.phase))
+    if (shown.length === 0) return null
+    return (
+      <div className="pointer-events-none absolute left-1/2 top-0 z-20 flex w-max -translate-x-1/2 -translate-y-[calc(100%+0.25rem)] flex-col items-center gap-1">
+        {shown.map((e, i) => (
+          <span key={e.key} data-testid="skill-effect" data-skill={e.name} data-kind={e.kind}
+            style={{ animationDelay: `${i * 70}ms`, boxShadow: `0 0 16px -2px rgba(${KIND_META[e.kind].glow}, 0.7)` }}
+            className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm animate-[skillPop_0.45s_cubic-bezier(0.34,1.56,0.64,1)_both] ${KIND_META[e.kind].tint}`}>
+            <span>{KIND_META[e.kind].emoji} {e.name}</span>
+            {e.kind === 'rarity' ? (
+              <span className="font-normal">{rarityChip(e.before)} → {rarityChip(e.after)}</span>
+            ) : (
+              <span className="font-mono"><span className="opacity-50">{e.before}</span>→<CountTo from={e.before} to={e.after} className={e.after >= e.before ? 'text-green-300' : 'text-red-300'} /></span>
+            )}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div ref={containerRef} className="relative flex flex-col items-center gap-2">
+    <div ref={containerRef} className={`relative flex flex-col items-center gap-2 ${shouldShake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
     <canvas ref={effectsCanvasRef} className="absolute inset-0 pointer-events-none z-10" />
     <div className={`flex items-center justify-center ${vertical ? 'flex-col gap-4' : 'gap-3 sm:gap-6'}`}>
-      <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
+      <div className={`relative flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim1 : ''
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
-        <div ref={card1DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}) }}><CompactCard card={fo.card1} /></div>
+        {renderEffects(1)}
+        <div ref={card1DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(1) }}><CompactCard card={fo.card1} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />
@@ -281,10 +420,11 @@ export default function BattleFaceoff({
 
       <span className={`${large ? 'text-xl' : 'text-sm'} font-black text-zinc-700`}>⚔️</span>
 
-      <div className={`flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
+      <div className={`relative flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
-        <div ref={card2DivRef} className={`${cardSize} ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(-2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}) }}><CompactCard card={fo.card2} /></div>
+        {renderEffects(2)}
+        <div ref={card2DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(-2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(2) }}><CompactCard card={fo.card2} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
           <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
             style={{ width: canvasW, height: canvasH }} />
@@ -325,6 +465,7 @@ export default function BattleFaceoff({
         @keyframes cardEnterRight { from { transform: rotate(10deg); } to { transform: rotate(-7deg); } }
         @keyframes wobbleLeft { 0%, 100% { transform: rotate(7deg); } 50% { transform: rotate(4deg); } }
         @keyframes wobbleRight { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(-4deg); } }
+        @keyframes skillPop { 0% { transform: translateY(6px) scale(0.6); opacity: 0; } 60% { transform: translateY(-2px) scale(1.08); opacity: 1; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
       `}</style>
     </div>
   )

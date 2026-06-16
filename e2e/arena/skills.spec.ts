@@ -323,4 +323,70 @@ test.describe('Arena Skills E2E', () => {
 
     await player.context.close()
   })
+
+  // --- Skill-effect rendering during the battle (animation trace) ---
+
+  test('total-manipulation (Double Edge) renders a labeled effect on the face-off', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    await expect(page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await page.getByText('Double Edge', { exact: true }).click()
+    // Also heal-instead so nobody is eliminated early — guarantees all 5 face-offs
+    // run, so the (brief, per-face-off) total chip reliably appears.
+    await page.getByText('Fountain of Youth', { exact: true }).click()
+
+    // During the face-off, a 'total' effect chip labeled with the skill appears.
+    const effect = page.locator('[data-testid="skill-effect"][data-kind="total"]').first()
+    await expect(effect).toBeVisible({ timeout: 30000 })
+    await expect(effect).toHaveAttribute('data-skill', 'Double Edge')
+    await test.info().attach('effect-total', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
+
+  test('rarity-change (Final Form) renders a rarity effect on common cards', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    // Player activates Final Form (commons -> secret rares); admin holds commons.
+    await expect(player.page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await player.page.getByText('Final Form', { exact: true }).click()
+
+    await expect(page.locator('[data-testid="skill-effect"][data-kind="rarity"]').first()).toBeVisible({ timeout: 30000 })
+    await test.info().attach('effect-rarity', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
+
+  test('deck-manipulation (Gift Exchange) renders the pre-round deck transform', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    await expect(player.page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await player.page.getByText('Gift Exchange', { exact: true }).click()
+
+    await expect(player.page.getByTestId('deck-transform')).toBeVisible({ timeout: 30000 })
+    await test.info().attach('effect-deck-transform', { body: await player.page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
+
+  test('dice-manipulation (Loaded Dice) renders a dice effect', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    await expect(page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await page.getByText('Loaded Dice', { exact: true }).click()
+    await page.getByText('Fountain of Youth', { exact: true }).click()
+
+    await expect(page.locator('[data-testid="skill-effect"][data-kind="dice"]').first()).toBeVisible({ timeout: 30000 })
+    await test.info().attach('effect-dice', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
 })

@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   const lobbyBadge =
     (lobbyCount ?? 0) > 0 ? (
-      <span className="absolute right-4 top-4 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-[0_0_10px_-1px_rgba(239,68,68,0.8)]">
+      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-red-300/40 bg-red-500 px-1 text-[10px] font-bold text-white shadow-[0_0_10px_-1px_rgba(239,68,68,0.9)]">
         {lobbyCount}
       </span>
     ) : null

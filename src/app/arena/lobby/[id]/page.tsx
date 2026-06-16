@@ -104,9 +104,9 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/arena" title={lobby.name} />
-      <main className="mx-auto max-w-3xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10 pb-24">
         <LobbyRoom
           lobbyId={lobbyId}
           lobbyName={lobby.name}

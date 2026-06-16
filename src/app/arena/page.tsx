@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isArenaEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import Link from 'next/link'
+import { Lock, Swords } from 'lucide-react'
 import { getMyLobby } from './lobby-actions'
 import ArenaLobbyList from './arena-lobby-list'
 
@@ -14,16 +15,18 @@ export default async function ArenaPage() {
   const arenaEnabled = await isArenaEnabled()
   if (!arenaEnabled) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen text-white">
         <AppNavbar backHref="/dashboard" title="Arena" />
         <main className="mx-auto max-w-3xl px-6 py-10">
           <div className="flex flex-col items-center justify-center py-20">
-            <span className="mb-6 text-5xl">🔒</span>
-            <h2 className="mb-2 text-xl font-bold">Arena Disabled</h2>
+            <span className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-500/20 to-zinc-700/10 text-zinc-400 ring-1 ring-white/10">
+              <Lock className="h-8 w-8" aria-hidden />
+            </span>
+            <h2 className="font-display mb-2 text-xl font-bold">Arena Disabled</h2>
             <p className="mb-6 text-sm text-zinc-400 text-center">
               The arena has been temporarily disabled by an admin.
             </p>
-            <Link href="/dashboard" className="rounded-lg bg-zinc-700 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-600">
+            <Link href="/dashboard" className="rounded-lg border border-white/10 px-6 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/5">
               Back to Dashboard
             </Link>
           </div>
@@ -45,16 +48,18 @@ export default async function ArenaPage() {
 
   if (!hasLegalDeck) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen text-white">
         <AppNavbar backHref="/dashboard" title="Arena" />
         <main className="mx-auto max-w-3xl px-6 py-10">
           <div className="flex flex-col items-center justify-center py-20">
-            <span className="mb-6 text-5xl">⚔️</span>
-            <h2 className="mb-2 text-xl font-bold">No Battle Deck</h2>
+            <span className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/25 to-orange-500/15 text-red-200 ring-1 ring-red-400/30">
+              <Swords className="h-8 w-8" aria-hidden />
+            </span>
+            <h2 className="font-display mb-2 text-xl font-bold">No Battle Deck</h2>
             <p className="mb-6 text-sm text-zinc-400 text-center">
               You need at least one deck with 5 cards to enter the Arena.
             </p>
-            <Link href="/decks" className="rounded-lg bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-500">
+            <Link href="/decks" className="btn-arena rounded-lg px-6 py-3 text-sm font-medium">
               Build a Deck
             </Link>
           </div>
@@ -67,9 +72,9 @@ export default async function ArenaPage() {
   const myLobby = await getMyLobby()
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/dashboard" title="Arena" />
-      <main className="mx-auto max-w-3xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-6 py-10">
         <ArenaLobbyList
           userId={profile.id}
           userName={profile.full_name || 'Unknown'}

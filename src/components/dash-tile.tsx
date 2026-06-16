@@ -49,11 +49,12 @@ export default function DashTile({
   const content = (
     <>
       <span
-        className={`flex items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ${
+        className={`relative flex items-center justify-center rounded-2xl bg-gradient-to-br ring-1 ${
           hero ? 'h-14 w-14' : 'h-11 w-11'
         } ${chipClasses[accent]}`}
       >
         <Icon className={hero ? 'h-7 w-7' : 'h-5 w-5'} strokeWidth={2} aria-hidden />
+        {badge}
       </span>
 
       <div className="min-w-0">
@@ -69,8 +70,6 @@ export default function DashTile({
           →
         </span>
       )}
-
-      {badge}
 
       {tooltip && (
         <span className="pointer-events-none absolute -bottom-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100">

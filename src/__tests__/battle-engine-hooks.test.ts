@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   resolveFaceOff,
   precomputeRound,
+  faceOffAtStep,
   starCount,
   type BattleCard,
   type BattlePlayer,
@@ -23,6 +24,67 @@ const makePlayer = (id: string, rarity: string, hp: number = 10): BattlePlayer =
 
 const makeActiveSkill = (skill: Skill, activatedBy: string): ActiveSkill => ({
   skill, activatedBy, roundActivated: 1,
+})
+
+describe('faceOffAtStep (stepped reveal)', () => {
+  it('step 0 is the pre-skill base; the final step is the full face-off', () => {
+    const skill = makeActiveSkill(SKILL_REGISTRY['double-edge'], 'p1') // onTotals: doubles effective
+    const fo = resolveFaceOff(makeCard('rare', 'a'), makeCard('rare', 'b'), [skill], createSeededRng(42))
+    expect(fo.activations?.length).toBe(1)
+
+    const base = faceOffAtStep(fo, 0)
+    expect(base.activations).toEqual([])
+    expect(base.effective1).toBe(base.star1 + base.roll1) // pre-double total
+    expect(base.effective2).toBe(base.star2 + base.roll2)
+
+    const final = faceOffAtStep(fo, fo.activations!.length)
+    expect(final.effective1).toBe(fo.effective1) // doubled
+    expect(final.activations?.length).toBe(1)
+  })
+
+  it('reveals an onStars (Final Form) star change progressively', () => {
+    const skill = makeActiveSkill(SKILL_REGISTRY['final-form'], 'p1')
+    const fo = resolveFaceOff(makeCard('common', 'a'), makeCard('rare', 'b'), [skill], createSeededRng(7))
+    expect(faceOffAtStep(fo, 0).star1).toBe(1) // common, before Final Form
+    expect(faceOffAtStep(fo, fo.activations!.length).star1).toBe(starCount['secret_rare']) // boosted
+  })
+
+  it('returns the same face-off unchanged when there are no activations', () => {
+    const fo = resolveFaceOff(makeCard('rare', 'a'), makeCard('common', 'b'), undefined, createSeededRng(1))
+    expect(faceOffAtStep(fo, 0)).toBe(fo)
+    expect(faceOffAtStep(fo, 5)).toBe(fo)
+  })
+})
+
+describe('Skill activation trace', () => {
+  it('records total manipulation (Double Edge) as onTotals with doubled effective', () => {
+    const skill = makeActiveSkill(SKILL_REGISTRY['double-edge'], 'p1')
+    const fo = resolveFaceOff(makeCard('rare', 'a'), makeCard('rare', 'b'), [skill], createSeededRng(42))
+    const act = fo.activations?.find((a) => a.skillId === 'double-edge')
+    expect(act).toBeDefined()
+    expect(act!.phase).toBe('onTotals')
+    expect(act!.changes.length).toBeGreaterThan(0)
+    for (const ch of act!.changes) {
+      expect(ch.field).toBe('effective')
+      expect(ch.after).toBe(ch.before * 2)
+    }
+  })
+
+  it('records rarity/power manipulation (Final Form) as onStars for common cards', () => {
+    const skill = makeActiveSkill(SKILL_REGISTRY['final-form'], 'p1')
+    const fo = resolveFaceOff(makeCard('common', 'a'), makeCard('rare', 'b'), [skill], createSeededRng(7))
+    const act = fo.activations?.find((a) => a.skillId === 'final-form')
+    expect(act).toBeDefined()
+    expect(act!.phase).toBe('onStars')
+    expect(act!.changes.find((c) => c.side === 1)).toMatchObject({ field: 'star', before: 1, after: starCount['secret_rare'] })
+    // the rare card (side 2) is unchanged, so no side-2 change is recorded
+    expect(act!.changes.find((c) => c.side === 2)).toBeUndefined()
+  })
+
+  it('produces no activations when no skills are active', () => {
+    const fo = resolveFaceOff(makeCard('rare', 'a'), makeCard('common', 'b'), undefined, createSeededRng(1))
+    expect(fo.activations).toBeUndefined()
+  })
 })
 
 describe('Hook interface', () => {
