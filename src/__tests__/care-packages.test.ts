@@ -78,13 +78,32 @@ describe('Gruten care packages (integration)', () => {
     expect(await lastCareTxn(playerId)).toMatchObject({ amount: 1000, balance_after: 2000 })
   })
 
-  it('opening collects all pending packages at once', async () => {
+  it('a new package replaces the existing unopened one (at most one active)', async () => {
     await rpc(adminToken, 'admin_send_care_package', { p_user_id: playerId, p_amount: 500 })
     await rpc(adminToken, 'admin_send_care_package', { p_user_id: playerId, p_amount: 2000 })
+    expect(await unopenedCount(playerId)).toBe(1)
     const open = await rpc(playerToken, 'open_gruten_packages', {})
-    expect(open.data.opened).toBe(2)
-    expect(open.data.amount).toBe(2500)
-    expect(await getGruten(playerId)).toBe(3500)
+    expect(open.data.opened).toBe(1)
+    expect(open.data.amount).toBe(2000)
+    expect(await getGruten(playerId)).toBe(3000)
+  })
+
+  it('expired packages cannot be opened', async () => {
+    await rpc(adminToken, 'admin_send_care_package', { p_user_id: playerId, p_amount: 750 })
+    // Force the package to be expired.
+    await fetch(`${LOCAL_URL}/rest/v1/gruten_packages?user_id=eq.${playerId}&opened_at=is.null`, {
+      method: 'PATCH',
+      headers: { ...serviceHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ expires_at: '2000-01-01T00:00:00Z' }),
+    })
+    const open = await rpc(playerToken, 'open_gruten_packages', {})
+    expect(open.status).toBeGreaterThanOrEqual(400)
+    expect(await getGruten(playerId)).toBe(1000) // unchanged
+  })
+
+  it('rejects an amount over the cap', async () => {
+    const send = await rpc(adminToken, 'admin_send_care_package', { p_user_id: playerId, p_amount: 5000000 })
+    expect(send.status).toBeGreaterThanOrEqual(400)
   })
 
   it('send-to-all (null user) creates a package for every non-admin player', async () => {
