@@ -11,7 +11,6 @@ import {
 } from '@/lib/battle-engine'
 import ArenaBattle from '@/components/arena/arena-battle'
 import type { SynergyDefRow } from '@/lib/synergies/loader'
-import { recordMyMetSynergies } from '@/app/codex/actions'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
 
@@ -48,8 +47,6 @@ export default function TestArena({
     })
     setBattlePlayers([admin, ...bots])
     setPhase('battle')
-    // Record any synergies this deck unlocks for the Codex (fire-and-forget).
-    void recordMyMetSynergies(deck.cards.map((c) => c.id))
   }
 
   if (phase === 'battle' && battlePlayers.length > 0) {

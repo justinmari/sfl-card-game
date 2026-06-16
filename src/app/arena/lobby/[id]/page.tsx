@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
-import { isArenaEnabled } from '@/lib/arena-settings'
+import { isArenaAccessible } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import LobbyRoom from './lobby-room'
 import { getSessionHp } from '@/app/arena/actions'
@@ -12,7 +12,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   const profile = await getProfile()
   if (!profile) redirect('/login')
 
-  const arenaEnabled = await isArenaEnabled()
+  const arenaEnabled = await isArenaAccessible()
   if (!arenaEnabled) redirect('/arena')
 
   const supabase = await createClient()

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { isArenaEnabled } from '@/lib/arena-settings'
+import { isArenaAccessible } from '@/lib/arena-settings'
 
 export type LobbyInfo = {
   id: string
@@ -47,7 +47,7 @@ export async function listLobbies() {
 
 // Create a new lobby
 export async function createLobby(name: string) {
-  if (!(await isArenaEnabled())) return { error: 'Arena is currently disabled' }
+  if (!(await isArenaAccessible())) return { error: 'Arena is currently disabled' }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -74,7 +74,7 @@ export async function createLobby(name: string) {
 
 // Join a lobby
 export async function joinLobby(lobbyId: string, userName: string, avatarUrl: string | null) {
-  if (!(await isArenaEnabled())) return { error: 'Arena is currently disabled' }
+  if (!(await isArenaAccessible())) return { error: 'Arena is currently disabled' }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -235,7 +235,7 @@ export async function kickPlayer(lobbyId: string, targetUserId: string) {
 
 // Start game (host only) — creates arena session
 export async function startGame(lobbyId: string) {
-  if (!(await isArenaEnabled())) return { error: 'Arena is currently disabled' }
+  if (!(await isArenaAccessible())) return { error: 'Arena is currently disabled' }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null

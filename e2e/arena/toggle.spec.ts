@@ -82,4 +82,12 @@ test.describe('Arena Toggle', () => {
     await expect(page.getByRole('heading', { name: 'Arena' })).toBeVisible()
     await expect(page.getByText('Arena Disabled')).not.toBeVisible()
   })
+
+  test('admin keeps arena access when arena is disabled for users', async ({ page }) => {
+    await setArenaDisabled()
+    await login(page, TEST_ADMIN)
+    await page.goto('/arena')
+    await expect(page.getByText('Arena Disabled')).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Arena' })).toBeVisible()
+  })
 })
