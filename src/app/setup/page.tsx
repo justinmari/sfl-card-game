@@ -9,7 +9,7 @@ export default async function SetupPage() {
   if (profile.full_name) redirect('/dashboard')
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center">
       <SetupForm />
     </div>
   )

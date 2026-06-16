@@ -101,13 +101,13 @@ export default function SuggestForm({
         <div className="flex justify-center gap-3">
           <button
             onClick={() => setSuccess(false)}
-            className="rounded-lg border border-zinc-700 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="rounded-lg border border-white/10 px-5 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
           >
             Submit Another
           </button>
           <a
             href="/dashboard"
-            className="rounded-lg bg-white px-5 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200"
+            className="btn-arcade rounded-lg px-5 py-2 text-sm"
           >
             Back to Dashboard
           </a>
@@ -152,7 +152,7 @@ export default function SuggestForm({
               maxLength={50}
               disabled={atLimit}
               placeholder="Card name"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+              className="input-arcade w-full px-4 py-3 disabled:opacity-50"
             />
           </div>
 
@@ -165,7 +165,7 @@ export default function SuggestForm({
               disabled={atLimit}
               rows={3}
               placeholder="Optional flavor text"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none disabled:opacity-50 resize-none"
+              className="input-arcade w-full resize-none px-4 py-3 disabled:opacity-50"
             />
           </div>
 
@@ -182,7 +182,7 @@ export default function SuggestForm({
                   setPreview(URL.createObjectURL(f))
                 }
               }}
-              className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-zinc-600 disabled:opacity-50"
+              className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600/80 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-violet-600 disabled:opacity-50"
             />
           </div>
 
@@ -192,7 +192,7 @@ export default function SuggestForm({
               value={rarity}
               onChange={(e) => setRarity(e.target.value)}
               disabled={atLimit}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+              className="input-arcade w-full px-4 py-3 disabled:opacity-50"
             >
               {RARITIES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -206,7 +206,7 @@ export default function SuggestForm({
               value={creatureId || ''}
               onChange={(e) => setCreatureId(e.target.value || null)}
               disabled={atLimit}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+              className="input-arcade w-full px-4 py-3 disabled:opacity-50"
             >
               <option value="">None</option>
               {creatures.map((c) => (
@@ -219,7 +219,7 @@ export default function SuggestForm({
             type="button"
             onClick={() => setShowReview(true)}
             disabled={!canSubmit || atLimit}
-            className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+            className="btn-arcade w-full rounded-lg px-6 py-3 text-sm"
           >
             Review & Submit
           </button>
@@ -228,8 +228,8 @@ export default function SuggestForm({
 
       {/* Review Modal */}
       {showReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-6 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div className="surface w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl">
             <h3 className="mb-4 text-lg font-bold">Review Your Suggestion</h3>
             <div className="mb-4 flex justify-center">
               <TradingCard card={cardPreview} size="sm" />
@@ -246,14 +246,14 @@ export default function SuggestForm({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowReview(false)}
-                className="flex-1 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+                className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
               >
                 Go Back
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 disabled:opacity-50"
+                className="btn-arcade flex-1 rounded-lg px-4 py-2 text-sm"
               >
                 {submitting ? 'Submitting...' : 'Confirm'}
               </button>

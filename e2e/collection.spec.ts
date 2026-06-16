@@ -47,7 +47,7 @@ test.describe('Collection', () => {
 
     // Cards have mobile (sm:hidden) and desktop (hidden sm:block) versions
     // Click on the desktop version's container
-    const desktopCard = page.locator('div.hidden.sm\\:block').first()
+    const desktopCard = page.getByTestId('collection-card-desktop').first()
     await desktopCard.click()
     await expect(page.getByText(/Owned: x\d+/)).toBeVisible({ timeout: 5000 })
     await expect(page.locator('button:has-text("Close")')).toBeVisible()
@@ -59,7 +59,7 @@ test.describe('Collection', () => {
     await page.goto('/collection')
     await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
 
-    const desktopCard = page.locator('div.hidden.sm\\:block').first()
+    const desktopCard = page.getByTestId('collection-card-desktop').first()
     await desktopCard.click()
     await expect(page.getByText(/Owned: x\d+/)).toBeVisible({ timeout: 5000 })
     await page.click('button:has-text("Close")')
@@ -111,9 +111,9 @@ test.describe('Collection', () => {
     await page.goto('/collection')
     await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
 
-    // Seeded cards carry types (e.g. Fire Drake Common -> Fire). Type chips render in cyan.
+    // Seeded cards carry types (e.g. Fire Drake Common -> Fire). Type chips have data-testid="card-type".
     // Cards render both a mobile (sm:hidden) and desktop (hidden sm:block) copy, so target a visible one.
-    await expect(page.locator('span.text-cyan-300:visible').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="card-type"]:visible').first()).toBeVisible({ timeout: 5000 })
     await test.info().attach('collection-types', { body: await page.screenshot(), contentType: 'image/png' })
   })
 

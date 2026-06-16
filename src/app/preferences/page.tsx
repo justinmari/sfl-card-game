@@ -8,7 +8,7 @@ export default async function PreferencesPage() {
   if (!profile) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/dashboard" title="Preferences" />
 
       <main className="mx-auto max-w-md px-6 py-10">

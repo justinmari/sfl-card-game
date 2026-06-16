@@ -1,34 +1,185 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ------------------------------------------------------------------ */
+/*  SFL TCG — "Neon Arcade" design foundation                          */
+/*  Deep space-black base, violet→fuchsia accent, cyan highlights.     */
+/* ------------------------------------------------------------------ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), var(--font-geist-sans), sans-serif;
+
+  /* Brand accents */
+  --color-arcade-violet: #7c3aed;
+  --color-arcade-fuchsia: #d946ef;
+  --color-arcade-cyan: #22d3ee;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #0a0a12;
+  --foreground: #ededed;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Use the loaded Geist font (was previously overridden to Arial). */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Ambient neon glows — fixed so they stay put while scrolling. */
+  background-image:
+    radial-gradient(55rem 55rem at 12% -8%, rgba(124, 58, 237, 0.20), transparent 60%),
+    radial-gradient(48rem 48rem at 100% 0%, rgba(34, 211, 238, 0.10), transparent 55%),
+    radial-gradient(46rem 46rem at 50% 118%, rgba(217, 70, 239, 0.14), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Reusable component utilities                                       */
+/* ------------------------------------------------------------------ */
+
+/* Gradient wordmark / headline text */
+.text-arcade-gradient {
+  background-image: linear-gradient(120deg, #c4b5fd 0%, #f0abfc 55%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Display heading helper */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Primary action button — violet→fuchsia gradient with neon glow */
+.btn-arcade {
+  background-image: linear-gradient(135deg, #7c3aed 0%, #d946ef 100%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow:
+    0 10px 28px -8px rgba(124, 58, 237, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn-arcade:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 14px 34px -6px rgba(217, 70, 239, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.btn-arcade:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-arcade:disabled {
+  filter: grayscale(0.5) brightness(0.65);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Form input — glassy field with violet focus ring. Pair with sizing
+   utilities (w-full, px-*, py-*) on the element itself. */
+.input-arcade {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background-color: rgba(0, 0, 0, 0.30);
+  color: #fff;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-arcade::placeholder {
+  color: #71717a;
+}
+.input-arcade:focus {
+  outline: none;
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.30);
+}
+
+/* Arena primary button — red→orange "hot" gradient for the battle flow */
+.btn-arena {
+  background-image: linear-gradient(135deg, #dc2626 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow:
+    0 10px 28px -8px rgba(239, 68, 68, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn-arena:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 14px 34px -6px rgba(249, 115, 22, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+.btn-arena:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-arena:disabled {
+  filter: grayscale(0.5) brightness(0.65);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Glassy surface panel */
+.surface {
+  background-color: rgba(20, 20, 33, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Dashboard / nav tile — subtle gradient that lifts + glows on hover */
+.tile-arcade {
+  background-image: linear-gradient(160deg, rgba(40, 40, 62, 0.70), rgba(16, 16, 27, 0.70));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.tile-arcade:hover {
+  transform: translateY(-3px);
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: 0 16px 36px -12px rgba(124, 58, 237, 0.55);
+}
+
+/* Accent variants for grouped tiles (arena = red, admin = amber) */
+.tile-arcade.tile-red:hover {
+  border-color: rgba(248, 113, 113, 0.6);
+  box-shadow: 0 16px 36px -12px rgba(239, 68, 68, 0.5);
+}
+.tile-arcade.tile-amber:hover {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 16px 36px -12px rgba(245, 158, 11, 0.5);
+}
+
+/* Card drop shadows (kept from before) */
 .card-shadow {
   filter: drop-shadow(3px 4px 4px rgba(0, 0, 0, 0.4));
 }
-
 .card-shadow-lg {
   filter: drop-shadow(5px 6px 6px rgba(0, 0, 0, 0.45));
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Card dealing into the new deck during a Gift Exchange transform */
+@keyframes dealIn {
+  from { transform: translateY(-14px) rotate(-8deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 1; }
+}
+
+/* Screen jolt when a big-damage skill lands */
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-6px, 3px); }
+  30% { transform: translate(5px, -3px); }
+  45% { transform: translate(-5px, -2px); }
+  60% { transform: translate(4px, 3px); }
+  75% { transform: translate(-3px, 1px); }
 }

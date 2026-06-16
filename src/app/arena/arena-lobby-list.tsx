@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { LayoutGrid } from 'lucide-react'
 import { listLobbies, createLobby, joinLobby, leaveLobby, closeStaleLobby, type LobbyInfo } from './lobby-actions'
 import { useArenaStatus } from '@/hooks/use-arena-status'
 
@@ -108,35 +109,23 @@ export default function ArenaLobbyList({
   return (
     <div>
       <div className="mb-8 text-center">
-        <h2 className="mb-2 text-2xl font-bold">Arena</h2>
+        <h2 className="font-display mb-2 text-2xl font-bold tracking-tight">
+          <span className="text-arcade-gradient">Arena</span>
+        </h2>
         <p className="text-sm text-zinc-400">Create or join a lobby to battle</p>
-      </div>
-
-      {/* How to Play + Edit Decks */}
-      <div className="mb-8 flex gap-4">
-        <div className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-xs text-zinc-400">
-          <p className="mb-2 text-sm font-medium text-white">How to Play</p>
-          <div className="space-y-1">
-            <p><span className="text-white">1.</span> Build a 5-card deck in Decks</p>
-            <p><span className="text-white">2.</span> Create or join a lobby</p>
-            <p><span className="text-white">3.</span> Host starts the game</p>
-            <p><span className="text-white">4.</span> Cards face off — higher power wins</p>
-            <p><span className="text-white">5.</span> Last player standing wins!</p>
-          </div>
-        </div>
-        <a href="/decks" className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-6 transition-colors hover:border-zinc-600">
-          <span className="text-2xl">📋</span>
-          <span className="text-xs font-medium text-white">Edit Decks</span>
-        </a>
       </div>
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300 text-center">{error}</div>
       )}
 
+      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Actions column */}
+      <div className="lg:col-span-2">
+
       {/* Reconnect banner */}
       {myLobby && (
-        <div className="mb-6 rounded-xl border border-amber-800 bg-amber-950/20 p-4">
+        <div className="mb-6 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-semibold text-amber-400">You&apos;re in a lobby</h4>
@@ -158,7 +147,7 @@ export default function ArenaLobbyList({
                   setMyLobby(null)
                   fetchLobbies()
                 }}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-400 hover:bg-zinc-800"
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
               >
                 Leave
               </button>
@@ -168,7 +157,7 @@ export default function ArenaLobbyList({
       )}
 
       {/* Create lobby */}
-      {!myLobby && <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      {!myLobby && <div className="surface mb-8 rounded-xl p-5">
         <h3 className="mb-3 text-sm font-medium text-zinc-400">Create a Lobby</h3>
         <div className="flex gap-3">
           <input
@@ -177,12 +166,12 @@ export default function ArenaLobbyList({
             onChange={(e) => setLobbyName(e.target.value)}
             placeholder={`${userName}'s Lobby`}
             maxLength={30}
-            className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+            className="input-arcade flex-1 px-4 py-2 text-sm"
           />
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="rounded-lg bg-red-600 px-6 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50"
+            className="btn-arena rounded-lg px-6 py-2 text-sm font-bold"
           >
             {creating ? 'Creating...' : 'Create'}
           </button>
@@ -195,7 +184,7 @@ export default function ArenaLobbyList({
         <button
           onClick={handleRefresh}
           disabled={refreshCooldown > 0}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {refreshCooldown > 0 ? `Refresh (${refreshCooldown}s)` : 'Refresh'}
         </button>
@@ -208,7 +197,7 @@ export default function ArenaLobbyList({
       ) : (
         <div className="space-y-3">
           {waitingLobbies.map((lobby) => (
-            <div key={lobby.id} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div key={lobby.id} className="surface rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-semibold text-white">{lobby.name}</h4>
@@ -234,7 +223,7 @@ export default function ArenaLobbyList({
                   {isStale(lobby) && (
                     <button
                       onClick={() => handleCloseStaleLobby(lobby.id)}
-                      className="rounded-lg border border-red-800 px-3 py-2 text-xs text-red-400 hover:bg-red-900/30"
+                      className="rounded-lg border border-red-500/40 px-3 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
                     >
                       Close
                     </button>
@@ -242,7 +231,7 @@ export default function ArenaLobbyList({
                   <button
                     onClick={() => handleJoin(lobby.id)}
                     disabled={!!myLobby || joining === lobby.id || lobby.player_count >= lobby.max_players}
-                    className="rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30"
+                    className="btn-arena rounded-lg px-5 py-2 text-sm font-bold disabled:opacity-30"
                   >
                     {joining === lobby.id ? 'Joining...' : 'Join'}
                   </button>
@@ -252,7 +241,7 @@ export default function ArenaLobbyList({
           ))}
 
           {activeLobbies.map((lobby) => (
-            <div key={lobby.id} className="rounded-xl border border-amber-800/50 bg-zinc-900 p-4">
+            <div key={lobby.id} className="surface rounded-xl p-4 ring-1 ring-amber-500/25">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-semibold text-white">{lobby.name}</h4>
@@ -265,7 +254,7 @@ export default function ArenaLobbyList({
                   {isStale(lobby) && (
                     <button
                       onClick={() => handleCloseStaleLobby(lobby.id)}
-                      className="rounded-lg border border-red-800 px-3 py-2 text-xs text-red-400 hover:bg-red-900/30"
+                      className="rounded-lg border border-red-500/40 px-3 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
                     >
                       Close
                     </button>
@@ -273,7 +262,7 @@ export default function ArenaLobbyList({
                   <button
                     onClick={() => handleJoin(lobby.id)}
                     disabled={!!myLobby || joining === lobby.id}
-                    className="rounded-lg border border-zinc-700 px-5 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
+                    className="rounded-lg border border-white/10 px-5 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
                   >
                     {joining === lobby.id ? 'Joining...' : 'Spectate'}
                   </button>
@@ -283,6 +272,26 @@ export default function ArenaLobbyList({
           ))}
         </div>
       )}
+      </div>
+
+      {/* Side rail: how to play + edit decks */}
+      <div className="space-y-4">
+        <div className="surface rounded-xl p-4 text-xs text-zinc-400">
+          <p className="mb-2 text-sm font-medium text-white">How to Play</p>
+          <div className="space-y-1">
+            <p><span className="text-white">1.</span> Build a 5-card deck in Decks</p>
+            <p><span className="text-white">2.</span> Create or join a lobby</p>
+            <p><span className="text-white">3.</span> Host starts the game</p>
+            <p><span className="text-white">4.</span> Cards face off — higher power wins</p>
+            <p><span className="text-white">5.</span> Last player standing wins!</p>
+          </div>
+        </div>
+        <a href="/decks" className="tile-arcade tile-red flex items-center justify-center gap-2 rounded-xl px-6 py-4">
+          <LayoutGrid className="h-5 w-5 text-red-300" aria-hidden />
+          <span className="text-sm font-medium text-white">Edit Decks</span>
+        </a>
+      </div>
+      </div>
     </div>
   )
 }

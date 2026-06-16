@@ -91,7 +91,7 @@ export default function TypeList({ types }: { types: CardType[] }) {
       ) : (
         <div className="space-y-2">
           {types.map((type) => (
-            <div key={type.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3">
+            <div key={type.id} data-testid="type-row" className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3">
               {editingId === type.id ? (
                 <div className="flex flex-1 flex-wrap items-center gap-3">
                   <input

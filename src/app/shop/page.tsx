@@ -47,10 +47,16 @@ export default async function ShopPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen text-white">
       <AppNavbar backHref="/dashboard" title="Shop" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mb-10 text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight">
+            <span className="text-arcade-gradient">Card Packs</span>
+          </h2>
+          <p className="mt-1 text-sm text-zinc-400">Spend your Gruten and chase the secret rares.</p>
+        </div>
         <PackShop
           packs={packs || []}
           gruten={profile.gruten}

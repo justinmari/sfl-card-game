@@ -6,6 +6,8 @@ import {
   type BattleCard,
   type RoundResult,
   type FaceOffDetail,
+  type MatchResult,
+  type SkillActivation,
   type ActiveSkill,
   type Skill,
   starCount,
@@ -13,10 +15,11 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { submitRoundReady, updateSessionHp, endArenaSession, getMatchupPreview } from '@/app/arena/actions'
 import { createSeededRng } from '@/lib/seeded-random'
-import { precomputeRound, randomPair } from '@/lib/battle-engine'
+import { precomputeRound, randomPair, faceOffAtStep } from '@/lib/battle-engine'
 import BattleFaceoff from '@/components/battle-faceoff'
 import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
+import { skillEffectKinds } from '@/lib/skill-visuals'
 
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
@@ -111,6 +114,8 @@ export default function ArenaBattle({
   const [cardIdx, setCardIdx] = useState(0)
   const [matchKo, setMatchKo] = useState<Set<number>>(new Set())
   const [faceoffPhase, setFaceoffPhase] = useState<'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'>('enter')
+  // How many skill activations of the current face-off have been revealed (0 = base).
+  const [skillStep, setSkillStep] = useState(0)
   const [rollElapsed, setRollElapsed] = useState(0)
   const [roundEndCountdown, setRoundEndCountdown] = useState(0)
   const [skillUsage, setSkillUsage] = useState<Record<string, number>>({})
@@ -315,12 +320,38 @@ export default function ArenaBattle({
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     setFaceoffPhase('enter')
     setRollElapsed(0)
+    setSkillStep(0)
+
+    // Phase-aware stepped reveal (real play only; ARENA_FAST reveals instantly).
+    // onStars skills (rarity/power — Final Form, Leveler, Scramble) reveal during
+    // 'power' BEFORE the roll, so the dice reflect the boosted stats; dice/total/
+    // damage skills reveal during 'merge'. Hold durations use the MAX counts across
+    // ALL matches so every client stays in lockstep (no spectator races ahead).
+    const actsOf = (m: MatchResult): SkillActivation[] => (m.faceOffs[cardIdx] as FaceOffDetail | undefined)?.activations ?? []
+    const preOf = (acts: SkillActivation[]) => acts.filter((a) => a.phase === 'onStars').length
+    const allMatches = precomputed?.matches ?? []
+    const myMatch = allMatches.find((m) => m.player1Id === userId || m.player2Id === userId)
+    const myActs = myMatch ? actsOf(myMatch) : []
+    const myPre = preOf(myActs)         // my onStars (pre-roll) activation count
+    const myTotal = myActs.length
+    const gPre = Math.max(0, ...allMatches.map((m) => preOf(actsOf(m))))
+    const gPost = Math.max(0, ...allMatches.map((m) => actsOf(m).length - preOf(actsOf(m))))
+    const stepDur = 700
+    const stepped = !ARENA_FAST && (gPre > 0 || gPost > 0)
+    const powerExtra = stepped && gPre > 0 ? gPre * stepDur : 0
+    const mergeExtra = stepped && gPost > 0 ? (gPost + 1) * stepDur : 0
+    const [P, R, M, RES, DON] = [FACEOFF_PHASES[1][0], FACEOFF_PHASES[2][0], FACEOFF_PHASES[3][0], FACEOFF_PHASES[4][0], FACEOFF_PHASES[5][0]]
+    const mergeStartMs = M + powerExtra
+    const phases: [number, 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'][] = [
+      [0, 'enter'], [P, 'power'], [R + powerExtra, 'rolling'], [M + powerExtra, 'merge'],
+      [RES + powerExtra + mergeExtra, 'result'], [DON + powerExtra + mergeExtra, 'done'],
+    ]
 
     const startTime = performance.now()
-    const phases = FACEOFF_PHASES
     let currentPhaseIdx = 0
     let rollingStart = 0
     let resultApplied = false
+    let lastStep = -1
 
     const tick = () => {
       const elapsed = performance.now() - startTime
@@ -333,6 +364,7 @@ export default function ArenaBattle({
 
         if (phaseName === 'result' && !resultApplied) {
           resultApplied = true
+          if (myTotal > 0) setSkillStep(myTotal)
           if (!appliedRef.current.has(cardIdx) && precomputed) {
             appliedRef.current.add(cardIdx)
             setDisplayHp((prev) => {
@@ -360,6 +392,19 @@ export default function ArenaBattle({
       const currentPhaseName = phases[currentPhaseIdx][1]
       if (currentPhaseName === 'rolling' || currentPhaseName === 'merge') {
         setRollElapsed(performance.now() - rollingStart)
+      }
+      // Advance how many of MY activations are revealed, per phase:
+      //  power → step through my onStars (0..myPre), before the roll
+      //  rolling → hold at myPre (roll uses the boosted stats)
+      //  merge+ → step through the rest (myPre..myTotal)
+      if (myTotal > 0) {
+        let s: number
+        if (!stepped) s = myTotal
+        else if (currentPhaseName === 'enter') s = 0
+        else if (currentPhaseName === 'power') s = Math.min(myPre, Math.max(0, Math.floor((elapsed - P) / stepDur)))
+        else if (currentPhaseName === 'rolling') s = myPre
+        else s = Math.min(myTotal, myPre + Math.max(0, Math.floor((elapsed - mergeStartMs) / stepDur)))
+        if (s !== lastStep) { lastStep = s; setSkillStep(s) }
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -589,6 +634,33 @@ export default function ArenaBattle({
                   </div>
                 )}
 
+                {(() => {
+                  const myMatch = precomputed!.matches.find((m) => m.player1Id === userId || m.player2Id === userId)
+                  const deckSkill = myMatchSkills.find((as) => skillEffectKinds(as.skill).includes('deck'))
+                  if (!myMatch || !deckSkill) return null
+                  const imP1 = myMatch.player1Id === userId
+                  const afterDeck = myMatch.faceOffs.map((fo) => (imP1 ? fo.card1 : fo.card2))
+                  const beforeDeck = getPlayer(userId)?.deck ?? []
+                  const changed = beforeDeck.length === 5 && afterDeck.length === 5 && beforeDeck.some((c, i) => c.id !== afterDeck[i]?.id)
+                  if (!changed) return null
+                  return (
+                    <div data-testid="deck-transform" className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 p-4 backdrop-blur-sm">
+                      <p className="mb-3 text-center text-xs font-bold uppercase tracking-wider text-indigo-200">🔀 {deckSkill.skill.name} — your deck was reshuffled</p>
+                      <div className="flex items-center justify-center gap-2 sm:gap-3">
+                        <div className="flex gap-0.5 opacity-40">
+                          {beforeDeck.map((c, i) => (<div key={`b-${i}`} className="w-8 sm:w-9"><CompactCard card={c} /></div>))}
+                        </div>
+                        <span className="text-xl text-indigo-300">→</span>
+                        <div className="flex gap-0.5">
+                          {afterDeck.map((c, i) => (
+                            <div key={`a-${c.id}-${i}`} className="w-8 animate-[dealIn_0.4s_ease-out_both] sm:w-9" style={{ animationDelay: `${i * 90}ms` }}><CompactCard card={c} /></div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 {opponentId ? (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center" style={{ minHeight: '12rem' }}>
                     <div className="text-xs text-zinc-500 mb-4">Round {roundNum}</div>
@@ -747,10 +819,15 @@ export default function ArenaBattle({
                   const fo = myMatch.faceOffs[cardIdx] as FaceOffDetail
                   const imPlayer1 = myMatch.player1Id === userId
                   const opponentId = imPlayer1 ? myMatch.player2Id : myMatch.player1Id
+                  // When I'm player2 the face-off is mirrored, so swap the trace sides too.
                   const displayFo: FaceOffDetail = imPlayer1 ? fo : {
                     ...fo, card1: fo.card2, card2: fo.card1, star1: fo.star2, star2: fo.star1,
                     roll1: fo.roll2, roll2: fo.roll1, effective1: fo.effective2, effective2: fo.effective1,
                     damage1: fo.damage2, damage2: fo.damage1,
+                    activations: fo.activations?.map((a) => ({
+                      ...a,
+                      changes: a.changes.map((c) => ({ ...c, side: (c.side === 1 ? 2 : 1) as 1 | 2 })),
+                    })),
                   }
                   const myHp = displayHp[userId] ?? 0
                   const oppHp = displayHp[opponentId] ?? 0
@@ -781,7 +858,7 @@ export default function ArenaBattle({
                         </div>
                       </div>
                       <div className="mt-8" />
-                      <BattleFaceoff faceOff={displayFo} phase={faceoffPhase} rollElapsed={rollElapsed} large
+                      <BattleFaceoff faceOff={faceOffAtStep(displayFo, skillStep)} phase={faceoffPhase} rollElapsed={rollElapsed} large
                         p1Name="You" p2Name={getPlayer(opponentId)?.name || 'Opponent'}
                         p1Hp={displayHp[userId] ?? 0} p2Hp={displayHp[opponentId] ?? 0}
                         cardFilter={precomputed.flags?.visualEffect} />
@@ -1008,7 +1085,7 @@ export default function ArenaBattle({
           <p className="mb-6 text-xs text-zinc-500">Completed in {roundNum} rounds</p>
           <div className="mb-8">
             {sortedByHp.map((p, i) => (
-              <div key={p.id} className="mb-2 flex items-center justify-center gap-3">
+              <div key={p.id} data-testid="battle-ranking-row" className="mb-2 flex items-center justify-center gap-3">
                 <span className="w-6 text-right text-sm font-bold text-zinc-500">#{i + 1}</span>
                 <span className={`text-sm ${i === 0 ? 'text-amber-400 font-bold' : 'text-zinc-300'}`}>{p.name}</span>
                 <span className={`text-sm ${(displayHp[p.id] ?? 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>{displayHp[p.id] ?? 0} HP</span>

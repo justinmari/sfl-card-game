@@ -149,7 +149,7 @@ export default function UserList({ users }: { users: User[] }) {
       {/* User list */}
       <div className="space-y-3">
         {users.map((user) => (
-          <div key={user.id} className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4">
+          <div key={user.id} data-testid="user-row" className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
             ) : (

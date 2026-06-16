@@ -177,7 +177,7 @@ export default function ProfileForm({
                 setPreview(URL.createObjectURL(f))
               }
             }}
-            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-zinc-600"
+            className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600/80 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-violet-600"
           />
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function ProfileForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+          className="input-arcade w-full px-4 py-3"
         />
       </div>
 
@@ -207,7 +207,7 @@ export default function ProfileForm({
               }
               setShowCardPicker(!showCardPicker)
             }}
-            className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
           >
             {savingCards ? 'Saving...' : showCardPicker ? 'Done' : 'Edit'}
           </button>
@@ -253,13 +253,13 @@ export default function ProfileForm({
 
         {/* Card picker */}
         {showCardPicker && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <div className="surface rounded-xl p-4">
             <input
               type="text"
               value={cardSearch}
               onChange={(e) => setCardSearch(e.target.value)}
               placeholder="Search cards..."
-              className="mb-3 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none"
+              className="input-arcade mb-3 w-full px-3 py-2 text-sm"
             />
             <div className="max-h-72 overflow-y-auto">
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
@@ -297,7 +297,7 @@ export default function ProfileForm({
       <button
         type="submit"
         disabled={saving || !name.trim()}
-        className="w-full rounded-lg bg-white px-6 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+        className="btn-arcade w-full rounded-lg px-6 py-3 text-sm"
       >
         {saving ? 'Saving...' : 'Save Profile'}
       </button>

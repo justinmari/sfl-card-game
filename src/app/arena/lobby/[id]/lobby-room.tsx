@@ -323,7 +323,7 @@ export default function LobbyRoom({
       {/* Starting overlay */}
       {starting && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-          <span className="text-4xl font-black text-white animate-pulse">Starting...</span>
+          <span data-testid="starting-overlay" className="text-4xl font-black text-white animate-pulse">Starting...</span>
         </div>
       )}
 
@@ -332,7 +332,7 @@ export default function LobbyRoom({
       )}
 
       {/* Players */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-medium text-zinc-400">Players ({players.length}/{maxPlayers})</h3>
           {isHost && <span className="rounded bg-amber-900/50 px-2 py-0.5 text-[10px] text-amber-400">You are the host</span>}
@@ -341,9 +341,9 @@ export default function LobbyRoom({
           {players.map((p) => (
             <div key={p.user_id}
               className={`flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
-                p.is_ready ? 'border-green-600 bg-green-950/20'
-                : p.user_id === userId ? 'border-amber-700 bg-amber-950/20'
-                : 'border-zinc-800 bg-zinc-900'
+                p.is_ready ? 'border-green-500/60 bg-green-500/10'
+                : p.user_id === userId ? 'border-amber-500/50 bg-amber-500/10'
+                : 'border-white/10 bg-white/[0.03]'
               }`}>
               {p.avatar_url ? (
                 <img src={p.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover border-2 border-zinc-700" />
@@ -366,18 +366,20 @@ export default function LobbyRoom({
             </div>
           ))}
           {Array.from({ length: Math.max(0, maxPlayers - players.length) }).map((_, i) => (
-            <div key={`empty-${i}`} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-zinc-700 text-zinc-700">?</div>
+            <div key={`empty-${i}`} className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 p-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-white/15 text-zinc-700">?</div>
               <span className="text-xs text-zinc-600">Waiting...</span>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Deck + chat side-by-side on desktop */}
+      <div className="grid gap-6 lg:grid-cols-3">
       {/* Deck selection */}
-      <div className="mb-8">
+      <div className="lg:col-span-2">
         <h3 className="mb-3 text-sm font-medium text-zinc-400">Choose Your Deck</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {legalDecks.map((deck) => {
             const isSelected = selectedDeck === deck.slot
             const totalPower = deck.cards.reduce((s, c) => s + (starCount[c.rarity] || 1), 0)
@@ -388,12 +390,13 @@ export default function LobbyRoom({
 
             return (
               <button key={deck.slot}
+                aria-pressed={isSelected}
                 onClick={() => !myReady && !illegal && setSelectedDeck(isSelected ? null : deck.slot)}
                 disabled={myReady}
-                className={`rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed ${
+                className={`flex h-full flex-col rounded-xl border p-4 text-left transition-all disabled:cursor-not-allowed ${
                   illegal ? 'border-red-800 opacity-50 cursor-not-allowed'
-                  : isSelected ? 'border-red-500 bg-red-950/30'
-                  : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                  : isSelected ? 'border-red-500 bg-red-500/15 shadow-[0_0_18px_-4px_rgba(239,68,68,0.6)]'
+                  : 'border-white/10 bg-white/[0.03] hover:border-violet-400/40'
                 }`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-semibold">{deck.name}</span>
@@ -410,7 +413,7 @@ export default function LobbyRoom({
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="mt-auto flex flex-wrap gap-1">
                   {Object.entries(rarityCounts).sort((a, b) => (starCount[b[0]] || 0) - (starCount[a[0]] || 0)).map(([rarity, count]) => (
                     <span key={rarity} className={`rounded px-1.5 py-0.5 text-[9px] text-white ${rarityBadgeColors[rarity] || 'bg-zinc-700'}`}>
                       <span className="font-bold">{count}x</span> {rarityLabel[rarity] || rarity}
@@ -423,9 +426,9 @@ export default function LobbyRoom({
         </div>
       </div>
 
-      {/* Chat */}
-      <div className="mb-8 rounded-xl border border-zinc-800 bg-zinc-900">
-        <div className="h-48 overflow-y-auto p-3">
+      {/* Chat — side rail */}
+      <div className="surface flex flex-col rounded-xl">
+        <div className="min-h-[14rem] flex-1 overflow-y-auto p-3">
           {messages.length === 0 && <p className="py-8 text-center text-xs text-zinc-600">No messages yet</p>}
           {messages.map((msg) => (
             <div key={msg.id} className="mb-1.5">
@@ -435,40 +438,43 @@ export default function LobbyRoom({
           ))}
           <div ref={chatEndRef} />
         </div>
-        <form onSubmit={sendMessage} className="flex border-t border-zinc-800">
+        <form onSubmit={sendMessage} className="flex border-t border-white/10">
           <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type a message..." maxLength={200}
             className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none" />
           <button type="submit" disabled={!chatInput.trim()} className="px-4 text-sm font-medium text-zinc-400 hover:text-white disabled:opacity-30">Send</button>
         </form>
       </div>
+      </div>
 
-      {/* Actions */}
-      <div className="flex flex-col items-center gap-3">
+      {/* Sticky action bar */}
+      <div className="sticky bottom-4 z-30 mt-6">
+        <div className="surface mx-auto flex w-full max-w-2xl items-center justify-center gap-3 rounded-2xl p-3 shadow-2xl">
         {isHost ? (
           <>
             <button onClick={handleStartGame} disabled={!canStart || starting}
-              className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+              className="btn-arena flex-1 rounded-lg px-8 py-3 text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed">
               {starting ? 'Starting...' : canStart ? 'Start Game' : !selectedDeck ? 'Select a deck first' : players.length < 2 ? 'Need 2+ players' : 'Waiting for players to ready up'}
             </button>
             <button onClick={handleLeave} disabled={leaving}
-              className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-400 hover:bg-zinc-800 disabled:opacity-50">
+              className="rounded-lg border border-white/10 px-6 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50">
               {leaving ? 'Leaving...' : 'Close Lobby'}
             </button>
           </>
         ) : (
           <>
             <button onClick={handleToggleReady} disabled={!selectedDeck}
-              className={`rounded-lg px-8 py-3 text-sm font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
-                myReady ? 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600' : 'bg-red-600 text-white hover:bg-red-500'
+              className={`flex-1 rounded-lg px-8 py-3 text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed ${
+                myReady ? 'border border-white/15 text-zinc-300 transition-colors hover:bg-white/5' : 'btn-arena'
               }`}>
               {!selectedDeck ? 'Select a deck first' : myReady ? 'Cancel Ready' : 'Ready Up'}
             </button>
             <button onClick={handleLeave} disabled={leaving}
-              className="rounded-lg border border-zinc-700 px-6 py-2 text-sm text-zinc-400 hover:bg-zinc-800 disabled:opacity-50">
+              className="rounded-lg border border-white/10 px-6 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50">
               {leaving ? 'Leaving...' : 'Leave Lobby'}
             </button>
           </>
         )}
+        </div>
       </div>
     </div>
   )

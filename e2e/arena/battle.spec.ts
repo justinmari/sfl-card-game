@@ -47,7 +47,7 @@ test.describe('Arena Battle', () => {
 
     await page.click('button:has-text("Start Game")')
 
-    await expect(page.locator('span.animate-pulse:has-text("Starting...")')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('starting-overlay')).toBeVisible({ timeout: 5000 })
     await test.info().attach('starting-overlay', { body: await page.screenshot(), contentType: 'image/png' })
 
     await playerContext.close()

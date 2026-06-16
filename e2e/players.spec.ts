@@ -30,7 +30,7 @@ test.describe('Players (Friends)', () => {
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 10000 })
 
     await page.getByText('Test Admin').click()
-    await expect(page.locator('.fixed.inset-0')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('player-modal')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('h2:has-text("Test Admin")')).toBeVisible()
     await test.info().attach('player-modal', { body: await page.screenshot(), contentType: 'image/png' })
   })
@@ -41,7 +41,7 @@ test.describe('Players (Friends)', () => {
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 10000 })
 
     await page.getByText('Test Admin').click()
-    await expect(page.locator('.fixed.inset-0')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('player-modal')).toBeVisible({ timeout: 5000 })
     // Modal should show card slots (either filled or empty dashes)
     await test.info().attach('modal-top-cards', { body: await page.screenshot(), contentType: 'image/png' })
   })
@@ -52,10 +52,10 @@ test.describe('Players (Friends)', () => {
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 10000 })
 
     await page.getByText('Test Admin').click()
-    await expect(page.locator('.fixed.inset-0')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('player-modal')).toBeVisible({ timeout: 5000 })
 
     await page.click('button:has-text("Close")')
-    await expect(page.locator('.fixed.inset-0')).not.toBeVisible()
+    await expect(page.getByTestId('player-modal')).not.toBeVisible()
   })
 
   test('can close modal by clicking backdrop', async ({ page }) => {
@@ -64,11 +64,11 @@ test.describe('Players (Friends)', () => {
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 10000 })
 
     await page.getByText('Test Admin').click()
-    await expect(page.locator('.fixed.inset-0')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByTestId('player-modal')).toBeVisible({ timeout: 5000 })
 
     // Click the backdrop (the fixed overlay)
-    await page.locator('.fixed.inset-0').click({ position: { x: 10, y: 10 } })
-    await expect(page.locator('.fixed.inset-0')).not.toBeVisible({ timeout: 5000 })
+    await page.getByTestId('player-modal').click({ position: { x: 10, y: 10 } })
+    await expect(page.getByTestId('player-modal')).not.toBeVisible({ timeout: 5000 })
   })
 
   test('shows player grid layout', async ({ page }) => {
@@ -76,7 +76,7 @@ test.describe('Players (Friends)', () => {
     await page.goto('/players')
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 10000 })
 
-    const grid = page.locator('.grid.grid-cols-1')
+    const grid = page.getByTestId('player-grid')
     await expect(grid).toBeVisible()
     await test.info().attach('grid-layout', { body: await page.screenshot(), contentType: 'image/png' })
   })

@@ -90,7 +90,7 @@ test.describe('Gruten Transactions', () => {
     await login(page, TEST_ADMIN)
     await page.goto('/admin/users')
 
-    const row = page.locator('.rounded-xl.border.border-zinc-800').filter({ hasText: 'Test Player' })
+    const row = page.getByTestId('user-row').filter({ hasText: 'Test Player' })
     await expect(row).toBeVisible({ timeout: 10000 })
 
     await row.locator('button:has-text("Edit")').click()
@@ -115,7 +115,7 @@ test.describe('Gruten Transactions', () => {
     // 1. Admin grants gruten
     await login(page, TEST_ADMIN)
     await page.goto('/admin/users')
-    const row = page.locator('.rounded-xl.border.border-zinc-800').filter({ hasText: 'Test Player' })
+    const row = page.getByTestId('user-row').filter({ hasText: 'Test Player' })
     await expect(row).toBeVisible({ timeout: 10000 })
     await row.locator('button:has-text("Edit")').click()
     const grutenInput = row.locator('input[type="number"]')

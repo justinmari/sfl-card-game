@@ -17,7 +17,7 @@ async function deleteCreatureByName(name: string) {
 }
 
 function creatureRow(page: any, name: string) {
-  return page.locator('.rounded-lg.border.border-zinc-800').filter({ hasText: name })
+  return page.getByTestId('creature-row').filter({ hasText: name })
 }
 
 async function ensureCreaturesExist() {
@@ -105,10 +105,10 @@ test.describe('Admin Creatures', () => {
 
     // After clicking Edit, the name moves from a <span> to an <input value>.
     // The hasText filter on `row` no longer matches, so locate the edit input directly.
-    const editInput = page.locator('.rounded-lg.border.border-zinc-800 input[type="text"]')
+    const editInput = page.getByTestId('creature-row').locator('input[type="text"]')
     await editInput.clear()
     await editInput.fill('Renamed Creature')
-    await page.locator('.rounded-lg.border.border-zinc-800 button:has-text("Save")').click()
+    await page.getByTestId('creature-row').locator('button:has-text("Save")').click()
 
     await expect(page.getByText('Renamed Creature')).toBeVisible({ timeout: 10000 })
     await test.info().attach('creature-renamed', { body: await page.screenshot(), contentType: 'image/png' })
@@ -122,7 +122,7 @@ test.describe('Admin Creatures', () => {
     const row = creatureRow(page, 'Fire Drake')
     await row.locator('button:has-text("Edit")').click()
     // After Edit click, row's hasText no longer matches — locate Cancel directly
-    await page.locator('.rounded-lg.border.border-zinc-800 button:has-text("Cancel")').click()
+    await page.getByTestId('creature-row').locator('button:has-text("Cancel")').click()
     await expect(page.getByText('Fire Drake')).toBeVisible()
   })
 
