@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
 import AppNavbar from '@/components/app-navbar'
+import { loadSkillEffectRows } from '@/lib/battle-effects/skill-effects'
+import { loadSynergyDefRows } from '@/lib/synergies/loader'
 import TestArena from './test-arena'
 
 export default async function TestArenaPage() {
@@ -20,17 +22,20 @@ export default async function TestArenaPage() {
   // Get all cards for bot decks
   const { data: allCards } = await supabase
     .from('cards')
-    .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
+    .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id), card_types(type_id)')
 
-  // Get skill display info from DB
+  // Get skill display info + battle-effect composition + synergies from DB
   const { data: dbSkills } = await supabase.from('skills').select('id, name, description')
+  const skillEffectRows = await loadSkillEffectRows(supabase)
+  const synergyDefs = await loadSynergyDefRows(supabase)
 
   const cardList = (allCards || []).map((c) => {
-    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[] }
+    const card = c as unknown as { id: string; name: string; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[]; card_types: { type_id: string }[] }
     return {
       id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
       creature_name: card.creatures?.name || null,
       dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
+      types: (card.card_types || []).map((t) => t.type_id),
     }
   })
 
@@ -63,6 +68,8 @@ export default async function TestArenaPage() {
             adminDecks={adminDecks}
             allCards={cardList}
             dbSkills={(dbSkills || []) as { id: string; name: string; description: string }[]}
+            skillEffectRows={skillEffectRows}
+            synergyDefs={synergyDefs}
           />
         )}
       </main>

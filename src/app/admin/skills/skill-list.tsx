@@ -6,14 +6,17 @@ import { useRouter } from 'next/navigation'
 import CompactCard from '@/components/compact-card'
 
 type SkillCard = { card_id: string; cards: { name: string; rarity: string } | null }
+type SkillEffect = { battle_effect_id: string; ordinal: number }
 type Skill = {
   id: string
   name: string
   description: string
   card_skills: SkillCard[]
+  skill_effects: SkillEffect[]
 }
 
 type CardOption = { id: string; name: string; rarity: string; image_url: string | null }
+type EffectOption = { id: string; key: string; name: string }
 
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
@@ -28,11 +31,12 @@ const rarityOrder: Record<string, number> = {
   secret_rare: 0, legendary: 1, ultra_rare: 2, rare: 3, uncommon: 4, common: 5,
 }
 
-export default function SkillList({ skills, allCards }: { skills: Skill[]; allCards: CardOption[] }) {
+export default function SkillList({ skills, allCards, allEffects }: { skills: Skill[]; allCards: CardOption[]; allEffects: EffectOption[] }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editCardIds, setEditCardIds] = useState<Set<string>>(new Set())
+  const [editEffectIds, setEditEffectIds] = useState<string[]>([])
   const [cardSearch, setCardSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -42,8 +46,12 @@ export default function SkillList({ skills, allCards }: { skills: Skill[]; allCa
     setEditName(skill.name)
     setEditDesc(skill.description)
     setEditCardIds(new Set(skill.card_skills.map((cs) => cs.card_id)))
+    setEditEffectIds([...(skill.skill_effects || [])].sort((a, b) => a.ordinal - b.ordinal).map((se) => se.battle_effect_id))
     setCardSearch('')
   }
+
+  const addEffect = (id: string) => setEditEffectIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+  const removeEffect = (id: string) => setEditEffectIds((prev) => prev.filter((x) => x !== id))
 
   const toggleCard = (cardId: string) => {
     setEditCardIds((prev) => {
@@ -81,6 +89,14 @@ export default function SkillList({ skills, allCards }: { skills: Skill[]; allCa
     if (toAdd.length > 0) {
       await supabase.from('card_skills').insert(
         toAdd.map((card_id) => ({ card_id, skill_id: editingId }))
+      )
+    }
+
+    // Rewrite the effect composition (delete + re-insert in order).
+    await supabase.from('skill_effects').delete().eq('skill_id', editingId)
+    if (editEffectIds.length > 0) {
+      await supabase.from('skill_effects').insert(
+        editEffectIds.map((battle_effect_id, ordinal) => ({ skill_id: editingId, battle_effect_id, ordinal }))
       )
     }
 
@@ -181,6 +197,40 @@ export default function SkillList({ skills, allCards }: { skills: Skill[]; allCa
                         <p className="px-3 py-2 text-xs text-zinc-500">No cards found</p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Battle-effect composition */}
+                  <div data-testid="skill-effects-editor">
+                    <label className="mb-1 block text-xs text-zinc-500">
+                      Battle Effects ({editEffectIds.length}) — applied in order
+                    </label>
+                    {editEffectIds.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {editEffectIds.map((id, i) => {
+                          const fx = allEffects.find((e) => e.id === id)
+                          return (
+                            <button key={id} onClick={() => removeEffect(id)}
+                              className="rounded-full border border-sky-800 bg-sky-950/30 px-2.5 py-1 text-xs font-medium text-sky-200 hover:bg-sky-900/40">
+                              {i + 1}. {fx?.name || id.slice(0, 8)} ×
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {editEffectIds.length === 0 && (
+                      <p className="mb-2 text-xs text-zinc-600">No effects — this skill falls back to its built-in behavior (if any).</p>
+                    )}
+                    <select
+                      value=""
+                      onChange={(e) => { if (e.target.value) addEffect(e.target.value) }}
+                      aria-label="Add battle effect"
+                      className="w-full rounded-lg border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm text-white focus:border-zinc-500 focus:outline-none"
+                    >
+                      <option value="">+ Add a battle effect…</option>
+                      {allEffects.filter((e) => !editEffectIds.includes(e.id)).map((e) => (
+                        <option key={e.id} value={e.id}>{e.name} ({e.key})</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="flex gap-2">

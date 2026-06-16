@@ -5,6 +5,7 @@ import { isArenaEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import LobbyRoom from './lobby-room'
 import { getSessionHp } from '@/app/arena/actions'
+import { loadSkillEffectRows } from '@/lib/battle-effects/skill-effects'
 
 export default async function LobbyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: lobbyId } = await params
@@ -51,6 +52,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
     : { data: [] }
 
   const { data: dbSkills } = await supabase.from('skills').select('id, name, description')
+  const skillEffectRows = await loadSkillEffectRows(supabase)
 
   type CardWithSkills = {
     id: string; name: string; image_url: string | null; rarity: string
@@ -118,6 +120,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
           avatarUrl={profile.avatar_url || profile.user_metadata?.avatar_url || null}
           legalDecks={legalDecks}
           dbSkills={(dbSkills || []) as { id: string; name: string; description: string }[]}
+          skillEffectRows={skillEffectRows}
           activeSession={session ? {
             sessionId: session.id,
             seed: session.seed,

@@ -57,3 +57,33 @@ FROM cards;
 
 -- Ensure arena is enabled
 UPDATE app_settings SET value = 'true' WHERE key = 'arena_enabled';
+
+-- Built-in skills + their battle-effect compositions (so the admin Skills page
+-- and DB-driven skill resolution have data locally). The arena e2e wipes and
+-- re-seeds skills itself, so this is purely for local dev.
+INSERT INTO skills (id, name, description) VALUES
+ ('double-edge','Double Edge','All totals are doubled this round — for both players'),
+ ('loaded-dice','Loaded Dice','All dice rolls get +2 — for both players'),
+ ('snake-eyes','Snake Eyes','No dice rolls this round — base stars only, for both players'),
+ ('all-or-nothing','All or Nothing','All damage this round is doubled — for both players'),
+ ('scramble','Scramble','All card rarities are randomized — for both players'),
+ ('leveler','Leveler','All cards are treated as commons — pure dice rolls for both'),
+ ('beatdown','Beatdown','Losers take 3 damage no matter the total — for both players'),
+ ('reverse-uno','Reverse Uno','Damage is dealt to the winner of each face-off instead'),
+ ('underdog','Underdog','Lower rarity cards roll 0-10 no matter what — for both players'),
+ ('heal-instead','Fountain of Youth','All players heal damage taken this round instead of losing HP'),
+ ('brown-tint','Muddy Waters','Adds a brown tint to all players'' cards this round'),
+ ('gift-exchange','Gift Exchange','All cards are shuffled together and randomly dealt into new decks for this round'),
+ ('final-form','Final Form','All common cards become secret rares this round — for both players')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO skill_effects (skill_id, battle_effect_id, ordinal)
+SELECT s.id, be.id, m.ordinal FROM (VALUES
+ ('double-edge','double-totals',0),('loaded-dice','dice-bonus-2',0),('snake-eyes','zero-dice',0),
+ ('all-or-nothing','double-damage',0),('scramble','randomize-rarity',0),('leveler','level-power',0),
+ ('beatdown','flat-damage-3',0),('reverse-uno','reverse-damage',0),('underdog','big-dice',0),
+ ('heal-instead','heal-instead',0),('brown-tint','brown-tint',0),('gift-exchange','redeal-all',0),
+ ('final-form','ascend-rarity',0),('final-form','ascend-power',1)
+) AS m(skill_id, effect_key, ordinal)
+JOIN skills s ON s.id=m.skill_id JOIN battle_effects be ON be.key=m.effect_key
+ON CONFLICT (skill_id, battle_effect_id) DO NOTHING;
