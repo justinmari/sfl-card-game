@@ -26,6 +26,7 @@ export default async function AppNavbar({
       .select('amount')
       .eq('user_id', profile.id)
       .is('opened_at', null)
+      .gt('expires_at', new Date().toISOString())
     packageCount = pkgs?.length ?? 0
     packageTotal = (pkgs ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
   }
