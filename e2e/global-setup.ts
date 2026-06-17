@@ -75,9 +75,21 @@ async function upsertDeck(userId: string, slot: number, name: string, cardIds: s
   })
 }
 
+// The card-images storage bucket exists in prod but isn't created by migrations,
+// so seed it locally (idempotent) for tests that upload images/gifs.
+async function ensureCardImagesBucket() {
+  await fetch(`${LOCAL_URL}/storage/v1/bucket`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ id: 'card-images', name: 'card-images', public: true }),
+  }) // 200 on create, 409 if it already exists — both fine
+}
+
 export default async function globalSetup() {
   const adminId = await getOrCreateUser('admin@test.com', 'password123')
   const playerId = await getOrCreateUser('player@test.com', 'password123')
+
+  await ensureCardImagesBucket()
 
   console.log(`Test users: admin=${adminId}, player=${playerId}`)
 

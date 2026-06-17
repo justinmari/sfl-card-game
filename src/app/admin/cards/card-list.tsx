@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
+import { compressGif } from '@/lib/compress-gif'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
@@ -130,7 +131,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
       // Upload new image if selected
       if (editFile) {
         const isGif = editFile.type === 'image/gif'
-        const uploadBlob = isGif ? editFile : await compressImage(editFile)
+        const uploadBlob = isGif ? await compressGif(editFile) : await compressImage(editFile)
         const ext = isGif ? 'gif' : 'jpg'
         const contentType = isGif ? 'image/gif' : 'image/jpeg'
         const fileName = `${Date.now()}-${editName.toLowerCase().replace(/\s+/g, '-')}.${ext}`

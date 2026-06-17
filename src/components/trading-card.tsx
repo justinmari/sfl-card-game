@@ -181,8 +181,9 @@ export default function TradingCard({
   }, [])
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
-  const isGif = card.image_url?.toLowerCase().endsWith('.gif') ?? false
-  const showAnimated = isGif && (isHovered || animated)
+  // gif and (animated) webp both freeze to a poster and play on hover.
+  const isAnimated = /\.(gif|webp)(\?|$)/i.test(card.image_url ?? '')
+  const showAnimated = isAnimated && (isHovered || animated)
 
   return (
     <div
@@ -222,7 +223,7 @@ export default function TradingCard({
         {/* Image */}
         <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
           {card.image_url ? (
-            isGif ? (
+            isAnimated ? (
               <GifImage
                 src={card.image_url}
                 alt={card.name}

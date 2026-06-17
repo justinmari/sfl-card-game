@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compress-image'
+import { compressGif } from '@/lib/compress-gif'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
 
@@ -53,7 +54,7 @@ export default function SuggestForm({
 
       if (file) {
         const isGif = file.type === 'image/gif'
-        const blob = isGif ? file : await compressImage(file, 400, 400, 0.85)
+        const blob = isGif ? await compressGif(file) : await compressImage(file, 400, 400, 0.85)
         const ext = isGif ? 'gif' : 'jpg'
         const contentType = isGif ? 'image/gif' : 'image/jpeg'
         const fileName = `suggestions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
