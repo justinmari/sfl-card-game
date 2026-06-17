@@ -19,7 +19,12 @@ type Player = {
   avatar_url: string | null
   role: string
   top_cards: Card[]
+  unique_cards?: number
+  joined_at?: string | null
 }
+
+const fmtJoined = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null
 
 export default function PlayerGrid({ players, currentUserId }: { players: Player[]; currentUserId: string }) {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
@@ -43,18 +48,24 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800 border-2 border-zinc-700 text-2xl text-zinc-500">?</div>
               )}
-              <div>
-                <h2 className="text-xl font-bold">
-                  {selectedPlayer.full_name}
-                  {selectedPlayer.id === currentUserId && <span className="ml-2 text-sm text-zinc-500">(You)</span>}
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-2 text-xl font-bold">
+                  <span className="truncate">{selectedPlayer.full_name}</span>
+                  {selectedPlayer.id === currentUserId && <span className="text-sm font-normal text-zinc-500">(You)</span>}
+                  {selectedPlayer.role === 'admin' && (
+                    <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[10px] font-semibold text-white">Admin</span>
+                  )}
                 </h2>
-                {selectedPlayer.role === 'admin' && (
-                  <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-white text-[10px] font-medium">Admin</span>
-                )}
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-zinc-400">
+                  <span>{selectedPlayer.unique_cards ?? 0} cards</span>
+                  {fmtJoined(selectedPlayer.joined_at) && (
+                    <><span className="text-zinc-600">·</span><span>Joined {fmtJoined(selectedPlayer.joined_at)}</span></>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-center">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[0, 1, 2, 3].map((i) => {
                 const card = selectedPlayer.top_cards[i]
                 return card ? (
@@ -102,14 +113,20 @@ export default function PlayerGrid({ players, currentUserId }: { players: Player
               ) : (
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 border-2 border-zinc-700 text-xl text-zinc-500">?</div>
               )}
-              <div>
-                <p className="text-base font-semibold">
-                  {player.full_name}
-                  {player.id === currentUserId && <span className="ml-1 text-sm text-zinc-500">(You)</span>}
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-base font-semibold">
+                  <span className="truncate">{player.full_name}</span>
+                  {player.id === currentUserId && <span className="text-sm font-normal text-zinc-500">(You)</span>}
+                  {player.role === 'admin' && (
+                    <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">Admin</span>
+                  )}
                 </p>
-                {player.role === 'admin' && (
-                  <span className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-white text-[9px] font-medium">Admin</span>
-                )}
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
+                  <span>{player.unique_cards ?? 0} cards</span>
+                  {fmtJoined(player.joined_at) && (
+                    <><span className="text-zinc-700">·</span><span>Joined {fmtJoined(player.joined_at)}</span></>
+                  )}
+                </div>
               </div>
             </div>
 
