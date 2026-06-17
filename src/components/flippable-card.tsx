@@ -18,6 +18,8 @@ type CardData = {
   description?: string | null
   image_url: string | null
   rarity: string
+  creature_name?: string | null
+  typeNames?: string[]
 }
 
 export default function FlippableCard({ card, size = 'sm', forceFlip = false }: { card: CardData; size?: 'sm' | 'md' | 'lg'; forceFlip?: boolean }) {

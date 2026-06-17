@@ -27,6 +27,7 @@ type PulledCard = {
   image_url: string | null
   description: string | null
   creature_name: string | null
+  typeNames?: string[]
   is_new?: boolean
 }
 

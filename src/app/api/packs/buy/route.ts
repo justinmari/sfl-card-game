@@ -23,5 +23,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
+  // Attach each pulled card's type names so the reveal cards show Type tags,
+  // matching the collection. (buy_pack doesn't return types.)
+  const result = data as { cards?: { id: string; typeNames?: string[] }[] } | null
+  if (result?.cards?.length) {
+    const ids = [...new Set(result.cards.map((c) => c.id))]
+    const { data: typeRows } = await supabase
+      .from('card_types')
+      .select('card_id, types(name)')
+      .in('card_id', ids)
+    const typeMap = new Map<string, string[]>()
+    for (const row of (typeRows ?? []) as unknown as { card_id: string; types: { name: string } | null }[]) {
+      if (!row.types?.name) continue
+      typeMap.set(row.card_id, [...(typeMap.get(row.card_id) ?? []), row.types.name])
+    }
+    for (const c of result.cards) c.typeNames = typeMap.get(c.id) ?? []
+  }
+
   return NextResponse.json(data)
 }
