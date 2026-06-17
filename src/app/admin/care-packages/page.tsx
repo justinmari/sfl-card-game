@@ -11,7 +11,7 @@ export default async function AdminCarePackagesPage() {
   const supabase = await createClient()
   const { data: players } = await supabase
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, avatar_url, gruten')
     .neq('role', 'admin')
     .order('full_name')
 

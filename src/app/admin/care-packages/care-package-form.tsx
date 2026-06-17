@@ -4,25 +4,29 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const PRESETS = [500, 1000, 2000]
+const ALL = '__all__'
 
-type Player = { id: string; full_name: string | null }
+type Player = { id: string; full_name: string | null; avatar_url: string | null; gruten: number }
 
 export default function CarePackageForm({ players }: { players: Player[] }) {
   const [amount, setAmount] = useState(500)
-  const [target, setTarget] = useState('') // '' = all players
+  const [target, setTarget] = useState('') // '' = nothing chosen yet (must pick)
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const targetName = target ? players.find((p) => p.id === target)?.full_name || 'player' : 'all players'
+  const selectedPlayer = target && target !== ALL ? players.find((p) => p.id === target) ?? null : null
+  const targetName = target === ALL ? 'all players' : selectedPlayer?.full_name || 'player'
+  const canSend = target !== '' // must explicitly choose a recipient
 
   const send = async () => {
+    if (!canSend) return
     setSending(true)
     setError(null)
     setResult(null)
     const supabase = createClient()
     const { data, error: rpcError } = await supabase.rpc('admin_send_care_package', {
-      p_user_id: target || null,
+      p_user_id: target === ALL ? null : target,
       p_amount: amount,
     })
     if (rpcError) {
@@ -62,16 +66,33 @@ export default function CarePackageForm({ players }: { players: Player[] }) {
         value={target}
         onChange={(e) => setTarget(e.target.value)}
         aria-label="Recipient"
-        className="input-arcade mb-5 w-full px-4 py-2.5 text-sm"
+        className="input-arcade mb-3 w-full px-4 py-2.5 text-sm"
       >
-        <option value="">All players</option>
+        <option value="">Select a player…</option>
+        <option value={ALL}>All players</option>
         {players.map((p) => (
           <option key={p.id} value={p.id}>{p.full_name || 'Unknown'}</option>
         ))}
       </select>
 
-      <button onClick={send} disabled={sending} className="btn-arcade w-full rounded-lg px-6 py-3 text-sm">
-        {sending ? 'Sending...' : `Send ${amount.toLocaleString()} G to ${targetName}`}
+      {/* Confirm exactly who the gift is going to. */}
+      {selectedPlayer && (
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
+          {selectedPlayer.avatar_url ? (
+            <img src={selectedPlayer.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-500">?</div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-white">{selectedPlayer.full_name || 'Unknown'}</p>
+            <p className="text-xs text-amber-400">{selectedPlayer.gruten === -1 ? 'Infinite' : selectedPlayer.gruten.toLocaleString()} G</p>
+          </div>
+        </div>
+      )}
+      {!selectedPlayer && <div className="mb-5" />}
+
+      <button onClick={send} disabled={sending || !canSend} className="btn-arcade w-full rounded-lg px-6 py-3 text-sm disabled:opacity-40">
+        {sending ? 'Sending...' : !canSend ? 'Select a recipient' : `Send ${amount.toLocaleString()} G to ${targetName}`}
       </button>
 
       {result && <p className="mt-3 text-center text-sm text-green-400">📦 {result}</p>}
