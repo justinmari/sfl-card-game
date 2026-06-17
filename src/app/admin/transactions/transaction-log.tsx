@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+type Player = { id: string; full_name: string | null }
 
 type Txn = {
   id: string
@@ -24,38 +26,40 @@ const TYPE_LABEL: Record<string, string> = {
   care_package: 'Care package',
 }
 
-export default function TransactionLog() {
+export default function TransactionLog({ players = [] }: { players?: Player[] }) {
   const [page, setPage] = useState(0)
   const [rows, setRows] = useState<Txn[]>([])
-  const [names, setNames] = useState<Record<string, string>>({})
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [filterType, setFilterType] = useState<string>('')
+  const [filterUser, setFilterUser] = useState<string>('')
+
+  // id → display name, from the players list (transactions have no FK to profiles).
+  const names = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const p of players) map[p.id] = p.full_name || p.id.slice(0, 8)
+    return map
+  }, [players])
 
   const load = useCallback(async (p: number) => {
     setLoading(true)
     const supabase = createClient()
     const from = p * PAGE_SIZE
-    const { data, count } = await supabase
+    let query = supabase
       .from('gruten_transactions')
       .select('id, user_id, type, amount, balance_after, metadata, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(from, from + PAGE_SIZE - 1)
+    if (filterType) query = query.eq('type', filterType)
+    if (filterUser) query = query.eq('user_id', filterUser)
+    const { data, count } = await query.range(from, from + PAGE_SIZE - 1)
 
-    const txns = (data || []) as Txn[]
-    setRows(txns)
+    setRows((data || []) as Txn[])
     setTotal(count ?? 0)
-
-    // Resolve user names for this page (gruten_transactions has no FK to profiles).
-    const ids = [...new Set(txns.map((t) => t.user_id))]
-    if (ids.length > 0) {
-      const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', ids)
-      const map: Record<string, string> = {}
-      for (const pr of profs || []) map[pr.id] = pr.full_name || pr.id.slice(0, 8)
-      setNames(map)
-    }
     setLoading(false)
-  }, [])
+  }, [filterType, filterUser])
 
+  // Reset to the first page whenever a filter changes.
+  useEffect(() => { setPage(0) }, [filterType, filterUser])
   useEffect(() => { load(page) }, [page, load])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -66,6 +70,39 @@ export default function TransactionLog() {
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Gruten Transactions</h2>
         <span className="text-sm text-zinc-500">{total.toLocaleString()} total</span>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Filter by player"
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+        >
+          <option value="">All players</option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id}>{p.full_name || p.id.slice(0, 8)}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter by type"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
+        >
+          <option value="">All types</option>
+          {Object.entries(TYPE_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        {(filterType || filterUser) && (
+          <button
+            onClick={() => { setFilterType(''); setFilterUser('') }}
+            className="text-xs text-zinc-400 transition-colors hover:text-white"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       <div className="surface overflow-hidden rounded-xl">

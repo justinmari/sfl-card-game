@@ -21,6 +21,34 @@ test.describe('Admin Gruten Logs', () => {
     await page.waitForTimeout(2000)
     expect(page.url()).not.toContain('/admin/transactions')
   })
+
+  test('can filter the log by player and by type', async ({ page }) => {
+    // Seed two transactions of different types for the test player.
+    const usersRes = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    const player = ((await usersRes.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com')
+    await fetch(`${LOCAL}/rest/v1/gruten_transactions?metadata->>marker=eq.e2e-filter`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/gruten_transactions`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify([
+        { user_id: player.id, type: 'pack_purchase', amount: -100, balance_after: 900, metadata: { marker: 'e2e-filter' } },
+        { user_id: player.id, type: 'admin_grant', amount: 500, balance_after: 1400, metadata: { marker: 'e2e-filter' } },
+      ]),
+    })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/transactions')
+    const log = page.getByTestId('transaction-log')
+    await expect(log).toBeVisible({ timeout: 10000 })
+    await expect(page.getByLabel('Filter by player')).toBeVisible()
+
+    const typeFilter = page.getByLabel('Filter by type')
+    await expect(typeFilter).toBeVisible()
+    await typeFilter.selectOption('pack_purchase')
+    await expect(log.locator('[data-testid="txn-row"]').first()).toContainText('Pack purchase')
+    await expect(log.locator('[data-testid="txn-row"]', { hasText: 'Admin grant' })).toHaveCount(0)
+
+    await fetch(`${LOCAL}/rest/v1/gruten_transactions?metadata->>marker=eq.e2e-filter`, { method: 'DELETE', headers: svc })
+  })
 })
 
 test.describe('Card suggestion notification badge', () => {
