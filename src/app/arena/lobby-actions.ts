@@ -155,56 +155,60 @@ export async function leaveLobby(lobbyId: string) {
   return { left: true }
 }
 
+type Sb = Awaited<ReturnType<typeof createClient>>
+type ValidatedDeckCard = { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds: string[] }
+
+// Resolve a player's arena deck authoritatively from the DB: requires the saved
+// deck at `slot` to have EXACTLY 5 cards, all owned by the player. Returns the
+// server-built card list (never trusting any client-supplied card data) or an
+// error. Used both when readying up and again at session start so a forged
+// arena_lobby_players.deck_cards row can't sneak in unowned/over-powered cards.
+async function resolveArenaDeck(supabase: Sb, userId: string, deckSlot: number | null | undefined): Promise<{ deck: ValidatedDeckCard[] } | { error: string }> {
+  if (deckSlot == null) return { error: 'No deck selected' }
+  const { data: deck } = await supabase.from('decks').select('card_ids').eq('user_id', userId).eq('slot', deckSlot).single()
+  const cardIds = (deck?.card_ids as string[] | undefined) ?? []
+  if (cardIds.length !== 5) return { error: 'Deck must have exactly 5 cards' }
+
+  const { data: cards } = await supabase
+    .from('cards')
+    .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
+    .in('id', cardIds)
+  if (!cards || cards.length !== 5) return { error: 'Invalid deck' }
+
+  const { data: owned } = await supabase
+    .from('user_cards')
+    .select('card_id')
+    .eq('user_id', userId)
+    .in('card_id', cardIds)
+    .gt('count', 0)
+  const ownedIds = new Set((owned || []).map((o) => o.card_id))
+  if (!cardIds.every((id) => ownedIds.has(id))) return { error: "Deck contains cards you don't own" }
+
+  const deckCards: ValidatedDeckCard[] = cards.map((c) => {
+    const card = c as unknown as {
+      id: string; name: string; image_url: string | null; rarity: string
+      creatures: { name: string } | null; card_skills: { skill_id: string }[]
+    }
+    return {
+      id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
+      creature_name: card.creatures?.name || null,
+      dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
+    }
+  })
+  return { deck: deckCards }
+}
+
 // Toggle ready state
 export async function toggleReady(lobbyId: string, ready: boolean, deckSlot?: number, deckCards?: any) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  // If readying up with a deck, validate ownership server-side
-  let validatedCards = null
+  let validatedCards: ValidatedDeckCard[] | null = null
   if (ready && deckSlot != null) {
-    // Fetch the actual deck from DB
-    const { data: deck } = await supabase
-      .from('decks')
-      .select('card_ids')
-      .eq('user_id', user.id)
-      .eq('slot', deckSlot)
-      .single()
-
-    if (!deck || !deck.card_ids || deck.card_ids.length !== 5) {
-      return { error: 'Invalid deck' }
-    }
-
-    // Fetch actual card data from DB (not trusting client)
-    const { data: cards } = await supabase
-      .from('cards')
-      .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
-      .in('id', deck.card_ids as string[])
-
-    // Verify player owns all cards
-    const { data: owned } = await supabase
-      .from('user_cards')
-      .select('card_id')
-      .eq('user_id', user.id)
-      .in('card_id', deck.card_ids as string[])
-      .gt('count', 0)
-
-    const ownedIds = new Set((owned || []).map((o) => o.card_id))
-    const allOwned = (deck.card_ids as string[]).every((id) => ownedIds.has(id))
-    if (!allOwned) return { error: 'You don\'t own all cards in this deck' }
-
-    validatedCards = (cards || []).map((c) => {
-      const card = c as unknown as {
-        id: string; name: string; image_url: string | null; rarity: string
-        creatures: { name: string } | null; card_skills: { skill_id: string }[]
-      }
-      return {
-        id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
-        creature_name: card.creatures?.name || null,
-        dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
-      }
-    })
+    const resolved = await resolveArenaDeck(supabase, user.id, deckSlot)
+    if ('error' in resolved) return { error: resolved.error }
+    validatedCards = resolved.deck
   }
 
   await supabase.from('arena_lobby_players').update({
@@ -251,10 +255,11 @@ export async function startGame(lobbyId: string) {
 
   if (lobby?.host_id !== user.id) return { error: 'Not the host' }
 
-  // Get all players with their decks
+  // Get all players (deck_cards is client-writable, so we do NOT trust it —
+  // we re-resolve each player's deck from their saved deck slot below).
   const { data: players } = await supabase
     .from('arena_lobby_players')
-    .select('user_id, user_name, avatar_url, deck_cards, is_ready')
+    .select('user_id, user_name, avatar_url, deck_slot, is_ready')
     .eq('lobby_id', lobbyId)
 
   if (!players || players.length < 2) return { error: 'Need at least 2 players' }
@@ -263,17 +268,14 @@ export async function startGame(lobbyId: string) {
   const othersReady = players.filter((p) => p.user_id !== user.id).every((p) => p.is_ready)
   if (!othersReady) return { error: 'Not all players are ready' }
 
-  // Check all have decks
-  const allHaveDecks = players.every((p) => p.deck_cards && (p.deck_cards as any[]).length === 5)
-  if (!allHaveDecks) return { error: 'Not all players have selected a deck' }
-
-  // Build session players
-  const sessionPlayers = players.map((p) => ({
-    id: p.user_id,
-    name: p.user_name,
-    avatar_url: p.avatar_url,
-    deck: p.deck_cards as any[],
-  }))
+  // Re-validate every player's deck server-side (exactly 5 owned cards) and
+  // rebuild the authoritative card data — closes the forged-deck exploit.
+  const sessionPlayers = []
+  for (const p of players) {
+    const resolved = await resolveArenaDeck(supabase, p.user_id, p.deck_slot)
+    if ('error' in resolved) return { error: `${p.user_name}'s deck is invalid: ${resolved.error}` }
+    sessionPlayers.push({ id: p.user_id, name: p.user_name, avatar_url: p.avatar_url, deck: resolved.deck })
+  }
 
   const hp: Record<string, number> = {}
   sessionPlayers.forEach((p) => { hp[p.id] = 10 })

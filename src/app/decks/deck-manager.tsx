@@ -215,14 +215,18 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleSave}
-                disabled={saving}
-                className="btn-arcade rounded-lg px-6 py-2 text-sm"
+                disabled={saving || editCardIds.length !== 5}
+                title={editCardIds.length !== 5 ? 'Decks must have exactly 5 cards' : undefined}
+                className="btn-arcade rounded-lg px-6 py-2 text-sm disabled:opacity-40"
               >
                 {saving ? 'Saving...' : 'Save Deck'}
               </button>
+              {editCardIds.length !== 5 && (
+                <span className="text-xs text-amber-400">Pick exactly 5 cards ({editCardIds.length}/5)</span>
+              )}
               <button
                 onClick={cancelEdit}
                 className="rounded-lg border border-white/10 px-6 py-2 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
