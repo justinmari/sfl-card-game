@@ -245,7 +245,7 @@ export default function CollectionGrid({
             className="flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <TradingCard card={selected.card} size="lg" count={selected.count} animated />
+            <TradingCard card={selected.card} size="lg" count={selected.count} />
             <div className="mt-4 flex items-center gap-4 text-sm text-zinc-400">
               <span>{rarityLabel[selected.card.rarity] || selected.card.rarity}</span>
               <span className={`flex gap-1 ${rarityStarColor[selected.card.rarity]}`}>

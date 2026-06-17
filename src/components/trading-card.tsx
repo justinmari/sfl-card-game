@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import GifImage from './gif-image'
 
 const rarityColors: Record<string, string> = {
   common: 'border-zinc-600',
@@ -139,7 +138,6 @@ export default function TradingCard({
   onClick,
   className = '',
   children,
-  animated = false,
   testId,
 }: {
   card: CardData
@@ -148,7 +146,6 @@ export default function TradingCard({
   onClick?: () => void
   className?: string
   children?: React.ReactNode
-  animated?: boolean
   testId?: string
 }) {
   const s = sizeClasses[size]
@@ -181,9 +178,6 @@ export default function TradingCard({
   }, [])
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
-  // gif and (animated) webp both freeze to a poster and play on hover.
-  const isAnimated = /\.(gif|webp)(\?|$)/i.test(card.image_url ?? '')
-  const showAnimated = isAnimated && (isHovered || animated)
 
   return (
     <div
@@ -223,20 +217,14 @@ export default function TradingCard({
         {/* Image */}
         <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
           {card.image_url ? (
-            isAnimated ? (
-              <GifImage
-                src={card.image_url}
-                alt={card.name}
-                className="aspect-[5/6] w-full object-cover block"
-                animate={showAnimated}
-              />
-            ) : (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                className="aspect-[5/6] w-full object-cover block"
-              />
-            )
+            // Plain <img>: static cards stay static, animated WebP/GIF autoplay
+            // natively (GPU-cheap). No canvas/poster work — that previously
+            // crashed mobile on pack reveals.
+            <img
+              src={card.image_url}
+              alt={card.name}
+              className="aspect-[5/6] w-full object-cover block"
+            />
           ) : (
             <div className="aspect-[5/6] w-full flex items-center justify-center bg-zinc-800">
               <span className="text-3xl opacity-30">🃏</span>
