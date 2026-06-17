@@ -54,12 +54,16 @@ async function computeHpFromRounds(supabase: Awaited<ReturnType<typeof createCli
           // Legacy fallback for rounds computed before hpSnapshots
           for (const fo of match.faceOffs) {
             if (result.flags?.healInstead) {
-              hp[match.player1Id] = Math.min(10, (hp[match.player1Id] ?? 0) + fo.damage1)
-              hp[match.player2Id] = Math.min(10, (hp[match.player2Id] ?? 0) + fo.damage2)
+              hp[match.player1Id] = (hp[match.player1Id] ?? 0) + fo.damage1
+              hp[match.player2Id] = (hp[match.player2Id] ?? 0) + fo.damage2
             } else {
-              hp[match.player1Id] = Math.max(0, (hp[match.player1Id] ?? 0) - fo.damage1)
-              hp[match.player2Id] = Math.max(0, (hp[match.player2Id] ?? 0) - fo.damage2)
+              hp[match.player1Id] = (hp[match.player1Id] ?? 0) - fo.damage1
+              hp[match.player2Id] = (hp[match.player2Id] ?? 0) - fo.damage2
             }
+            hp[match.player1Id] += fo.heal1 ?? 0
+            hp[match.player2Id] += fo.heal2 ?? 0
+            hp[match.player1Id] = Math.max(0, Math.min(10, hp[match.player1Id]))
+            hp[match.player2Id] = Math.max(0, Math.min(10, hp[match.player2Id]))
             if (hp[match.player1Id] <= 0 || hp[match.player2Id] <= 0) break
           }
         }

@@ -29,6 +29,11 @@ export const FX_DOUBLE_TOTALS = makeEffect('double-totals', 'Double Totals', 'mu
 export const FX_DOUBLE_DAMAGE = makeEffect('double-damage', 'Double Damage', 'multiply_damage', { factor: 2 })
 export const FX_FLAT_DAMAGE_3 = makeEffect('flat-damage-3', 'Flat Damage 3', 'flat_damage', { value: 3 })
 export const FX_REVERSE_DAMAGE = makeEffect('reverse-damage', 'Reverse Damage', 'reverse_damage')
+export const FX_LIFESTEAL = makeEffect('lifesteal', 'Lifesteal', 'lifesteal', { mode: 'flat', amount: 1, chance: 100 }, ['heal'])
+
+// Drowsy: a penalty die from -1 to 0. Bind with scope 'non_synergy_cards' +
+// target 'everyone' so it saps every card that lacks the synergy's type.
+export const FX_DROWSY = makeEffect('drowsy', 'Drowsy', 'extra_dice', { min: -1, max: 0 }, ['extraDice'])
 
 export const FX_LEVEL_POWER = makeEffect('level-power', 'Level Power', 'set_power', { value: 1 })
 export const FX_RANDOMIZE_RARITY = makeEffect('randomize-rarity', 'Randomize Rarity', 'randomize_rarity', {}, ['rarity', 'power'])

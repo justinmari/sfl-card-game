@@ -136,7 +136,7 @@ describe('extra dice', () => {
 
   it('a min keeps the extra die from rolling 0', () => {
     const fx = makeEffect('x', 'X', 'extra_dice', { min: 1, max: 1 }, ['extraDice'])
-    const out = fx.hooks.onDice!({ card1: card('rare', 'a'), card2: card('rare', 'b'), star1: 3, star2: 3, rarity1: 'rare', rarity2: 'rare', roll1: 0, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 0, effective2: 0, damage1: 0, damage2: 0, rand: () => 0 })
+    const out = fx.hooks.onDice!({ card1: card('rare', 'a'), card2: card('rare', 'b'), star1: 3, star2: 3, rarity1: 'rare', rarity2: 'rare', roll1: 0, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 0, effective2: 0, damage1: 0, damage2: 0, heal1: 0, heal2: 0, rand: () => 0 })
     expect(out.bonusRoll1).toBe(1)
   })
 })

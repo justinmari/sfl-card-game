@@ -18,7 +18,7 @@ type Synergy = {
 type TypeOption = { id: string; name: string }
 type EffectOption = { id: string; key: string; name: string; op: string }
 
-const SCOPES = ['synergy_cards', 'own', 'matchup', 'arena']
+const SCOPES = ['synergy_cards', 'non_synergy_cards', 'own', 'matchup', 'arena']
 const TARGETS = ['allies', 'enemies', 'everyone']
 // Friendlier labels — the stored values stay allies/enemies/everyone. Arena is a
 // free-for-all (no teams), so "allies" really just means the synergy owner's own

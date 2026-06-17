@@ -33,11 +33,11 @@ const KIND_META: Record<EffectKind, { emoji: string; tint: string; glow: string;
 }
 
 // Which face-off phase each changed field becomes visible at.
-const FIELD_PHASE: Record<string, Phase> = { star: 'power', rarity: 'power', roll: 'rolling', bonusRoll: 'rolling', effective: 'merge', damage: 'result' }
+const FIELD_PHASE: Record<string, Phase> = { star: 'power', rarity: 'power', roll: 'rolling', bonusRoll: 'rolling', effective: 'merge', damage: 'result', heal: 'result' }
 
 // Each changed field maps directly to one effect kind. (Rarity and power are
 // now distinct fields, so there's no ambiguity to resolve.)
-const FIELD_KIND: Record<string, EffectKind> = { star: 'power', rarity: 'rarity', roll: 'dice', bonusRoll: 'extraDice', effective: 'total', damage: 'damage' }
+const FIELD_KIND: Record<string, EffectKind> = { star: 'power', rarity: 'rarity', roll: 'dice', bonusRoll: 'extraDice', effective: 'total', damage: 'damage', heal: 'heal' }
 
 // A number that counts from `from` to `to` when it mounts — used to show a
 // total/power/dice/damage value growing or shrinking as a skill applies.

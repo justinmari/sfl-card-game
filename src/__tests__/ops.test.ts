@@ -9,7 +9,7 @@ const baseState = (): FaceOffState => ({
   card1: { id: 'a', name: 'A', image_url: null, rarity: 'common', creature_name: null },
   card2: { id: 'b', name: 'B', image_url: null, rarity: 'rare', creature_name: null },
   star1: 1, star2: 3, rarity1: 'common', rarity2: 'rare',
-  roll1: 0, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 0, effective2: 0, damage1: 0, damage2: 0,
+  roll1: 0, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 0, effective2: 0, damage1: 0, damage2: 0, heal1: 0, heal2: 0,
   rand: () => 0.5,
 })
 

@@ -10,9 +10,10 @@ export type DieInfo = {
   isBase: boolean
 }
 
-// Parse the upper bound out of a "0-10" style range label (fallback 6).
+// Parse the upper bound out of a "0-10" or "-1 to 0" style range label
+// (fallback 6). Handles signed bounds for penalty dice.
 export const parseRangeMax = (r: string): number => {
-  const m = r.match(/(\d+)\s*-\s*(\d+)/)
+  const m = r.match(/(-?\d+)\s*(?:to|-)\s*(-?\d+)/)
   return m ? Number(m[2]) : 6
 }
 

@@ -12,12 +12,14 @@ describe('battle_effects (DB) → runtime effects', () => {
     rows = await serviceSelect('battle_effects', 'select=key,name,op,params,kind,is_active&order=key')
   })
 
-  it('seeds the 14 built-in effects', () => {
-    expect(rows.length).toBe(14)
+  it('seeds the 16 built-in effects', () => {
+    expect(rows.length).toBe(16)
     const keys = rows.map((r) => r.key)
     expect(keys).toContain('ascend-rarity')
     expect(keys).toContain('ascend-power')
     expect(keys).toContain('redeal-all')
+    expect(keys).toContain('lifesteal')
+    expect(keys).toContain('drowsy')
   })
 
   it('every seeded op exists in OP_REGISTRY', () => {
@@ -45,7 +47,7 @@ describe('battle_effects (DB) → runtime effects', () => {
       card1: { id: 'a', name: 'A', image_url: null, rarity: 'rare', creature_name: null },
       card2: { id: 'b', name: 'B', image_url: null, rarity: 'rare', creature_name: null },
       star1: 3, star2: 3, rarity1: 'rare', rarity2: 'rare',
-      roll1: 1, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 4, effective2: 3, damage1: 0, damage2: 0, rand: () => 0,
+      roll1: 1, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 4, effective2: 3, damage1: 0, damage2: 0, heal1: 0, heal2: 0, rand: () => 0,
     })
     expect(out.effective1).toBe(8)
     expect(out.effective2).toBe(6)

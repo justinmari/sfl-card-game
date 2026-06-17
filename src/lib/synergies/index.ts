@@ -44,7 +44,7 @@ export function computeActiveSynergies(players: SynergyPlayer[], defs: SynergyDe
           ...binding.effect,
           scope: binding.scope,
           target: binding.target,
-          requiredTypes: binding.scope === 'synergy_cards' ? requiredTypes : undefined,
+          requiredTypes: binding.scope === 'synergy_cards' || binding.scope === 'non_synergy_cards' ? requiredTypes : undefined,
         }
         out.push({
           skill: {

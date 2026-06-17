@@ -87,3 +87,23 @@ SELECT s.id, be.id, m.ordinal FROM (VALUES
 ) AS m(skill_id, effect_key, ordinal)
 JOIN skills s ON s.id=m.skill_id JOIN battle_effects be ON be.key=m.effect_key
 ON CONFLICT (skill_id, battle_effect_id) DO NOTHING;
+
+-- Demo synergies for local dev / e2e (production uses the real Entity & Schlept
+-- types). 'Vampiric' = Fire cards lifesteal 1; 'Drowsy' = non-Ice cards roll a
+-- -1..0 penalty die for both players.
+INSERT INTO synergies (id, name, description) VALUES
+  ('aaaa0001-0000-0000-0000-000000000000', 'Vampiric', '2 Fire cards: Fire cards heal you 1 when they deal damage'),
+  ('aaaa0002-0000-0000-0000-000000000000', 'Drowsy',   '2 Ice cards: every non-Ice card (both players) rolls a -1..0 die')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO synergy_requirements (synergy_id, type_id, count) VALUES
+  ('aaaa0001-0000-0000-0000-000000000000', 'ffff0001-0000-0000-0000-000000000000', 2), -- Fire
+  ('aaaa0002-0000-0000-0000-000000000000', 'ffff0002-0000-0000-0000-000000000000', 2)  -- Ice
+ON CONFLICT (synergy_id, type_id) DO NOTHING;
+
+INSERT INTO synergy_effects (synergy_id, battle_effect_id, scope, target, ordinal)
+SELECT s.id, be.id, m.scope, m.target, m.ordinal FROM (VALUES
+  ('aaaa0001-0000-0000-0000-000000000000', 'lifesteal', 'synergy_cards',     'allies',   0),
+  ('aaaa0002-0000-0000-0000-000000000000', 'drowsy',    'non_synergy_cards', 'everyone', 0)
+) AS m(synergy_id, effect_key, scope, target, ordinal)
+JOIN synergies s ON s.id=m.synergy_id::uuid JOIN battle_effects be ON be.key=m.effect_key;

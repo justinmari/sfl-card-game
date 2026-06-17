@@ -65,12 +65,18 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
     },
   },
   extra_dice: {
+    // Bounds may be negative — a die from -1 to 0 is a "penalty die" (e.g. Drowsy).
     id: 'extra_dice', label: 'Roll an extra die', phase: 'faceoff', defaultKind: ['extraDice'],
     params: [
-      { key: 'min', type: 'number', label: 'Die min', default: 0, min: 0, max: 12 },
-      { key: 'max', type: 'number', label: 'Die max', default: 2, min: 1, max: 12 },
+      { key: 'min', type: 'number', label: 'Die min', default: 0, min: -12, max: 12 },
+      { key: 'max', type: 'number', label: 'Die max', default: 2, min: -12, max: 12 },
     ],
-    rangeLabel: (p) => `${num(p, 'min', 0)}-${num(p, 'max', 2)}`,
+    rangeLabel: (p) => {
+      const mn = num(p, 'min', 0)
+      const mx = Math.max(mn, num(p, 'max', 2))
+      // Use an unambiguous separator when a bound is negative ("-1 to 0").
+      return mn < 0 || mx < 0 ? `${mn} to ${mx}` : `${mn}-${mx}`
+    },
     build: (p) => {
       const min = num(p, 'min', 0)
       const max = Math.max(min, num(p, 'max', 2))
@@ -130,6 +136,43 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
   reverse_damage: {
     id: 'reverse_damage', label: 'Reverse damage', phase: 'faceoff', defaultKind: ['damage'], params: [],
     build: () => ({ onDamage: (s) => ({ ...s, damage1: s.damage2, damage2: s.damage1 }) }),
+  },
+  lifesteal: {
+    // Heal the side that dealt damage this face-off. `mode` picks how much:
+    //   full    → heal equal to the damage dealt
+    //   flat    → heal a fixed `amount`
+    //   percent → heal floor(damage * amount / 100)
+    // `chance` (0-100) is the probability the heal happens at all. Bind with
+    // scope 'synergy_cards' + target 'allies' so only your own typed cards drain.
+    id: 'lifesteal', label: 'Lifesteal', phase: 'faceoff', defaultKind: ['heal'],
+    params: [
+      { key: 'mode', type: 'string', label: 'Mode (full | flat | percent)', default: 'flat' },
+      { key: 'amount', type: 'number', label: 'Flat heal / percent value', default: 1, min: 0, max: 100 },
+      { key: 'chance', type: 'number', label: 'Heal chance %', default: 100, min: 0, max: 100 },
+    ],
+    build: (p) => {
+      const mode = str(p, 'mode', 'flat')
+      const amount = num(p, 'amount', 1)
+      const chance = num(p, 'chance', 100)
+      const healFor = (dmgDealt: number, rand: () => number): number => {
+        if (dmgDealt <= 0 || chance <= 0) return 0
+        // Only burn an RNG draw for a real coin-flip, so a 100%-chance lifesteal
+        // leaves the dice stream (and thus all later face-offs) untouched.
+        if (chance < 100 && rand() * 100 >= chance) return 0
+        if (mode === 'full') return dmgDealt
+        if (mode === 'percent') return Math.floor((dmgDealt * amount) / 100)
+        return amount
+      }
+      return {
+        onDamage: (s) => ({
+          // side1 dealt damage when damage2 > 0; side2 when damage1 > 0. At most
+          // one side deals damage per face-off, so at most one chance roll fires.
+          ...s,
+          heal1: s.heal1 + healFor(s.damage2, s.rand),
+          heal2: s.heal2 + healFor(s.damage1, s.rand),
+        }),
+      }
+    },
   },
 
   // --- Power / rarity ---

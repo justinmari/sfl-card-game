@@ -29,7 +29,7 @@ export type BattlePlayer = {
 // field carries string values (the others are numeric).
 export type ActivationChange = {
   side: 1 | 2
-  field: 'star' | 'rarity' | 'roll' | 'bonusRoll' | 'effective' | 'damage'
+  field: 'star' | 'rarity' | 'roll' | 'bonusRoll' | 'effective' | 'damage' | 'heal'
   before: number | string
   after: number | string
 }
@@ -53,6 +53,10 @@ export type FaceOff = {
   card2: BattleCard
   damage1: number
   damage2: number
+  // HP restored to each side this face-off (lifesteal etc). Optional for
+  // backward-compat with rounds serialized before healing existed.
+  heal1?: number
+  heal2?: number
   // Per-skill before/after trace (deterministic; populated by resolveFaceOff).
   activations?: SkillActivation[]
 }
@@ -150,18 +154,20 @@ function resolveBaseDamage(state: FaceOffState): FaceOffState {
   }
 }
 
-const ACTIVATION_FIELDS: [ActivationChange['field'], 'star1' | 'rarity1' | 'roll1' | 'bonusRoll1' | 'effective1' | 'damage1', 'star2' | 'rarity2' | 'roll2' | 'bonusRoll2' | 'effective2' | 'damage2'][] = [
+const ACTIVATION_FIELDS: [ActivationChange['field'], 'star1' | 'rarity1' | 'roll1' | 'bonusRoll1' | 'effective1' | 'damage1' | 'heal1', 'star2' | 'rarity2' | 'roll2' | 'bonusRoll2' | 'effective2' | 'damage2' | 'heal2'][] = [
   ['star', 'star1', 'star2'],
   ['rarity', 'rarity1', 'rarity2'],
   ['roll', 'roll1', 'roll2'],
   ['bonusRoll', 'bonusRoll1', 'bonusRoll2'],
   ['effective', 'effective1', 'effective2'],
   ['damage', 'damage1', 'damage2'],
+  ['heal', 'heal1', 'heal2'],
 ]
 
 // Which sides an effect's changes are kept for. Skills (no scope) hit both.
-// Synergy effects are scoped to owner/opponent/everyone, and 'synergy_cards'
-// further restricts to cards carrying one of the synergy's required types.
+// Synergy effects are scoped to owner/opponent/everyone; 'synergy_cards'
+// further restricts to cards carrying one of the synergy's required types, and
+// 'non_synergy_cards' restricts to the cards that DON'T carry any of them.
 function effectAffects(eff: ActiveSkill['skill']['effects'][number], ownerSide: 1 | 2 | undefined, state: FaceOffState): { s1: boolean; s2: boolean } {
   if (!eff.scope) return { s1: true, s2: true }
   const owner = ownerSide ?? 1
@@ -171,22 +177,26 @@ function effectAffects(eff: ActiveSkill['skill']['effects'][number], ownerSide: 
   if (eff.scope === 'arena' || eff.scope === 'matchup') {
     sides = target === 'allies' ? new Set([owner]) : target === 'enemies' ? new Set([opp]) : new Set([1, 2])
   } else {
-    sides = target === 'enemies' ? new Set([opp]) : new Set([owner])
+    sides = target === 'enemies' ? new Set([opp]) : target === 'everyone' ? new Set([1, 2]) : new Set([owner])
   }
   let s1 = sides.has(1)
   let s2 = sides.has(2)
-  if (eff.scope === 'synergy_cards' && eff.requiredTypes && eff.requiredTypes.length > 0) {
+  const cardScoped = eff.scope === 'synergy_cards' || eff.scope === 'non_synergy_cards'
+  if (cardScoped && eff.requiredTypes && eff.requiredTypes.length > 0) {
+    // synergy_cards keeps cards WITH a required type; non_synergy_cards keeps
+    // the cards WITHOUT any of them.
+    const wantHasType = eff.scope === 'synergy_cards'
     const has = (c: BattleCard) => (c.types ?? []).some((t) => eff.requiredTypes!.includes(t))
-    if (s1) s1 = has(state.card1)
-    if (s2) s2 = has(state.card2)
+    if (s1) s1 = has(state.card1) === wantHasType
+    if (s2) s2 = has(state.card2) === wantHasType
   }
   return { s1, s2 }
 }
 
 function restoreSide(after: FaceOffState, before: FaceOffState, side: 1 | 2): FaceOffState {
   return side === 1
-    ? { ...after, star1: before.star1, rarity1: before.rarity1, roll1: before.roll1, bonusRoll1: before.bonusRoll1, effective1: before.effective1, damage1: before.damage1 }
-    : { ...after, star2: before.star2, rarity2: before.rarity2, roll2: before.roll2, bonusRoll2: before.bonusRoll2, effective2: before.effective2, damage2: before.damage2 }
+    ? { ...after, star1: before.star1, rarity1: before.rarity1, roll1: before.roll1, bonusRoll1: before.bonusRoll1, effective1: before.effective1, damage1: before.damage1, heal1: before.heal1 }
+    : { ...after, star2: before.star2, rarity2: before.rarity2, roll2: before.roll2, bonusRoll2: before.bonusRoll2, effective2: before.effective2, damage2: before.damage2, heal2: before.heal2 }
 }
 
 function applyHooks(skills: ActiveSkill[] | undefined, phase: ActivationPhase, state: FaceOffState, trace?: SkillActivation[]): FaceOffState {
@@ -238,6 +248,7 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     bonusRoll1: 0, bonusRoll2: 0,
     effective1: 0, effective2: 0,
     damage1: 0, damage2: 0,
+    heal1: 0, heal2: 0,
     rand,
   }
 
@@ -272,6 +283,7 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     bonusRoll1: state.bonusRoll1, bonusRoll2: state.bonusRoll2,
     effective1: state.effective1, effective2: state.effective2,
     damage1: state.damage1, damage2: state.damage2,
+    heal1: state.heal1, heal2: state.heal2,
     ...(activations.length > 0 ? { activations } : {}),
   }
 }
@@ -393,12 +405,17 @@ export function precomputeRound(
 
     for (const fo of faceOffs) {
       if (healInstead) {
-        hp1 = Math.min(10, hp1 + fo.damage1)
-        hp2 = Math.min(10, hp2 + fo.damage2)
+        hp1 = hp1 + fo.damage1
+        hp2 = hp2 + fo.damage2
       } else {
-        hp1 = Math.max(0, hp1 - fo.damage1)
-        hp2 = Math.max(0, hp2 - fo.damage2)
+        hp1 = hp1 - fo.damage1
+        hp2 = hp2 - fo.damage2
       }
+      // Lifesteal and other restorative effects heal on top of damage.
+      hp1 += fo.heal1 ?? 0
+      hp2 += fo.heal2 ?? 0
+      hp1 = Math.max(0, Math.min(10, hp1))
+      hp2 = Math.max(0, Math.min(10, hp2))
       hpSnapshots.push({ [id1]: hp1, [id2]: hp2 })
       if (hp1 <= 0 || hp2 <= 0) break
     }

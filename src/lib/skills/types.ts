@@ -18,6 +18,10 @@ export type FaceOffState = {
   effective2: number
   damage1: number
   damage2: number
+  // HP an effect restores to each side this face-off (e.g. lifesteal). Applied
+  // by the round loop on top of damage, then clamped to [0, 10].
+  heal1: number
+  heal2: number
   rand: () => number
 }
 
@@ -50,8 +54,10 @@ export type BattleEffectHooks = {
   onRound?: (ctx: RoundContext) => RoundContext
 }
 
-// Who a scoped (synergy) effect reaches.
-export type SynergyScope = 'synergy_cards' | 'own' | 'matchup' | 'arena'
+// Who a scoped (synergy) effect reaches. `non_synergy_cards` is the inverse of
+// `synergy_cards`: it targets the cards that DON'T carry one of the required
+// types (e.g. Drowsy hits every non-Schlept card).
+export type SynergyScope = 'synergy_cards' | 'non_synergy_cards' | 'own' | 'matchup' | 'arena'
 export type SynergyTarget = 'allies' | 'enemies' | 'everyone'
 
 // A reusable, named battle effect. Skills and synergies compose these.
