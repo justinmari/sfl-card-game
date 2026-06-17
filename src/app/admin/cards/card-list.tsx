@@ -1,14 +1,19 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { compressAnimatedToWebp } from '@/lib/compress-animated'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
-import { CompactFilterBar, useCardFilters, type SortOption, type FilterSelect } from '@/components/card-filters'
+import { CompactFilterBar, sectionize, useCardFilters, type SortOption, type FilterSelect } from '@/components/card-filters'
+import Pagination from '@/components/pagination'
 import { usePreferences } from '@/lib/preferences'
+
+const PAGE_SIZE = 24
+
+type PackFilter = { id: string; name: string; isActive: boolean; cardIds: string[] }
 
 type Creature = {
   id: string
@@ -32,13 +37,15 @@ type Card = {
   created_at: string
 }
 
-export default function CardList({ cards, creatures, types, cardsInPacks = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[] }) {
+export default function CardList({ cards, creatures, types, cardsInPacks = [], packFilters = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[]; packFilters?: PackFilter[] }) {
   const typeNameMap = useMemo(() => new Map(types.map((t) => [t.id, t.name])), [types])
   const { preferences } = usePreferences()
   const compact = preferences.compactCards
   const cardSize = compact ? 'sm' : 'md'
   const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
+  const packCardSets = useMemo(() => new Map(packFilters.map((p) => [p.id, new Set(p.cardIds)])), [packFilters])
   const [filterNotInPack, setFilterNotInPack] = useState(false)
+  const [filterPack, setFilterPack] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -61,11 +68,30 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
     if (filterCreature) result = result.filter((c) => c.creature_id === filterCreature)
     if (filterType) result = result.filter((c) => (c.card_types || []).some((ct) => ct.type_id === filterType))
     if (filterNotInPack) result = result.filter((c) => !cardsInPacksSet.has(c.id))
+    if (filterPack) { const set = packCardSets.get(filterPack); result = result.filter((c) => set?.has(c.id)) }
     return sortCards(result, sort)
-  }, [cards, search, filterRarity, filterCreature, filterType, sort, filterNotInPack])
+  }, [cards, search, filterRarity, filterCreature, filterType, sort, filterNotInPack, filterPack, packCardSets])
+
+  // Numbered pagination over the filtered list (resets to page 1 on filter change).
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [search, filterRarity, filterCreature, filterType, filterPack, filterNotInPack, sort])
+  const pageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageCards = useMemo(() => filteredCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [filteredCards, currentPage])
+  const sections = useMemo(() => sectionize(pageCards, sort, (c) => c.rarity, (c) => c.created_at), [pageCards, sort])
 
   const filterSelects = useMemo(() => {
-    const list: FilterSelect[] = [
+    const list: FilterSelect[] = []
+    if (packFilters.length > 0) {
+      list.push({
+        ariaLabel: 'Filter by pack',
+        placeholder: 'All packs',
+        value: filterPack,
+        onChange: setFilterPack,
+        options: packFilters.map((p) => ({ value: p.id, label: p.isActive ? p.name : `${p.name} (inactive)` })),
+      })
+    }
+    list.push(
       {
         ariaLabel: 'Filter by rarity',
         placeholder: 'All rarities',
@@ -73,7 +99,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
         onChange: setFilterRarity,
         options: RARITIES.map((r) => ({ value: r.value, label: r.label })),
       },
-    ]
+    )
     if (creatures.length > 0) {
       list.push({
         ariaLabel: 'Filter by creature',
@@ -93,7 +119,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
       })
     }
     return list
-  }, [creatures, types, filterRarity, filterCreature, filterType])
+  }, [creatures, types, packFilters, filterRarity, filterCreature, filterType, filterPack])
 
   const startEdit = (card: Card) => {
     setEditingId(card.id)
@@ -204,6 +230,15 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
       </div>
     )
   }
+
+  const renderCard = (card: Card) => (
+    <TradingCard key={card.id} testId="admin-card" card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size={cardSize} className="group">
+      <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
+        <button onClick={() => startEdit(card)} className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600">Edit</button>
+        <button onClick={() => handleDelete(card.id, card.image_url)} className="rounded bg-red-600 px-2 py-1 text-xs hover:bg-red-500">Delete</button>
+      </div>
+    </TradingCard>
+  )
 
   return (
     <div>
@@ -342,26 +377,25 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
         </div>
       )}
 
-      <div data-testid="admin-cards" data-compact={compact ? 'true' : 'false'} className="flex flex-wrap gap-4">
-        {filteredCards.map((card) => (
-          <TradingCard key={card.id} testId="admin-card" card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size={cardSize} className="group">
-            <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
-              <button
-                onClick={() => startEdit(card)}
-                className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(card.id, card.image_url)}
-                className="rounded bg-red-600 px-2 py-1 text-xs hover:bg-red-500"
-              >
-                Delete
-              </button>
-            </div>
-          </TradingCard>
-        ))}
+      <div data-testid="admin-cards" data-compact={compact ? 'true' : 'false'}>
+        {filteredCards.length === 0 ? (
+          <p className="py-10 text-center text-zinc-500">No cards match this filter.</p>
+        ) : sections ? (
+          <div className="space-y-8">
+            {sections.map((section) => (
+              <div key={section.label}>
+                <h3 className="font-display mb-3 flex items-center gap-2 border-b border-white/10 pb-2 text-sm font-bold uppercase tracking-wider text-zinc-300">
+                  <span className="h-3 w-1 rounded-full bg-gradient-to-b from-violet-400 to-fuchsia-500" />{section.label}
+                </h3>
+                <div className="flex flex-wrap gap-4">{section.items.map(renderCard)}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-4">{pageCards.map(renderCard)}</div>
+        )}
       </div>
+      <Pagination page={currentPage} pageCount={pageCount} onPage={setPage} />
     </div>
   )
 }

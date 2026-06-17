@@ -31,13 +31,25 @@ export default async function AdminCardsPage() {
     .select('card_id')
   const cardsInPacks = new Set((packCards || []).map((pc) => pc.card_id))
 
+  // All packs (active or not) with their card ids, for the per-pack filter.
+  const { data: packsData } = await supabase
+    .from('packs')
+    .select('id, name, is_active, pack_cards(card_id)')
+    .order('name')
+  const packFilters = (packsData || []).map((p) => ({
+    id: p.id as string,
+    name: p.name as string,
+    isActive: p.is_active as boolean,
+    cardIds: ((p.pack_cards as { card_id: string }[]) || []).map((pc) => pc.card_id),
+  }))
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <AppNavbar backHref="/dashboard" title="Manage Cards" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <CardUploadForm creatures={creatures || []} types={types || []} />
-        <CardList cards={cards || []} creatures={creatures || []} types={types || []} cardsInPacks={[...cardsInPacks] as string[]} />
+        <CardList cards={cards || []} creatures={creatures || []} types={types || []} cardsInPacks={[...cardsInPacks] as string[]} packFilters={packFilters} />
       </main>
     </div>
   )

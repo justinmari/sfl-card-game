@@ -95,4 +95,37 @@ test.describe('Admin Cards', () => {
     await page.goto('/admin/cards')
     await expect(page.getByTestId('admin-cards')).toHaveAttribute('data-compact', 'true', { timeout: 10000 })
   })
+
+  test('has a pack filter (active or not)', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/cards')
+    await expect(page.getByLabel('Filter by pack')).toBeVisible({ timeout: 10000 })
+  })
+})
+
+test.describe('Manage Cards pagination', () => {
+  const LOCAL_URL = 'http://127.0.0.1:54321'
+  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+  const headers = { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' }
+  const PREFIX = 'PgTestZZ'
+
+  // Need >24 cards (page size) for the numbered control to appear.
+  test.beforeAll(async () => {
+    await fetch(`${LOCAL_URL}/rest/v1/cards?name=like.${PREFIX}*`, { method: 'DELETE', headers })
+    const rows = Array.from({ length: 30 }, (_, i) => ({ name: `${PREFIX}-${String(i).padStart(2, '0')}`, rarity: 'common' }))
+    await fetch(`${LOCAL_URL}/rest/v1/cards`, { method: 'POST', headers, body: JSON.stringify(rows) })
+  })
+  test.afterAll(async () => {
+    await fetch(`${LOCAL_URL}/rest/v1/cards?name=like.${PREFIX}*`, { method: 'DELETE', headers })
+  })
+
+  test('shows numbered pages and navigates between them', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/cards')
+    await expect(page.getByText('Manage Cards')).toBeVisible({ timeout: 10000 })
+    const pager = page.getByTestId('pagination')
+    await expect(pager).toBeVisible({ timeout: 10000 })
+    await pager.getByRole('button', { name: '2', exact: true }).click()
+    await expect(page.getByTestId('admin-cards')).toBeVisible()
+  })
 })
