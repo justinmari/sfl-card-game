@@ -25,11 +25,11 @@ function encode(img: HTMLImageElement, width: number, height: number, quality: n
     canvas.height = height
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(img, 0, 0, width, height)
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Failed to compress image'))), 'image/jpeg', quality)
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Failed to compress image'))), 'image/webp', quality)
   })
 }
 
-// Compress a still image to JPEG, scaling down to fit the bounds, then stepping
+// Compress a still image to WebP, scaling down to fit the bounds, then stepping
 // quality (and finally dimensions) down until it lands under `targetBytes`
 // (default 1MB). Returns the best effort if it can't get under the floor.
 export async function compressImage(

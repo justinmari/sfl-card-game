@@ -49,10 +49,10 @@ export default function SetupForm() {
 
       if (file) {
         const compressed = await compressImage(file, 200, 200, 0.9)
-        const fileName = `avatars/${user.id}-${Date.now()}.jpg`
+        const fileName = `avatars/${user.id}-${Date.now()}.webp`
         const { error: uploadError } = await supabase.storage
           .from('card-images')
-          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+          .upload(fileName, compressed, { contentType: 'image/webp' })
         if (uploadError) throw uploadError
         const { data: { publicUrl } } = supabase.storage
           .from('card-images')

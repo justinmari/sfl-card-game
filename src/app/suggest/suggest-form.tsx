@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compress-image'
-import { compressGif } from '@/lib/compress-gif'
+import { compressAnimatedToWebp } from '@/lib/compress-animated'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
 
@@ -53,11 +53,10 @@ export default function SuggestForm({
       let imageUrl: string | null = null
 
       if (file) {
-        const isGif = file.type === 'image/gif'
-        const blob = isGif ? await compressGif(file) : await compressImage(file, 400, 400, 0.85)
-        const ext = isGif ? 'gif' : 'jpg'
-        const contentType = isGif ? 'image/gif' : 'image/jpeg'
-        const fileName = `suggestions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const isAnimated = file.type === 'image/gif' || file.type === 'image/webp'
+        const blob = isAnimated ? await compressAnimatedToWebp(file) : await compressImage(file, 400, 400, 0.85)
+        const contentType = 'image/webp'
+        const fileName = `suggestions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`
         const { error: uploadError } = await supabase.storage
           .from('card-images')
           .upload(fileName, blob, { contentType })

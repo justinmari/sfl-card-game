@@ -66,10 +66,10 @@ export default function PackCreateForm({ cards }: { cards: Card[] }) {
       let imageUrl: string | null = null
       if (file) {
         const compressed = await compressImage(file, 600, 800)
-        const fileName = `pack-${Date.now()}-${name.toLowerCase().replace(/\s+/g, '-')}.jpg`
+        const fileName = `pack-${Date.now()}-${name.toLowerCase().replace(/\s+/g, '-')}.webp`
         const { error: uploadError } = await supabase.storage
           .from('card-images')
-          .upload(fileName, compressed, { contentType: 'image/jpeg' })
+          .upload(fileName, compressed, { contentType: 'image/webp' })
         if (uploadError) throw uploadError
         const { data: { publicUrl } } = supabase.storage
           .from('card-images')

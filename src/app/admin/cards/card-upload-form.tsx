@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
-import { compressGif } from '@/lib/compress-gif'
+import { compressAnimatedToWebp } from '@/lib/compress-animated'
 import { useRouter } from 'next/navigation'
 import { RARITIES, rarityBadgeColors } from '@/lib/rarities'
 import { rarityColors } from '@/components/trading-card'
@@ -91,11 +91,10 @@ export default function CardUploadForm({ creatures, types }: { creatures: Creatu
         const card = pending[i]
         setProgress(i + 1)
 
-        const isGif = card.file.type === 'image/gif'
-        const uploadBlob = isGif ? await compressGif(card.file) : await compressImage(card.file)
-        const ext = isGif ? 'gif' : 'jpg'
-        const contentType = isGif ? 'image/gif' : 'image/jpeg'
-        const fileName = `${Date.now()}-${card.name.toLowerCase().replace(/\s+/g, '-')}.${ext}`
+        const isAnimated = card.file.type === 'image/gif' || card.file.type === 'image/webp'
+        const uploadBlob = isAnimated ? await compressAnimatedToWebp(card.file) : await compressImage(card.file)
+        const contentType = 'image/webp'
+        const fileName = `${Date.now()}-${card.name.toLowerCase().replace(/\s+/g, '-')}.webp`
 
         const { error: uploadError } = await supabase.storage
           .from('card-images')
