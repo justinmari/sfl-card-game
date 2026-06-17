@@ -31,6 +31,27 @@ When working on features or bug fixes, follow this workflow:
 - Test both unit and e2e before reporting a feature as complete
 - Never add `Co-Authored-By` lines to commit messages
 
+## Live admin access (Supabase secret key)
+
+Scripts that touch the **live** project (storage backfills, one-off data fixes) authenticate with the Supabase **secret key**, stored in `~/.claude/.env` as `SUPABASE_SECRET_KEY` (Supabase's current `sb_secret_…` key, equivalent to service-role).
+
+- The legacy `service_role` JWT key is **outdated/deprecated** — do not rely on it; use `SUPABASE_SECRET_KEY`.
+- Live project URL is `NEXT_PUBLIC_SUPABASE_URL` in `.env.local` (only the anon key lives there — no secret key).
+- Pass it without printing it:
+  ```bash
+  KEY=$(grep '^SUPABASE_SECRET_KEY=' ~/.claude/.env | cut -d= -f2- | tr -d '"')
+  SUPABASE_SERVICE_ROLE_KEY="$KEY" node scripts/<script>.mjs
+  ```
+- Anything against live is a production read/write — confirm with the user first.
+
+## Image uploads → WebP
+
+All uploads are compressed before storage (target: static <100KB, animated <200KB):
+- **Static images** (jpeg/png/etc.) → WebP client-side via `src/lib/compress-image.ts` (steps quality, then resolution).
+- **GIF / animated WebP** → animated WebP via the `sharp` Server Action `convertToAnimatedWebp` (`src/app/image-actions.ts`), wrapped client-side by `src/lib/compress-animated.ts`. Server Action `bodySizeLimit` is raised to 12MB in `next.config.ts`.
+- Cards play animated media (gif + webp) on hover via `GifImage`.
+- Backfill existing bucket files: `scripts/backfill-webp.mjs` — dry-run by default; `APPLY=1` applies; `ONLY=<substring>` targets specific objects.
+
 ## Local Servers / Ports
 
 Three dev servers have dedicated ports so they never collide. Keep them separate.
