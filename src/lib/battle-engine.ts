@@ -29,7 +29,7 @@ export type BattlePlayer = {
 // field carries string values (the others are numeric).
 export type ActivationChange = {
   side: 1 | 2
-  field: 'star' | 'rarity' | 'roll' | 'effective' | 'damage'
+  field: 'star' | 'rarity' | 'roll' | 'bonusRoll' | 'effective' | 'damage'
   before: number | string
   after: number | string
 }
@@ -44,6 +44,7 @@ export type SkillActivation = {
   kind: EffectKind[]
   phase: ActivationPhase
   changes: ActivationChange[]
+  activatedBy?: string // player id that activated it (skills); synergies use `synergy:` skillId
 }
 
 export type FaceOff = {
@@ -101,6 +102,8 @@ export type FaceOffDetail = FaceOff & {
   rarity2: string
   roll1: number
   roll2: number
+  bonusRoll1: number
+  bonusRoll2: number
   effective1: number
   effective2: number
 }
@@ -132,8 +135,8 @@ function resolveBaseDice(state: FaceOffState): FaceOffState {
 function resolveEffective(state: FaceOffState): FaceOffState {
   return {
     ...state,
-    effective1: state.star1 + state.roll1,
-    effective2: state.star2 + state.roll2,
+    effective1: state.star1 + state.roll1 + state.bonusRoll1,
+    effective2: state.star2 + state.roll2 + state.bonusRoll2,
   }
 }
 
@@ -146,10 +149,11 @@ function resolveBaseDamage(state: FaceOffState): FaceOffState {
   }
 }
 
-const ACTIVATION_FIELDS: [ActivationChange['field'], 'star1' | 'rarity1' | 'roll1' | 'effective1' | 'damage1', 'star2' | 'rarity2' | 'roll2' | 'effective2' | 'damage2'][] = [
+const ACTIVATION_FIELDS: [ActivationChange['field'], 'star1' | 'rarity1' | 'roll1' | 'bonusRoll1' | 'effective1' | 'damage1', 'star2' | 'rarity2' | 'roll2' | 'bonusRoll2' | 'effective2' | 'damage2'][] = [
   ['star', 'star1', 'star2'],
   ['rarity', 'rarity1', 'rarity2'],
   ['roll', 'roll1', 'roll2'],
+  ['bonusRoll', 'bonusRoll1', 'bonusRoll2'],
   ['effective', 'effective1', 'effective2'],
   ['damage', 'damage1', 'damage2'],
 ]
@@ -180,8 +184,8 @@ function effectAffects(eff: ActiveSkill['skill']['effects'][number], ownerSide: 
 
 function restoreSide(after: FaceOffState, before: FaceOffState, side: 1 | 2): FaceOffState {
   return side === 1
-    ? { ...after, star1: before.star1, rarity1: before.rarity1, roll1: before.roll1, effective1: before.effective1, damage1: before.damage1 }
-    : { ...after, star2: before.star2, rarity2: before.rarity2, roll2: before.roll2, effective2: before.effective2, damage2: before.damage2 }
+    ? { ...after, star1: before.star1, rarity1: before.rarity1, roll1: before.roll1, bonusRoll1: before.bonusRoll1, effective1: before.effective1, damage1: before.damage1 }
+    : { ...after, star2: before.star2, rarity2: before.rarity2, roll2: before.roll2, bonusRoll2: before.bonusRoll2, effective2: before.effective2, damage2: before.damage2 }
 }
 
 function applyHooks(skills: ActiveSkill[] | undefined, phase: ActivationPhase, state: FaceOffState, trace?: SkillActivation[]): FaceOffState {
@@ -202,7 +206,7 @@ function applyHooks(skills: ActiveSkill[] | undefined, phase: ActivationPhase, s
           if (state[k2] !== after[k2]) changes.push({ side: 2, field, before: state[k2], after: after[k2] })
         }
         if (changes.length > 0) {
-          trace.push({ skillId: s.skill.id, skillName: s.skill.name, effectId: eff.id, kind: eff.kind, phase, changes })
+          trace.push({ skillId: s.skill.id, skillName: s.skill.name, effectId: eff.id, kind: eff.kind, phase, changes, activatedBy: s.activatedBy })
         }
       }
       state = after
@@ -223,6 +227,7 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     rarity1: card1.rarity,
     rarity2: card2.rarity,
     roll1: 0, roll2: 0,
+    bonusRoll1: 0, bonusRoll2: 0,
     effective1: 0, effective2: 0,
     damage1: 0, damage2: 0,
     rand,
@@ -256,6 +261,7 @@ export function resolveFaceOff(card1: BattleCard, card2: BattleCard, activeSkill
     star1: state.star1, star2: state.star2,
     rarity1: state.rarity1, rarity2: state.rarity2,
     roll1: state.roll1, roll2: state.roll2,
+    bonusRoll1: state.bonusRoll1, bonusRoll2: state.bonusRoll2,
     effective1: state.effective1, effective2: state.effective2,
     damage1: state.damage1, damage2: state.damage2,
     ...(activations.length > 0 ? { activations } : {}),
@@ -277,26 +283,28 @@ export function faceOffAtStep(fo: FaceOffDetail, step: number): FaceOffDetail {
     for (const a of acts) for (const c of a.changes) if (c.side === side && c.field === 'rarity') return c.before as string
     return fallback
   }
-  let s1 = baseOf(1, 'star', fo.star1), r1 = baseOf(1, 'roll', fo.roll1)
-  let s2 = baseOf(2, 'star', fo.star2), r2 = baseOf(2, 'roll', fo.roll2)
+  let s1 = baseOf(1, 'star', fo.star1), r1 = baseOf(1, 'roll', fo.roll1), b1 = baseOf(1, 'bonusRoll', fo.bonusRoll1)
+  let s2 = baseOf(2, 'star', fo.star2), r2 = baseOf(2, 'roll', fo.roll2), b2 = baseOf(2, 'bonusRoll', fo.bonusRoll2)
   let rar1 = baseRarity(1, fo.rarity1), rar2 = baseRarity(2, fo.rarity2)
-  let e1 = s1 + r1, e2 = s2 + r2
+  let e1 = s1 + r1 + b1, e2 = s2 + r2 + b2
   for (let i = 0; i < step; i++) {
     for (const c of acts[i].changes) {
       if (c.side === 1) {
-        if (c.field === 'star') { s1 = c.after as number; e1 = s1 + r1 }
+        if (c.field === 'star') { s1 = c.after as number; e1 = s1 + r1 + b1 }
         else if (c.field === 'rarity') { rar1 = c.after as string }
-        else if (c.field === 'roll') { r1 = c.after as number; e1 = s1 + r1 }
+        else if (c.field === 'roll') { r1 = c.after as number; e1 = s1 + r1 + b1 }
+        else if (c.field === 'bonusRoll') { b1 = c.after as number; e1 = s1 + r1 + b1 }
         else if (c.field === 'effective') { e1 = c.after as number }
       } else {
-        if (c.field === 'star') { s2 = c.after as number; e2 = s2 + r2 }
+        if (c.field === 'star') { s2 = c.after as number; e2 = s2 + r2 + b2 }
         else if (c.field === 'rarity') { rar2 = c.after as string }
-        else if (c.field === 'roll') { r2 = c.after as number; e2 = s2 + r2 }
+        else if (c.field === 'roll') { r2 = c.after as number; e2 = s2 + r2 + b2 }
+        else if (c.field === 'bonusRoll') { b2 = c.after as number; e2 = s2 + r2 + b2 }
         else if (c.field === 'effective') { e2 = c.after as number }
       }
     }
   }
-  return { ...fo, star1: s1, star2: s2, rarity1: rar1, rarity2: rar2, roll1: r1, roll2: r2, effective1: e1, effective2: e2, activations: acts.slice(0, step) }
+  return { ...fo, star1: s1, star2: s2, rarity1: rar1, rarity2: rar2, roll1: r1, roll2: r2, bonusRoll1: b1, bonusRoll2: b2, effective1: e1, effective2: e2, activations: acts.slice(0, step) }
 }
 
 export function randomPair(players: BattlePlayer[], rng?: () => number): { pairs: [string, string][]; byeId: string | null } {

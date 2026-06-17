@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
   Swords, LayoutGrid,
-  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine,
+  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine, Receipt,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -33,12 +33,24 @@ export default async function DashboardPage() {
   const suggestionsEnabled = await isSuggestionsEnabled()
   const isAdmin = profile.role === 'admin'
 
-  const lobbyBadge =
-    (lobbyCount ?? 0) > 0 ? (
-      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-red-300/40 bg-red-500 px-1 text-[10px] font-bold text-white shadow-[0_0_10px_-1px_rgba(239,68,68,0.9)]">
-        {lobbyCount}
+  // Pending card-suggestion count for the admin notification badge.
+  let pendingSuggestions = 0
+  if (isAdmin) {
+    const { count } = await supabase
+      .from('card_suggestions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    pendingSuggestions = count ?? 0
+  }
+
+  const countBadge = (n: number) =>
+    n > 0 ? (
+      <span data-testid="notif-badge" className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-red-300/40 bg-red-500 px-1 text-[10px] font-bold text-white shadow-[0_0_10px_-1px_rgba(239,68,68,0.9)]">
+        {n}
       </span>
     ) : null
+
+  const lobbyBadge = countBadge(lobbyCount ?? 0)
 
   return (
     <div className="min-h-screen text-white">
@@ -126,8 +138,9 @@ export default async function DashboardPage() {
               <DashTile href="/admin/synergies" icon={Combine} title="Synergies" subtitle="Deck-type combos" accent="amber" />
               <DashTile href="/arena/test" icon={FlaskConical} title="Test Arena" subtitle="Simulate battles" accent="amber" />
               <DashTile href="/admin/arena" icon={Settings} title="Feature Settings" subtitle="Toggle features" accent="amber" />
-              <DashTile href="/admin/suggestions" icon={Inbox} title="Card Suggestions" subtitle="Review ideas" accent="amber" />
+              <DashTile href="/admin/suggestions" icon={Inbox} title="Card Suggestions" subtitle="Review ideas" accent="amber" badge={countBadge(pendingSuggestions)} />
               <DashTile href="/admin/care-packages" icon={Gift} title="Care Packages" subtitle="Send Gruten gifts" accent="amber" />
+              <DashTile href="/admin/transactions" icon={Receipt} title="Gruten Logs" subtitle="Transaction history" accent="amber" />
             </div>
           </>
         )}
