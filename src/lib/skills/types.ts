@@ -11,6 +11,9 @@ export type FaceOffState = {
   rarity2: string
   roll1: number
   roll2: number
+  // Extra die rolled by an effect (0 when none); added on top of roll.
+  bonusRoll1: number
+  bonusRoll2: number
   effective1: number
   effective2: number
   damage1: number

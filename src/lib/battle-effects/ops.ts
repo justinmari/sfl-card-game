@@ -61,6 +61,20 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
       }
     },
   },
+  extra_dice: {
+    id: 'extra_dice', label: 'Roll an extra die', phase: 'faceoff', defaultKind: ['extraDice'],
+    params: [{ key: 'max', type: 'number', label: 'Die max', default: 2, min: 1, max: 12 }],
+    build: (p) => {
+      const max = num(p, 'max', 2)
+      return {
+        onDice: (s) => ({
+          ...s,
+          bonusRoll1: s.bonusRoll1 + Math.floor(s.rand() * (max + 1)),
+          bonusRoll2: s.bonusRoll2 + Math.floor(s.rand() * (max + 1)),
+        }),
+      }
+    },
+  },
   big_dice: {
     id: 'big_dice', label: 'Big dice (lower rarity)', phase: 'faceoff', defaultKind: ['dice'],
     params: [{ key: 'max', type: 'number', label: 'Max roll', default: 10, min: 1, max: 20 }],

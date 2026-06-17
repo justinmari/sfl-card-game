@@ -582,6 +582,7 @@ export default function ArenaBattle({
   }, [battlePhase === 'waiting-for-round'])
 
   const getPlayer = (id: string) => players.find((p) => p.id === id)
+  const playerNames: Record<string, string> = Object.fromEntries(players.map((p) => [p.id, p.id === userId ? 'You' : p.name]))
   const sortedByHp = [...players].sort((a, b) => (displayHp[b.id] ?? 0) - (displayHp[a.id] ?? 0))
   // Filter skills to only those relevant to the user's match
   const myMatchPlayerIds = (() => {
@@ -835,7 +836,8 @@ export default function ArenaBattle({
                   const displayFo: FaceOffDetail = imPlayer1 ? fo : {
                     ...fo, card1: fo.card2, card2: fo.card1, star1: fo.star2, star2: fo.star1,
                     rarity1: fo.rarity2, rarity2: fo.rarity1,
-                    roll1: fo.roll2, roll2: fo.roll1, effective1: fo.effective2, effective2: fo.effective1,
+                    roll1: fo.roll2, roll2: fo.roll1, bonusRoll1: fo.bonusRoll2, bonusRoll2: fo.bonusRoll1,
+                    effective1: fo.effective2, effective2: fo.effective1,
                     damage1: fo.damage2, damage2: fo.damage1,
                     activations: fo.activations?.map((a) => ({
                       ...a,
@@ -874,6 +876,7 @@ export default function ArenaBattle({
                       <BattleFaceoff faceOff={faceOffAtStep(displayFo, skillStep)} phase={faceoffPhase} rollElapsed={rollElapsed} large
                         p1Name="You" p2Name={getPlayer(opponentId)?.name || 'Opponent'}
                         p1Hp={displayHp[userId] ?? 0} p2Hp={displayHp[opponentId] ?? 0}
+                        playerNames={playerNames}
                         cardFilter={precomputed.flags?.visualEffect} />
                     </div>
                   )

@@ -32,11 +32,11 @@ const KIND_META: Record<EffectKind, { emoji: string; tint: string; glow: string;
 }
 
 // Which face-off phase each changed field becomes visible at.
-const FIELD_PHASE: Record<string, Phase> = { star: 'power', rarity: 'power', roll: 'rolling', effective: 'merge', damage: 'result' }
+const FIELD_PHASE: Record<string, Phase> = { star: 'power', rarity: 'power', roll: 'rolling', bonusRoll: 'rolling', effective: 'merge', damage: 'result' }
 
 // Each changed field maps directly to one effect kind. (Rarity and power are
 // now distinct fields, so there's no ambiguity to resolve.)
-const FIELD_KIND: Record<string, EffectKind> = { star: 'power', rarity: 'rarity', roll: 'dice', effective: 'total', damage: 'damage' }
+const FIELD_KIND: Record<string, EffectKind> = { star: 'power', rarity: 'rarity', roll: 'dice', bonusRoll: 'extraDice', effective: 'total', damage: 'damage' }
 
 // A number that counts from `from` to `to` when it mounts — used to show a
 // total/power/dice/damage value growing or shrinking as a skill applies.
@@ -59,6 +59,48 @@ function CountTo({ from, to, className }: { from: number; to: number; className?
 
 type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
 
+// DOM breakdown of a card's ⭐ power + 🎲 dice (+ 🎲🎲 extra die) → total. Replaces
+// the old canvas: declarative, easy to extend, and animates with CSS. The
+// particle/sparkle layer stays on canvas.
+function DiceBreakdown({ phase, rollElapsed, star, roll, bonus, maxRoll, effective, large }: {
+  phase: Phase; rollElapsed: number; star: number; roll: number; bonus: number; maxRoll: number; effective: number; large: boolean
+}) {
+  const [, setTick] = useState(0)
+  const rolling = phase === 'rolling' && (maxRoll > 0 || bonus > 0)
+  const settled = rollElapsed >= 1100
+  useEffect(() => {
+    if (!rolling || settled) return
+    const iv = setInterval(() => setTick((t) => t + 1), 80) // slot-machine flicker
+    return () => clearInterval(iv)
+  }, [rolling, settled])
+
+  const n = large ? 'text-xl' : 'text-sm'
+  const e = large ? 'text-sm' : 'text-[10px]'
+  const wrap = `flex items-center justify-center gap-1 font-bold tabular-nums ${large ? 'min-h-[44px]' : 'min-h-[30px]'}`
+
+  if (phase === 'enter') return <div className={wrap} />
+  if (phase === 'power' || (phase === 'rolling' && maxRoll === 0 && bonus === 0)) {
+    return <div className={wrap}><span className={e}>⭐</span><span className={`${n} text-zinc-300`}>{star}</span></div>
+  }
+  if (phase === 'rolling') {
+    const dr = settled ? roll : Math.floor(Math.random() * (maxRoll + 1))
+    const db = settled ? bonus : Math.floor(Math.random() * (bonus + 1))
+    return (
+      <div className={`${wrap} ${settled ? '' : 'animate-pulse'}`}>
+        <span className={e}>⭐</span><span className={`${n} text-zinc-400`}>{star}</span>
+        {maxRoll > 0 && (<><span className={`${e} text-zinc-500`}>+</span><span className={e}>🎲</span><span className={`${n} text-amber-400`}>{dr}</span></>)}
+        {bonus > 0 && (<><span className={`${e} text-zinc-500`}>+</span><span className={e}>🎲🎲</span><span className={`${n} text-cyan-400`}>{db}</span></>)}
+      </div>
+    )
+  }
+  // merge / result / done → the combined total
+  return (
+    <div className={`${wrap} text-zinc-100`}>
+      <span className={e}>⭐</span><span key={effective} className={`${n} animate-[skillPop_0.4s_ease-out]`}>{effective}</span>
+    </div>
+  )
+}
+
 export default function BattleFaceoff({
   faceOff,
   phase,
@@ -70,6 +112,7 @@ export default function BattleFaceoff({
   p1Hp,
   p2Hp,
   cardFilter,
+  playerNames,
 }: {
   faceOff: FaceOffDetail
   phase: Phase
@@ -81,9 +124,8 @@ export default function BattleFaceoff({
   p1Hp?: number
   p2Hp?: number
   cardFilter?: string
+  playerNames?: Record<string, string>
 }) {
-  const canvas1Ref = useRef<HTMLCanvasElement>(null)
-  const canvas2Ref = useRef<HTMLCanvasElement>(null)
   const effectsCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const card1DivRef = useRef<HTMLDivElement>(null)
@@ -101,137 +143,9 @@ export default function BattleFaceoff({
   const tie = fo.damage1 === 0 && fo.damage2 === 0
 
   const cardSize = large ? 'w-28 sm:w-32' : 'w-16'
-  const canvasW = large ? 180 : 120
-  const canvasH = large ? 44 : 30
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
-  const fontSize = large ? 24 : 16
-
-  const setupCanvas = (canvas: HTMLCanvasElement | null, id: string) => {
-    if (!canvas || setupRef.current.has(id)) return
-    canvas.width = canvasW * dpr
-    canvas.height = canvasH * dpr
-    canvas.style.width = `${canvasW}px`
-    canvas.style.height = `${canvasH}px`
-    const ctx = canvas.getContext('2d')
-    if (ctx) ctx.scale(dpr, dpr)
-    setupRef.current.add(id)
-  }
-
-  const drawSide = (canvas: HTMLCanvasElement | null, id: string, baseStar: number, finalRoll: number, maxRoll: number, effective: number) => {
-    setupCanvas(canvas, id)
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const w = canvasW
-    const h = canvasH
-    ctx.clearRect(0, 0, w, h)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    if (phase === 'power') {
-      ctx.font = `${fontSize * 0.6}px serif`
-      ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
-      ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-      ctx.fillStyle = '#d4d4d8'
-      ctx.fillText(`${baseStar}`, w / 2 + fontSize * 0.5, h / 2)
-    }
-
-    if (phase === 'rolling') {
-      if (maxRoll === 0) {
-        ctx.font = `${fontSize * 0.6}px serif`
-        ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = '#e4e4e7'
-        ctx.fillText(`${baseStar}`, w / 2 + fontSize * 0.5, h / 2)
-      } else {
-        const progress = Math.min(rollElapsed / 1200, 1)
-        const speed = 1 - Math.pow(progress, 2.5)
-
-        ctx.font = `${fontSize * 0.6}px serif`
-        ctx.fillText('⭐', w * 0.2, h / 2)
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = '#a1a1aa'
-        ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
-
-        ctx.fillStyle = '#71717a'
-        ctx.font = `bold ${fontSize * 0.6}px system-ui, sans-serif`
-        ctx.fillText('+', w * 0.48, h / 2)
-
-        let displayRoll = progress >= 0.95 ? finalRoll : speed > 0.02 ? Math.floor(Math.random() * (maxRoll + 1)) : finalRoll
-        const shakeX = speed * (Math.random() - 0.5) * 3
-        const shakeY = speed * (Math.random() - 0.5) * 3
-
-        if (speed > 0.3) { ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 8 * speed } else { ctx.shadowBlur = 0 }
-
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = progress >= 0.95 ? (displayRoll > 0 ? '#fbbf24' : '#71717a') : '#fde68a'
-        ctx.fillText(`${displayRoll}`, w * 0.65 + shakeX, h / 2 + shakeY)
-        ctx.shadowBlur = 0
-        ctx.font = `${fontSize * 0.45}px serif`
-        ctx.fillText('🎲', w * 0.82 + shakeX, h / 2 + shakeY)
-      }
-    }
-
-    if (phase === 'merge') {
-      if (maxRoll === 0) {
-        ctx.font = `${fontSize * 0.6}px serif`
-        ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = '#e4e4e7'
-        ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
-      } else {
-        const mergeProgress = Math.min(rollElapsed / 600, 1)
-        const eased = 1 - Math.pow(1 - mergeProgress, 3)
-        const breakdownAlpha = 1 - eased
-        const totalAlpha = eased
-
-        if (breakdownAlpha > 0.05) {
-          ctx.globalAlpha = breakdownAlpha
-          ctx.font = `${fontSize * 0.6}px serif`
-          ctx.fillText('⭐', w * 0.2, h / 2)
-          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-          ctx.fillStyle = '#a1a1aa'
-          ctx.fillText(`${baseStar}`, w * 0.2 + fontSize * 0.7, h / 2)
-          ctx.fillStyle = '#71717a'
-          ctx.font = `bold ${fontSize * 0.6}px system-ui, sans-serif`
-          ctx.fillText('+', w * 0.48, h / 2)
-          ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-          ctx.fillStyle = finalRoll > 0 ? '#fbbf24' : '#71717a'
-          ctx.fillText(`${finalRoll}`, w * 0.65, h / 2)
-          ctx.globalAlpha = 1
-        }
-
-        ctx.globalAlpha = totalAlpha
-        if (finalRoll > 0) { ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 6 * (1 - eased) }
-        ctx.font = `${fontSize * 0.6}px serif`
-        ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
-        ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-        ctx.fillStyle = '#e4e4e7'
-        ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
-        ctx.shadowBlur = 0
-        ctx.globalAlpha = 1
-      }
-    }
-
-    if (phase === 'result' || phase === 'done') {
-      ctx.font = `${fontSize * 0.6}px serif`
-      ctx.fillText('⭐', w / 2 - fontSize * 0.8, h / 2)
-      ctx.font = `bold ${fontSize}px system-ui, sans-serif`
-      ctx.fillStyle = '#e4e4e7'
-      ctx.fillText(`${effective}`, w / 2 + fontSize * 0.5, h / 2)
-    }
-  }
-
-  // Draw canvases
+  // Display dice range per side (drives the rolling flicker in DiceBreakdown).
   const maxRoll1 = fo.star1 < fo.star2 ? fo.star2 - fo.star1 + 1 : fo.star1 === fo.star2 ? 1 : 0
   const maxRoll2 = fo.star2 < fo.star1 ? fo.star1 - fo.star2 + 1 : fo.star1 === fo.star2 ? 1 : 0
-
-  if (phase !== 'enter') {
-    requestAnimationFrame(() => {
-      drawSide(canvas1Ref.current, 'c1', fo.star1, fo.roll1, maxRoll1, fo.effective1)
-      drawSide(canvas2Ref.current, 'c2', fo.star2, fo.roll2, maxRoll2, fo.effective2)
-    })
-  }
 
   // Reset spawn flags when entering a new faceoff
   if (phase === 'enter') {
@@ -358,32 +272,46 @@ export default function BattleFaceoff({
 
   // Floating skill-effect labels above a card, derived from the activation trace:
   // each change shows its skill name + value transition, appearing at its phase.
+  // Cyan treatment for synergies, matching the card Type chips.
+  const SYNERGY_TINT = 'border-cyan-400/50 bg-cyan-500/15 text-cyan-100'
+  const SYNERGY_GLOW = '34,211,238'
+
   const renderEffects = (side: 1 | 2) => {
     const acts = faceOff.activations
     if (!large || !acts || acts.length === 0) return null
-    const entries: { key: string; name: string; kind: EffectKind; phase: Phase; before: number | string; after: number | string }[] = []
+    type Entry = { key: string; name: string; label: string; isSynergy: boolean; kind: EffectKind; phase: Phase; before: number | string; after: number | string }
+    const entries: Entry[] = []
     for (const a of acts) {
+      const isSynergy = a.skillId.startsWith('synergy:')
+      // "Egg Roll in effect" for synergies; "Player used Double Edge" for skills.
+      const who = a.activatedBy ? (playerNames?.[a.activatedBy] ?? '') : ''
+      const label = isSynergy ? `${a.skillName} in effect` : who ? `${who} used ${a.skillName}` : `${a.skillName}`
       for (const ch of a.changes) {
         if (ch.side !== side) continue
-        entries.push({ key: `${a.effectId}:${ch.field}`, name: a.skillName, kind: FIELD_KIND[ch.field], phase: FIELD_PHASE[ch.field], before: ch.before, after: ch.after })
+        entries.push({ key: `${a.effectId}:${ch.field}`, name: a.skillName, label, isSynergy, kind: FIELD_KIND[ch.field], phase: FIELD_PHASE[ch.field], before: ch.before, after: ch.after })
       }
     }
     const shown = entries.filter((e) => phaseReached(e.phase))
     if (shown.length === 0) return null
     return (
       <div className="pointer-events-none absolute left-1/2 top-0 z-20 flex w-max -translate-x-1/2 -translate-y-[calc(100%+0.25rem)] flex-col items-center gap-1">
-        {shown.map((e, i) => (
-          <span key={e.key} data-testid="skill-effect" data-skill={e.name} data-kind={e.kind}
-            style={{ animationDelay: `${i * 70}ms`, boxShadow: `0 0 16px -2px rgba(${KIND_META[e.kind].glow}, 0.7)` }}
-            className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm animate-[skillPop_0.45s_cubic-bezier(0.34,1.56,0.64,1)_both] ${KIND_META[e.kind].tint}`}>
-            <span>{KIND_META[e.kind].emoji} {e.name}</span>
+        {shown.map((e, i) => {
+          const tint = e.isSynergy ? SYNERGY_TINT : KIND_META[e.kind].tint
+          const glow = e.isSynergy ? SYNERGY_GLOW : KIND_META[e.kind].glow
+          const emoji = e.isSynergy ? '🔗' : KIND_META[e.kind].emoji
+          return (
+          <span key={e.key} data-testid="skill-effect" data-skill={e.name} data-kind={e.kind} data-synergy={e.isSynergy ? 'true' : 'false'}
+            style={{ animationDelay: `${i * 70}ms`, boxShadow: `0 0 16px -2px rgba(${glow}, 0.7)` }}
+            className={`flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm animate-[skillPop_0.45s_cubic-bezier(0.34,1.56,0.64,1)_both] ${tint}`}>
+            <span>{emoji} {e.label}</span>
             {e.kind === 'rarity' ? (
               <span className="font-normal">{rarityChip(e.before as string)} → {rarityChip(e.after as string)}</span>
             ) : (
               <span className="font-mono"><span className="opacity-50">{e.before}</span>→<CountTo from={e.before as number} to={e.after as number} className={(e.after as number) >= (e.before as number) ? 'text-green-300' : 'text-red-300'} /></span>
             )}
           </span>
-        ))}
+          )
+        })}
       </div>
     )
   }
@@ -397,9 +325,8 @@ export default function BattleFaceoff({
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
         {renderEffects(1)}
         <div ref={card1DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(1) }}><CompactCard card={fo.card1} /></div>
-        <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
-          <canvas ref={canvas1Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
-            style={{ width: canvasW, height: canvasH }} />
+        <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1 transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}>
+          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star1} roll={fo.roll1} bonus={fo.bonusRoll1} maxRoll={maxRoll1} effective={fo.effective1} large={large} />
         </div>
       </div>
 
@@ -410,9 +337,8 @@ export default function BattleFaceoff({
       } ${phase === 'result' || phase === 'done' ? (p1Won ? knockP2 : p2Won ? 'scale-105' : '') : ''}`}>
         {renderEffects(2)}
         <div ref={card2DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(-2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(2) }}><CompactCard card={fo.card2} /></div>
-        <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1`}>
-          <canvas ref={canvas2Ref} className={`block transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}
-            style={{ width: canvasW, height: canvasH }} />
+        <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1 transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}>
+          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star2} roll={fo.roll2} bonus={fo.bonusRoll2} maxRoll={maxRoll2} effective={fo.effective2} large={large} />
         </div>
       </div>
 
