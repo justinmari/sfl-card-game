@@ -230,7 +230,10 @@ export default function SwipeableReveal({
         onMouseLeave={handleMouseLeave}
       >
         {cards.map((card, i) => {
-          if (i < currentIndex) return null
+          // Only mount a small window: the current card plus the next two for the
+          // stack-depth peek. Mounting every remaining card at once (each a
+          // FlippableCard = 2 TradingCards) exhausted memory and crashed mobile.
+          if (i < currentIndex || i > currentIndex + 2) return null
           const isCurrent = i === currentIndex
           const isNext = i === currentIndex + 1
           const zIndex = cards.length - i
