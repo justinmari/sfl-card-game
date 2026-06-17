@@ -100,6 +100,73 @@ test.describe('Skill ↔ Battle Effect composition', () => {
   })
 })
 
+test.describe('Admin Battle Effects — editing', () => {
+  const KEYS = ['e2e-edit-fx', 'e2e-edit-ls', 'e2e-bad-op']
+  const cleanup = async () => {
+    for (const key of KEYS) {
+      await fetch(`${LOCAL}/rest/v1/battle_effects?key=eq.${key}`, { method: 'DELETE', headers: svcHeaders })
+    }
+  }
+  const seedEffect = (row: object) =>
+    fetch(`${LOCAL}/rest/v1/battle_effects`, { method: 'POST', headers: { ...svcHeaders, Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(row) })
+
+  test.beforeEach(cleanup)
+  test.afterEach(cleanup)
+
+  test('edits a numeric param and persists it', async ({ page }) => {
+    await seedEffect({ key: 'e2e-edit-fx', name: 'E2E Edit FX', op: 'multiply_total', params: { factor: 2 }, kind: ['total'] })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/battle-effects')
+    const row = page.getByTestId('effect-row').filter({ hasText: 'E2E Edit FX' })
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    await row.getByRole('button', { name: 'Edit' }).click()
+    await page.getByLabel('Factor').fill('4')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await page.waitForTimeout(1200)
+
+    const rows = await (await fetch(`${LOCAL}/rest/v1/battle_effects?key=eq.e2e-edit-fx&select=params`, { headers: svcHeaders })).json()
+    expect(rows[0].params.factor).toBe(4)
+  })
+
+  test('edits a multi-param effect (lifesteal mode/amount/chance)', async ({ page }) => {
+    await seedEffect({ key: 'e2e-edit-ls', name: 'E2E Edit LS', op: 'lifesteal', params: { mode: 'flat', amount: 1, chance: 100 }, kind: ['heal'] })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/battle-effects')
+    const row = page.getByTestId('effect-row').filter({ hasText: 'E2E Edit LS' })
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    await row.getByRole('button', { name: 'Edit' }).click()
+    // All three params render and are editable (string mode + two numbers).
+    await page.getByLabel(/Mode/).fill('percent')
+    await page.getByLabel(/Flat heal/).fill('50')
+    await page.getByLabel(/Heal chance/).fill('25')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await page.waitForTimeout(1200)
+
+    const rows = await (await fetch(`${LOCAL}/rest/v1/battle_effects?key=eq.e2e-edit-ls&select=params`, { headers: svcHeaders })).json()
+    expect(rows[0].params).toMatchObject({ mode: 'percent', amount: 50, chance: 25 })
+  })
+
+  test('an unrecognized op shows a warning instead of white-screening', async ({ page }) => {
+    // Mimics the DB-migrated-ahead-of-deploy state that broke editing lifesteal.
+    await seedEffect({ key: 'e2e-bad-op', name: 'E2E Bad Op', op: 'does_not_exist_op', params: {}, kind: ['power'] })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/battle-effects')
+    const row = page.getByTestId('effect-row').filter({ hasText: 'E2E Bad Op' })
+    await expect(row).toBeVisible({ timeout: 10000 })
+
+    await row.getByRole('button', { name: 'Edit' }).click()
+    await expect(page.getByTestId('unknown-op-warning')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled()
+    // The page is still alive (no error boundary / white screen).
+    await expect(page.getByTestId('battle-effects-admin')).toBeVisible()
+  })
+})
+
 test.describe('Synergy Codex', () => {
   test('player can open the codex (locked entries by default)', async ({ page }) => {
     await login(page, TEST_PLAYER)

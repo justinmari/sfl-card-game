@@ -80,11 +80,13 @@ export default function EffectList({ effects }: { effects: Effect[] }) {
   const save = async () => {
     setError(null)
     if (!form.key.trim() || !form.name.trim()) { setError('Key and name are required'); return }
+    const handler = OP_REGISTRY[form.op]
+    if (!handler) { setError(`Unrecognized op "${form.op}" — this app version can't save it (a deploy may be pending)`); return }
     const validationError = validateOpParams(form.op, form.params)
     if (validationError) { setError(validationError); return }
     setSaving(true)
     const supabase = createClient()
-    const row = { key: form.key.trim(), name: form.name.trim(), op: form.op, params: form.params, kind: OP_REGISTRY[form.op].defaultKind }
+    const row = { key: form.key.trim(), name: form.name.trim(), op: form.op, params: form.params, kind: handler.defaultKind }
     let res
     if (editingId) res = await supabase.from('battle_effects').update(row).eq('id', editingId)
     else res = await supabase.from('battle_effects').insert(row)
@@ -104,7 +106,14 @@ export default function EffectList({ effects }: { effects: Effect[] }) {
     router.refresh()
   }
 
-  const renderForm = () => (
+  const renderForm = () => {
+    // A row may reference an op this build doesn't know yet (DB migrated ahead of
+    // a pending deploy). Guard every OP_REGISTRY access so the page renders a
+    // clear message instead of white-screening.
+    const handler = OP_REGISTRY[form.op]
+    const opOptions: { id: string; label: string }[] = OPS.map((o) => ({ id: o.id, label: o.label }))
+    if (!handler) opOptions.unshift({ id: form.op, label: 'unrecognized op' })
+    return (
     <div className="surface mt-3 rounded-xl p-4">
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm"><span className="mb-1 block text-zinc-400">Key (slug)</span>
@@ -116,23 +125,32 @@ export default function EffectList({ effects }: { effects: Effect[] }) {
       </div>
       <label className="mt-3 block text-sm"><span className="mb-1 block text-zinc-400">Operation</span>
         <select value={form.op} onChange={(e) => setOp(e.target.value)} aria-label="Operation" className="input-arcade w-full px-2 py-1 text-sm">
-          {OPS.map((o) => <option key={o.id} value={o.id}>{o.label} ({o.id})</option>)}
+          {opOptions.map((o) => <option key={o.id} value={o.id}>{o.label} ({o.id})</option>)}
         </select></label>
-      {OP_REGISTRY[form.op].params.length > 0 && (
-        <div className="mt-3 space-y-2 rounded-lg border border-white/10 p-3">
-          {OP_REGISTRY[form.op].params.map((spec) => (
-            <ParamField key={spec.key} spec={spec} value={form.params[spec.key]} onChange={(v) => setParam(spec.key, v)} />
-          ))}
-        </div>
+      {handler ? (
+        <>
+          {handler.params.length > 0 && (
+            <div className="mt-3 space-y-2 rounded-lg border border-white/10 p-3">
+              {handler.params.map((spec) => (
+                <ParamField key={spec.key} spec={spec} value={form.params[spec.key]} onChange={(v) => setParam(spec.key, v)} />
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-zinc-500">Visual kind: {handler.defaultKind.join(', ')}</p>
+        </>
+      ) : (
+        <p data-testid="unknown-op-warning" className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          This effect uses op <code>{form.op}</code>, which this version of the app doesn&apos;t recognize yet — a deploy is likely pending. Editing is disabled until it&apos;s available.
+        </p>
       )}
-      <p className="mt-2 text-xs text-zinc-500">Visual kind: {OP_REGISTRY[form.op].defaultKind.join(', ')}</p>
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button onClick={save} disabled={saving} className="btn-arcade rounded-lg px-4 py-2 text-sm">{saving ? 'Saving…' : 'Save'}</button>
+        <button onClick={save} disabled={saving || !handler} className="btn-arcade rounded-lg px-4 py-2 text-sm disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
         <button onClick={reset} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-zinc-300 hover:bg-white/5">Cancel</button>
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <div data-testid="battle-effects-admin">
