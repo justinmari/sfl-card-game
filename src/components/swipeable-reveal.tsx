@@ -125,6 +125,13 @@ export default function SwipeableReveal({
   const dragProgress = Math.min(Math.abs(dragX) / 200, 1)
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null
 
+  // Lock background scroll while the reveal is open so swipes don't drag the page.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   // Auto swipe mode — stops on new cards
   useEffect(() => {
     if (autoMode && !animatingOut && currentIndex < cards.length - 1) {
@@ -220,7 +227,7 @@ export default function SwipeableReveal({
 
       {/* Card stack */}
       <div
-        className="relative flex-1 select-none"
+        className="relative flex-1 touch-none select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
