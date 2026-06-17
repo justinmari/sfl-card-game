@@ -22,8 +22,10 @@ export default async function DashboardPage() {
     redirect('/setup')
   }
 
-  // Get active lobby count for arena badge
+  // Get active lobby count for arena badge. Close stale lobbies first so the
+  // badge reflects only live ones (no manual "close" action anywhere).
   const supabase = await createClient()
+  await supabase.rpc('rpc_cleanup_stale_lobbies')
   const { count: lobbyCount } = await supabase
     .from('arena_lobbies')
     .select('*', { count: 'exact', head: true })

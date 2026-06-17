@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { LayoutGrid } from 'lucide-react'
-import { listLobbies, createLobby, joinLobby, leaveLobby, closeStaleLobby, type LobbyInfo } from './lobby-actions'
+import { listLobbies, createLobby, joinLobby, leaveLobby, type LobbyInfo } from './lobby-actions'
 import { useArenaStatus } from '@/hooks/use-arena-status'
 
 type MyLobbyInfo = {
@@ -93,14 +93,6 @@ export default function ArenaLobbyList({
       setError('Failed to join lobby')
       setJoining(null)
     }
-  }
-
-  const isStale = (lobby: LobbyInfo) => Date.now() - new Date(lobby.created_at).getTime() > 60 * 60 * 1000
-
-  const handleCloseStaleLobby = async (lobbyId: string) => {
-    const result = await closeStaleLobby(lobbyId)
-    if (result.closed) fetchLobbies()
-    else setError('Cannot close this lobby — it has recent activity')
   }
 
   const waitingLobbies = lobbies.filter((l) => l.status === 'waiting')
@@ -220,14 +212,6 @@ export default function ArenaLobbyList({
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {isStale(lobby) && (
-                    <button
-                      onClick={() => handleCloseStaleLobby(lobby.id)}
-                      className="rounded-lg border border-red-500/40 px-3 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
-                    >
-                      Close
-                    </button>
-                  )}
                   <button
                     onClick={() => handleJoin(lobby.id)}
                     disabled={!!myLobby || joining === lobby.id || lobby.player_count >= lobby.max_players}
@@ -251,14 +235,6 @@ export default function ArenaLobbyList({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {isStale(lobby) && (
-                    <button
-                      onClick={() => handleCloseStaleLobby(lobby.id)}
-                      className="rounded-lg border border-red-500/40 px-3 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
-                    >
-                      Close
-                    </button>
-                  )}
                   <button
                     onClick={() => handleJoin(lobby.id)}
                     disabled={!!myLobby || joining === lobby.id}

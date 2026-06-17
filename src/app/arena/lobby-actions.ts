@@ -18,6 +18,8 @@ export type LobbyInfo = {
 // List open lobbies
 export async function listLobbies() {
   const supabase = await createClient()
+  // Auto-close stale lobbies whenever the list is opened (no manual "close").
+  await supabase.rpc('rpc_cleanup_stale_lobbies')
   const { data } = await supabase
     .from('arena_lobbies')
     .select('*, arena_lobby_players(user_id, user_name, avatar_url, is_ready), arena_sessions(connected_players)')
@@ -344,9 +346,10 @@ export async function deleteLobby(lobbyId: string) {
   await supabase.from('arena_lobbies').delete().eq('id', lobbyId)
 }
 
-// Close a stale lobby (safe — server validates 1hr+ age and no recent activity)
-export async function closeStaleLobby(lobbyId: string) {
+// Auto-close every stale lobby (1hr+ old, no recent round/ready activity).
+// Called whenever lobbies are queried — the arena list and the dashboard badge —
+// so dead lobbies clear themselves with no manual action.
+export async function cleanupStaleLobbies() {
   const supabase = await createClient()
-  const { data } = await supabase.rpc('rpc_close_stale_lobby', { p_lobby_id: lobbyId })
-  return { closed: !!data }
+  await supabase.rpc('rpc_cleanup_stale_lobbies')
 }
