@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
+import Pagination from '@/components/pagination'
+
+const PAGE_SIZE = 12
 
 type Card = {
   id: string
@@ -86,6 +89,12 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     .filter((c) => !cardSearch || c.name.toLowerCase().includes(cardSearch.toLowerCase()))
     .sort((a, b) => (rarityOrder[a.rarity] ?? 99) - (rarityOrder[b.rarity] ?? 99))
 
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [cardSearch, editingSlot])
+  const pageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageCards = filteredCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
   const selectedCards = editCardIds
     .map((id) => ownedCards.find((c) => c.id === id))
     .filter(Boolean) as Card[]
@@ -108,7 +117,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
           <div className="surface max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-display text-lg font-semibold">Edit Deck</h3>
-              <span className="text-sm text-zinc-400">{editCardIds.length}/5 cards</span>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-zinc-400">{editCardIds.length}/5 cards</span>
+                {editCardIds.length > 0 && <span className="font-medium text-amber-400">⚡ {getDeckPower(editCardIds)}</span>}
+              </div>
             </div>
 
             {error && (
@@ -133,7 +145,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 <label className="text-sm text-zinc-400">Your Lineup</label>
                 {secretRareCount(editCardIds) >= 1 && <span className="text-[10px] text-pink-400">1/1 Secret Rare</span>}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 rounded-xl border border-white/5 bg-black/20 p-2">
                 {[0, 1, 2, 3, 4].map((i) => {
                   const card = selectedCards[i]
                   return card ? (
@@ -162,6 +174,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
 
             {/* Card picker */}
             <div className="mb-4">
+              <label className="mb-2 block text-sm text-zinc-400">Add Cards</label>
               <input
                 type="text"
                 value={cardSearch}
@@ -169,9 +182,9 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 placeholder="Search cards..."
                 className="input-arcade mb-3 w-full px-3 py-2 text-sm"
               />
-              <div className="max-h-48 overflow-y-auto">
+              <div>
                 <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-                  {filteredCards.map((card) => {
+                  {pageCards.map((card) => {
                     const isSelected = editCardIds.includes(card.id)
                     const atSecretLimit = !isSelected && card.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1
                     const isDisabled = !isSelected && (editCardIds.length >= 5 || atSecretLimit)
@@ -198,6 +211,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                     )
                   })}
                 </div>
+                <Pagination page={currentPage} pageCount={pageCount} onPage={setPage} />
               </div>
             </div>
 
@@ -265,8 +279,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center py-8 text-sm text-zinc-600">
-                  No cards — tap Edit to build this deck
+                <div className="flex flex-col items-center justify-center gap-1 py-8 text-center">
+                  <span className="text-2xl opacity-60">🃏</span>
+                  <p className="text-sm text-zinc-400">This deck is empty</p>
+                  <p className="text-xs text-zinc-600">Tap Edit to add 5 cards</p>
                 </div>
               )}
             </div>
