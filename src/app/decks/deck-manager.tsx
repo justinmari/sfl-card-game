@@ -145,11 +145,11 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 <label className="text-sm text-zinc-400">Your Lineup</label>
                 {secretRareCount(editCardIds) >= 1 && <span className="text-[10px] text-pink-400">1/1 Secret Rare</span>}
               </div>
-              <div className="flex gap-2 rounded-xl border border-white/5 bg-black/20 p-2">
+              <div className="grid grid-cols-5 gap-2 rounded-xl border border-white/5 bg-black/20 p-2">
                 {[0, 1, 2, 3, 4].map((i) => {
                   const card = selectedCards[i]
                   return card ? (
-                    <div key={card.id} className="relative w-1/5">
+                    <div key={card.id} className="relative">
                       <CompactCard card={card} />
                       <button
                         onClick={() => toggleCard(card.id)}
@@ -162,7 +162,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                   ) : (
                     <div
                       key={i}
-                      className="flex w-1/5 items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50"
+                      className="flex items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50"
                       style={{ aspectRatio: '3/4' }}
                     >
                       <span className="text-xs text-zinc-600">#{i + 1}</span>
@@ -265,17 +265,17 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
               </div>
 
               {cards.length > 0 ? (
-                <div className="flex gap-3">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
                   {cards.map((card, i) => (
-                    <div key={card.id} className="w-1/5">
-                      <TradingCard card={card} size="sm" />
+                    <div key={card.id}>
+                      <TradingCard card={card} size="sm" className="!w-full" />
                       <div className="mt-1 text-center text-[9px] text-zinc-500">#{i + 1}</div>
                     </div>
                   ))}
                   {Array.from({ length: 5 - cards.length }).map((_, i) => (
                     <div
                       key={`empty-${i}`}
-                      className="flex w-1/5 items-center justify-center rounded-2xl border border-dashed border-zinc-700"
+                      className="flex items-center justify-center rounded-2xl border border-dashed border-zinc-700"
                       style={{ aspectRatio: '5/8' }}
                     >
                       <span className="text-xs text-zinc-600">—</span>
