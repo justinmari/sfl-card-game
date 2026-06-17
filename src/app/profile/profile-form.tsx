@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
+import Pagination from '@/components/pagination'
+
+const PAGE_SIZE = 12
 
 type Card = {
   id: string
@@ -132,6 +135,12 @@ export default function ProfileForm({
   const filteredCards = ownedCards.filter((c) =>
     !cardSearch || c.name.toLowerCase().includes(cardSearch.toLowerCase())
   )
+
+  const [cardPage, setCardPage] = useState(1)
+  useEffect(() => { setCardPage(1) }, [cardSearch, showCardPicker])
+  const cardPageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
+  const currentCardPage = Math.min(cardPage, cardPageCount)
+  const pagedCards = filteredCards.slice((currentCardPage - 1) * PAGE_SIZE, currentCardPage * PAGE_SIZE)
 
   const topCards = selectedCards
     .map((id) => ownedCards.find((c) => c.id === id))
@@ -261,9 +270,9 @@ export default function ProfileForm({
               placeholder="Search cards..."
               className="input-arcade mb-3 w-full px-3 py-2 text-sm"
             />
-            <div className="max-h-72 overflow-y-auto">
+            <div>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {filteredCards.map((card) => {
+                {pagedCards.map((card) => {
                   const isSelected = selectedCards.includes(card.id)
                   return (
                     <button
@@ -289,6 +298,7 @@ export default function ProfileForm({
                   )
                 })}
               </div>
+              <Pagination page={currentCardPage} pageCount={cardPageCount} onPage={setCardPage} />
             </div>
           </div>
         )}

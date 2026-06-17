@@ -1,10 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
 import { CompactFilterBar, type FilterSelect } from '@/components/card-filters'
+import Pagination from '@/components/pagination'
 import { usePreferences } from '@/lib/preferences'
+
+const PAGE_SIZE = 18
 
 export type PickerCard = {
   id: string
@@ -68,6 +71,12 @@ export default function CardPicker({ cards, onPick }: { cards: PickerCard[]; onP
     return items
   }, [filtered, sort])
 
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [search, activeRarity, activeCreature, activeType, sort])
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageItems = useMemo(() => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [sorted, currentPage])
+
   const selects = useMemo(() => {
     const list: FilterSelect[] = [
       { ariaLabel: 'Filter by rarity', placeholder: 'All rarities', value: activeRarity, onChange: setActiveRarity, options: RARITIES.map((r) => ({ value: r.value, label: r.label })) },
@@ -97,18 +106,21 @@ export default function CardPicker({ cards, onPick }: { cards: PickerCard[]; onP
       {sorted.length === 0 ? (
         <p className="py-6 text-center text-sm text-zinc-500">No cards match this filter.</p>
       ) : (
-        <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
-          {sorted.map((card) => (
-            <div key={card.id} className="sm:contents">
-              <div className="sm:hidden">
-                <TradingCard card={card} size="sm" onClick={() => onPick(card.id)} className="!w-full" />
+        <>
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
+            {pageItems.map((card) => (
+              <div key={card.id} className="sm:contents">
+                <div className="sm:hidden">
+                  <TradingCard card={card} size="sm" onClick={() => onPick(card.id)} className="!w-full" />
+                </div>
+                <div className="hidden sm:block">
+                  <TradingCard card={card} size={desktopSize} onClick={() => onPick(card.id)} />
+                </div>
               </div>
-              <div className="hidden sm:block">
-                <TradingCard card={card} size={desktopSize} onClick={() => onPick(card.id)} />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          <Pagination page={currentPage} pageCount={pageCount} onPage={setPage} />
+        </>
       )}
     </div>
   )

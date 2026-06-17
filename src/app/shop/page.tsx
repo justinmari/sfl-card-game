@@ -14,7 +14,7 @@ export default async function ShopPage() {
     .from('packs')
     .select('*, pack_cards(card_id, pull_percentage, cards(rarity))')
     .eq('is_active', true)
-    .order('price')
+    .order('created_at', { ascending: false })
 
   // Get user's owned card IDs (only count > 0)
   const { data: userCards } = await supabase
