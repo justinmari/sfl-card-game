@@ -79,7 +79,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, pack
           )}
           <Link href="/dashboard" className="font-display text-xl font-bold tracking-tight">
             <span className="text-arcade-gradient">{title || 'SFL TCG'}</span>
-            {!title && <span className="ml-2 text-[10px] font-normal text-zinc-500">v0.4.3</span>}
+            {!title && <span className="ml-2 text-[10px] font-normal text-zinc-500">v0.4.4</span>}
           </Link>
         </div>
 
