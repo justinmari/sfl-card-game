@@ -161,3 +161,35 @@ describe('round-level synergy scope (S1)', () => {
     expect(r.flags?.healInstead).toBe(true)
   })
 })
+
+// The live "Babies R Us" skill is composed from four existing ops (no new code):
+// set_rarity_if + boost_power_if for legendary and secret_rare. Guard the
+// composition so it keeps demoting only the top two rarities to 1-star commons.
+describe('Babies R Us skill composition', () => {
+  const babies = (): ActiveSkill => ({
+    skill: {
+      id: 'babies-r-us', name: 'Babies R Us', description: '', usesPerBattle: 1,
+      effects: [
+        makeEffect('br', 'BR', 'set_rarity_if', { ifRarity: 'legendary', toRarity: 'common' }, ['rarity']),
+        makeEffect('bs', 'BS', 'set_rarity_if', { ifRarity: 'secret_rare', toRarity: 'common' }, ['rarity']),
+        makeEffect('pl', 'PL', 'boost_power_if', { ifRarity: 'legendary', value: 1 }, ['power']),
+        makeEffect('ps', 'PS', 'boost_power_if', { ifRarity: 'secret_rare', value: 1 }, ['power']),
+      ],
+    },
+    activatedBy: 'p1', roundActivated: 0, ownerSide: 1,
+  })
+
+  it('drops a legendary to a 1-star common and leaves a rare untouched', () => {
+    const r = resolveFaceOff(card('legendary', 'a'), card('rare', 'b'), [babies()], createSeededRng(1))
+    expect(r.star1).toBe(1)
+    expect(r.rarity1).toBe('common')
+    expect(r.star2).toBe(3) // rare is below the threshold — unchanged
+    expect(r.rarity2).toBe('rare')
+  })
+
+  it('drops a secret rare to a 1-star common', () => {
+    const r = resolveFaceOff(card('secret_rare', 'a'), card('common', 'b'), [babies()], createSeededRng(1))
+    expect(r.star1).toBe(1)
+    expect(r.rarity1).toBe('common')
+  })
+})

@@ -8,6 +8,8 @@ test.describe('Players (Friends)', () => {
     await expect(page.getByText('Friends')).toBeVisible({ timeout: 10000 })
     await expect(page.getByText('Test Admin')).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Test Player')).toBeVisible()
+    // get_players now returns per-player stats (unique card count) shown on each tile.
+    await expect(page.getByText(/\d+ cards/).first()).toBeVisible()
     await test.info().attach('players-page', { body: await page.screenshot(), contentType: 'image/png' })
   })
 

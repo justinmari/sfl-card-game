@@ -50,4 +50,17 @@ test.describe('Care packages', () => {
     await page.waitForTimeout(2000)
     expect(page.url()).not.toContain('/admin/care-packages')
   })
+
+  test('recipient defaults to a placeholder; Send is gated until a player is chosen', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/care-packages')
+    await expect(page.getByText('Send a Care Package')).toBeVisible({ timeout: 10000 })
+
+    // Nothing chosen by default → can't accidentally send to everyone.
+    await expect(page.getByRole('button', { name: 'Select a recipient' })).toBeDisabled()
+
+    // Choosing a player enables Send and shows their confirmation card.
+    await page.getByLabel('Recipient').selectOption({ label: 'Test Player' })
+    await expect(page.getByRole('button', { name: /Send .* to Test Player/ })).toBeEnabled()
+  })
 })
