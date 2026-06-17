@@ -353,7 +353,7 @@ export default function BattleFaceoff({
   return (
     <div ref={containerRef} className={`relative flex flex-col items-center gap-2 ${shouldShake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
     <canvas ref={effectsCanvasRef} className="absolute inset-0 pointer-events-none z-10" />
-    <div className={`flex items-center justify-center ${vertical ? 'flex-col gap-4' : 'gap-3 sm:gap-6'}`}>
+    <div className={`flex justify-center ${vertical ? 'flex-col items-center gap-4' : 'items-start gap-3 sm:gap-6'}`}>
       <div className={`relative flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim1 : ''
       } ${phase === 'result' || phase === 'done' ? (p2Won ? knockP1 : p1Won ? 'scale-105' : '') : ''}`}>
@@ -364,7 +364,12 @@ export default function BattleFaceoff({
         </div>
       </div>
 
-      <span className={`${large ? 'text-xl' : 'text-sm'} font-black text-zinc-700`}>⚔️</span>
+      {/* Box matches the card's height (aspect-3/4 → width×4/3) so the sword
+          stays centered on the cards while the row is top-aligned and the
+          per-card roll captions grow downward without shifting anything. */}
+      <div className={`flex shrink-0 items-center justify-center ${vertical ? '' : large ? 'h-[149px] sm:h-[170px]' : 'h-[85px]'}`}>
+        <span className={`${large ? 'text-xl' : 'text-sm'} font-black text-zinc-700`}>⚔️</span>
+      </div>
 
       <div className={`relative flex ${vertical ? 'flex-row items-center gap-3' : 'flex-col items-center gap-1'} transition-all duration-500 ${
         phase === 'enter' ? enterAnim2 : ''
