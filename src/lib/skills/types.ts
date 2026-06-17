@@ -62,6 +62,7 @@ export type BattleEffect = {
   name: string
   kind: EffectKind[]
   hooks: BattleEffectHooks
+  rangeLabel?: string // short dice range for the roll UI, e.g. "1-3"
   scope?: SynergyScope
   target?: SynergyTarget
   requiredTypes?: string[] // for scope 'synergy_cards': only cards with one of these types

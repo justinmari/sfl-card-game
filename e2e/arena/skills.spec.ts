@@ -389,4 +389,64 @@ test.describe('Arena Skills E2E', () => {
 
     await player.context.close()
   })
+
+  // --- Natural roll labels (underdog / head-to-head) ---
+
+  test('the lower-rarity card\'s natural roll is labeled "Underdog"', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    // Admin holds commons/uncommons, player holds rare→secret, so every admin
+    // face-off is the underdog. Fountain of Youth keeps everyone alive so the
+    // face-offs run; it doesn't touch dice, so the natural label is preserved.
+    await expect(page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await page.getByText('Fountain of Youth', { exact: true }).click()
+
+    const underdog = page.locator('[data-testid="skill-effect"][data-kind="dice"][data-skill="Underdog"]').first()
+    await expect(underdog).toBeVisible({ timeout: 30000 })
+    await expect(underdog).toHaveAttribute('data-synergy', 'false') // natural, not a synergy
+    await test.info().attach('effect-underdog', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
+
+  test('Leveler equalizes power so the roll is labeled "Head-to-Head"', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    // Leveler (set_power 1) makes both cards 1-star in every face-off → a tie,
+    // so the natural roll is the "Head-to-Head" tiebreaker rather than underdog.
+    await expect(player.page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await player.page.getByText('Leveler', { exact: true }).click()
+    await expect(page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await page.getByText('Fountain of Youth', { exact: true }).click() // keep everyone alive
+
+    const h2h = page.locator('[data-testid="skill-effect"][data-kind="dice"][data-skill="Head-to-Head"]').first()
+    await expect(h2h).toBeVisible({ timeout: 30000 })
+    await test.info().attach('effect-head-to-head', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
+
+  // --- Active-skill banner is split onto the activating player's side ---
+
+  test('an activated skill renders on the activating player\'s side, not the opponent\'s', async ({ page, browser }) => {
+    await login(page, TEST_ADMIN)
+    const player = await loginNewContext(browser, TEST_PLAYER)
+    await startBattle(page, player.page)
+
+    // Admin activates Fountain of Youth; on the admin's screen that belongs to
+    // the "self" (left) column, never the opponent (right) column.
+    await expect(page.getByText('Skills').first()).toBeVisible({ timeout: 30000 })
+    await page.getByText('Fountain of Youth', { exact: true }).click()
+
+    const self = page.locator('[data-testid="active-skills-self"]').first()
+    await expect(self).toContainText('Fountain of Youth', { timeout: 30000 })
+    await expect(page.locator('[data-testid="active-skills-opponent"]').first()).not.toContainText('Fountain of Youth')
+    await test.info().attach('active-skill-sides', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await player.context.close()
+  })
 })

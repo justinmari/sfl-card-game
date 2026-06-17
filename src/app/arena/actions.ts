@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { isArenaAccessible } from '@/lib/arena-settings'
-import { type BattlePlayer, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
+import { type BattlePlayer, type BattleCard, type RoundResult, precomputeRound, randomPair } from '@/lib/battle-engine'
 import { type ActiveSkill } from '@/lib/skills'
 import { createSeededRng } from '@/lib/seeded-random'
 import { resolveSkills } from '@/lib/skills'
@@ -14,7 +14,7 @@ type SessionPlayer = {
   id: string
   name: string
   avatar_url: string | null
-  deck: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds?: string[] }[]
+  deck: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds?: string[]; types?: string[] }[]
   startingHp?: number // 10 for original players, 0 for late-joining spectators
 }
 
@@ -294,11 +294,11 @@ export async function submitRoundReady(
       list.push(r.type_id)
       typeMap.set(r.card_id, list)
     }
-    const playersWithTypes = sessionPlayers.map((p) => ({
-      id: p.id,
-      deck: p.deck.map((c) => ({ ...c, types: typeMap.get(c.id) ?? [] })),
-    }))
-    allSkills.push(...computeActiveSynergies(playersWithTypes, synergyDefs))
+    // Attach types to the session decks so (a) synergy recipes match and (b) the
+    // battle cards built below carry types, letting synergy_cards-scoped effects
+    // hit the right cards during round computation.
+    for (const p of sessionPlayers) for (const c of p.deck) c.types = typeMap.get(c.id) ?? []
+    allSkills.push(...computeActiveSynergies(sessionPlayers.map((p) => ({ id: p.id, deck: p.deck as BattleCard[] })), synergyDefs))
   }
 
   // Use stored matchups as fixed pairings (same ones shown in skill-select)

@@ -122,6 +122,25 @@ describe('buildSynergyDef (loader)', () => {
   })
 })
 
+describe('extra dice', () => {
+  it('an extra die that rolls 0 still records a bonusRoll activation (so it shows rolling)', () => {
+    const fx = makeEffect('x', 'X', 'extra_dice', { min: 0, max: 0 }, ['extraDice']) // always 0
+    const as: ActiveSkill = { skill: { id: 's', name: 'S', description: '', usesPerBattle: 1, effects: [fx] }, activatedBy: 'p1', roundActivated: 0, ownerSide: 1 }
+    const r = resolveFaceOff(card('rare', 'a'), card('rare', 'b'), [as], createSeededRng(42))
+    const act = r.activations?.find((a) => a.effectId === 'x')
+    expect(act).toBeDefined()
+    const ch = act!.changes.find((c) => c.side === 1 && c.field === 'bonusRoll')
+    expect(ch).toBeDefined()
+    expect(ch!.after).toBe(ch!.before) // rolled 0 — recorded so the die still shows
+  })
+
+  it('a min keeps the extra die from rolling 0', () => {
+    const fx = makeEffect('x', 'X', 'extra_dice', { min: 1, max: 1 }, ['extraDice'])
+    const out = fx.hooks.onDice!({ card1: card('rare', 'a'), card2: card('rare', 'b'), star1: 3, star2: 3, rarity1: 'rare', rarity2: 'rare', roll1: 0, roll2: 0, bonusRoll1: 0, bonusRoll2: 0, effective1: 0, effective2: 0, damage1: 0, damage2: 0, rand: () => 0 })
+    expect(out.bonusRoll1).toBe(1)
+  })
+})
+
 describe('round-level synergy scope (S1)', () => {
   const healDef = (scope: 'own' | 'arena'): SynergyDef => ({
     id: 'h', name: 'Heal', description: '',

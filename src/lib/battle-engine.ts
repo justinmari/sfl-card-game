@@ -45,6 +45,7 @@ export type SkillActivation = {
   phase: ActivationPhase
   changes: ActivationChange[]
   activatedBy?: string // player id that activated it (skills); synergies use `synergy:` skillId
+  rangeLabel?: string // dice range for the roll UI, e.g. "0-10"
 }
 
 export type FaceOff = {
@@ -205,8 +206,15 @@ function applyHooks(skills: ActiveSkill[] | undefined, phase: ActivationPhase, s
           if (state[k1] !== after[k1]) changes.push({ side: 1, field, before: state[k1], after: after[k1] })
           if (state[k2] !== after[k2]) changes.push({ side: 2, field, before: state[k2], after: after[k2] })
         }
+        // An extra die that rolls 0 produces no field change, but should still be
+        // shown rolling. Record a (possibly-zero) bonusRoll change for each side
+        // the extra-dice effect reaches.
+        if (eff.kind.includes('extraDice')) {
+          if (s1 && !changes.some((c) => c.side === 1 && c.field === 'bonusRoll')) changes.push({ side: 1, field: 'bonusRoll', before: state.bonusRoll1, after: after.bonusRoll1 })
+          if (s2 && !changes.some((c) => c.side === 2 && c.field === 'bonusRoll')) changes.push({ side: 2, field: 'bonusRoll', before: state.bonusRoll2, after: after.bonusRoll2 })
+        }
         if (changes.length > 0) {
-          trace.push({ skillId: s.skill.id, skillName: s.skill.name, effectId: eff.id, kind: eff.kind, phase, changes, activatedBy: s.activatedBy })
+          trace.push({ skillId: s.skill.id, skillName: s.skill.name, effectId: eff.id, kind: eff.kind, phase, changes, activatedBy: s.activatedBy, rangeLabel: eff.rangeLabel })
         }
       }
       state = after

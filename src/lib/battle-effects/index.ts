@@ -15,7 +15,7 @@ export function makeEffect(
 ): BattleEffect {
   const handler = OP_REGISTRY[op]
   if (!handler) throw new Error(`Unknown battle-effect op: ${op}`)
-  return { id: key, name, kind: kind ?? handler.defaultKind, hooks: handler.build(params) }
+  return { id: key, name, kind: kind ?? handler.defaultKind, hooks: handler.build(params), rangeLabel: handler.rangeLabel?.(params) }
 }
 
 // Built-in effects (the reference compositions). Skills import these today; the

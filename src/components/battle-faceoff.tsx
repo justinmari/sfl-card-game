@@ -5,6 +5,7 @@ import CompactCard from './compact-card'
 import type { FaceOffDetail } from '@/lib/battle-engine'
 import { type EffectKind } from '@/lib/skill-visuals'
 import { rarityLabel } from '@/lib/rarities'
+import { type DieInfo, buildSideDice } from '@/lib/dice-display'
 
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
@@ -59,47 +60,76 @@ function CountTo({ from, to, className }: { from: number; to: number; className?
 
 type EmojiParticle = { emoji: string; x: number; y: number; vx: number; vy: number; size: number; age: number; rotation: number; rs: number }
 
-// DOM breakdown of a card's ⭐ power + 🎲 dice (+ 🎲🎲 extra die) → total. Replaces
-// the old canvas: declarative, easy to extend, and animates with CSS. The
-// particle/sparkle layer stays on canvas.
-function DiceBreakdown({ phase, rollElapsed, star, roll, bonus, maxRoll, effective, large }: {
-  phase: Phase; rollElapsed: number; star: number; roll: number; bonus: number; maxRoll: number; effective: number; large: boolean
+
+// DOM breakdown of ⭐ power + each 🎲 die → total. Dice reveal one at a time as
+// effects are stepped (the newest spins with its source label, e.g. "Underdog
+// 0-10" / "Egg Roll 0-1"; synergies in cyan). Replaces the old canvas; particles
+// stay on canvas.
+function DiceBreakdown({ phase, rollElapsed, star, dice, effective, large }: {
+  phase: Phase; rollElapsed: number; star: number; dice: DieInfo[]; effective: number; large: boolean
 }) {
   const [, setTick] = useState(0)
-  const rolling = phase === 'rolling' && (maxRoll > 0 || bonus > 0)
-  const settled = rollElapsed >= 1100
+  const rolling = phase === 'rolling'
   useEffect(() => {
-    if (!rolling || settled) return
-    const iv = setInterval(() => setTick((t) => t + 1), 80) // slot-machine flicker
+    if (!rolling) return
+    const iv = setInterval(() => setTick((t) => t + 1), 80) // slot-machine flicker for the spinning die
     return () => clearInterval(iv)
-  }, [rolling, settled])
+  }, [rolling, dice.length])
 
   const n = large ? 'text-xl' : 'text-sm'
   const e = large ? 'text-sm' : 'text-[10px]'
-  const wrap = `flex items-center justify-center gap-1 font-bold tabular-nums ${large ? 'min-h-[44px]' : 'min-h-[30px]'}`
+  const wrap = `flex flex-col items-center justify-center ${large ? 'min-h-[44px]' : 'min-h-[30px]'}`
+  const row = 'flex items-center justify-center gap-1 font-bold tabular-nums'
+  const dieColor = (d: DieInfo) => (d.isSynergy ? 'text-cyan-400' : 'text-amber-400')
 
   if (phase === 'enter') return <div className={wrap} />
-  if (phase === 'power' || (phase === 'rolling' && maxRoll === 0 && bonus === 0)) {
-    return <div className={wrap}><span className={e}>⭐</span><span className={`${n} text-zinc-300`}>{star}</span></div>
+  if (phase === 'power' || (phase === 'rolling' && dice.length === 0)) {
+    return <div className={wrap}><div className={row}><span className={e}>⭐</span><span className={`${n} text-zinc-300`}>{star}</span></div></div>
   }
   if (phase === 'rolling') {
-    const dr = settled ? roll : Math.floor(Math.random() * (maxRoll + 1))
-    const db = settled ? bonus : Math.floor(Math.random() * (bonus + 1))
+    const lastIdx = dice.length - 1
+    const current = dice[lastIdx]
     return (
-      <div className={`${wrap} ${settled ? '' : 'animate-pulse'}`}>
-        <span className={e}>⭐</span><span className={`${n} text-zinc-400`}>{star}</span>
-        {maxRoll > 0 && (<><span className={`${e} text-zinc-500`}>+</span><span className={e}>🎲</span><span className={`${n} text-amber-400`}>{dr}</span></>)}
-        {bonus > 0 && (<><span className={`${e} text-zinc-500`}>+</span><span className={e}>🎲🎲</span><span className={`${n} text-cyan-400`}>{db}</span></>)}
+      <div className={wrap}>
+        <div className={row}>
+          <span className={e}>⭐</span><span className={`${n} text-zinc-400`}>{star}</span>
+          {dice.map((d, i) => {
+            const isCurrent = i === lastIdx
+            const shown = isCurrent ? Math.floor(Math.random() * ((d.spinMax || 1) + 1)) : d.value
+            return (
+              <span key={i} className="flex items-center gap-0.5">
+                <span className={`${e} text-zinc-500`}>+</span>
+                <span className={e}>🎲</span>
+                <span className={`${n} ${dieColor(d)} ${isCurrent ? 'animate-pulse' : ''}`}>{shown}</span>
+              </span>
+            )
+          })}
+        </div>
+        {dice.filter((d) => d.label).map((d, i) => (
+          <div key={i} data-testid="skill-effect" data-kind={d.isBase ? 'dice' : 'extraDice'} data-skill={d.label} data-synergy={d.isSynergy ? 'true' : 'false'}
+            className={`${e} mt-0.5 font-semibold ${d.isSynergy ? 'text-cyan-300' : 'text-amber-300'} ${d === current ? 'animate-pulse' : ''}`}>
+            🎲 {d.label}{d.range ? ` ${d.range}` : ''}
+          </div>
+        ))}
       </div>
     )
   }
-  // merge / result / done → the combined total
+  // merge / result / done → the combined total, with a small caption of which
+  // dice effects contributed (persistent, so it reads after the roll settles).
+  const labeled = dice.filter((d) => d.label)
   return (
-    <div className={`${wrap} text-zinc-100`}>
-      <span className={e}>⭐</span><span key={effective} className={`${n} animate-[skillPop_0.4s_ease-out]`}>{effective}</span>
+    <div className={wrap}>
+      <div className={row}><span className={e}>⭐</span><span key={effective} className={`${n} text-zinc-100 animate-[skillPop_0.4s_ease-out]`}>{effective}</span></div>
+      {labeled.map((d, i) => (
+        <div key={i} data-testid="skill-effect" data-kind={d.isBase ? 'dice' : 'extraDice'} data-skill={d.label} data-synergy={d.isSynergy ? 'true' : 'false'}
+          className={`${e} ${d.isSynergy ? 'text-cyan-300' : 'text-amber-300'}`}>
+          🎲 {d.label}{d.range ? ` ${d.range}` : ''}
+        </div>
+      ))}
     </div>
   )
 }
+
 
 export default function BattleFaceoff({
   faceOff,
@@ -143,9 +173,10 @@ export default function BattleFaceoff({
   const tie = fo.damage1 === 0 && fo.damage2 === 0
 
   const cardSize = large ? 'w-28 sm:w-32' : 'w-16'
-  // Display dice range per side (drives the rolling flicker in DiceBreakdown).
-  const maxRoll1 = fo.star1 < fo.star2 ? fo.star2 - fo.star1 + 1 : fo.star1 === fo.star2 ? 1 : 0
-  const maxRoll2 = fo.star2 < fo.star1 ? fo.star1 - fo.star2 + 1 : fo.star1 === fo.star2 ? 1 : 0
+
+  // Ordered dice per side (base/underdog roll + any extra dice), derived from
+  // the step-sliced activations so dice appear as effects are revealed.
+  const diceFor = (side: 1 | 2): DieInfo[] => buildSideDice(fo, side)
 
   // Reset spawn flags when entering a new faceoff
   if (phase === 'enter') {
@@ -288,6 +319,9 @@ export default function BattleFaceoff({
       const label = isSynergy ? `${a.skillName} in effect` : who ? `${who} used ${a.skillName}` : `${a.skillName}`
       for (const ch of a.changes) {
         if (ch.side !== side) continue
+        // Dice and extra dice are shown inline in DiceBreakdown (with labels), so
+        // don't duplicate them as floating chips.
+        if (ch.field === 'roll' || ch.field === 'bonusRoll') continue
         entries.push({ key: `${a.effectId}:${ch.field}`, name: a.skillName, label, isSynergy, kind: FIELD_KIND[ch.field], phase: FIELD_PHASE[ch.field], before: ch.before, after: ch.after })
       }
     }
@@ -326,7 +360,7 @@ export default function BattleFaceoff({
         {renderEffects(1)}
         <div ref={card1DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterLeft_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleLeft_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(1) }}><CompactCard card={fo.card1} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1 transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}>
-          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star1} roll={fo.roll1} bonus={fo.bonusRoll1} maxRoll={maxRoll1} effective={fo.effective1} large={large} />
+          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star1} dice={diceFor(1)} effective={fo.effective1} large={large} />
         </div>
       </div>
 
@@ -338,7 +372,7 @@ export default function BattleFaceoff({
         {renderEffects(2)}
         <div ref={card2DivRef} className={`${cardSize} rounded-xl transition-shadow duration-300 ${large ? 'card-shadow-lg' : 'card-shadow'} ${phase === 'enter' ? (large ? 'animate-[cardEnterRight_0.5s_ease-out_forwards]' : '') : (large ? 'animate-[wobbleRight_3s_ease-in-out_infinite]' : '')}`} style={{ ...(!large ? { transform: 'rotate(-2deg)' } : {}), ...(cardFilter ? { filter: cardFilter } : {}), ...auraStyle(2) }}><CompactCard card={fo.card2} /></div>
         <div className={`flex flex-col ${vertical ? 'items-start' : 'items-center'} gap-1 transition-opacity duration-300 ${phase === 'enter' ? 'opacity-0' : 'opacity-100'}`}>
-          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star2} roll={fo.roll2} bonus={fo.bonusRoll2} maxRoll={maxRoll2} effective={fo.effective2} large={large} />
+          <DiceBreakdown phase={phase} rollElapsed={rollElapsed} star={fo.star2} dice={diceFor(2)} effective={fo.effective2} large={large} />
         </div>
       </div>
 

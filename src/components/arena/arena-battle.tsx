@@ -23,6 +23,58 @@ import CompactCard from '@/components/compact-card'
 import { rarityLabel, rarityBadgeColors } from '@/lib/rarities'
 import { skillEffectKinds } from '@/lib/skill-visuals'
 
+// Active skills/synergies, split onto the side of the player who has them
+// active: mine (left), opponent's (right). Synergies are cyan ("in effect"),
+// skills are pink ("used"). variant tunes density across the battle phases.
+function MatchSkillSides({
+  skills, userId, opponentId, getPlayer, variant = 'full', className = '',
+}: {
+  skills: ActiveSkill[]
+  userId: string
+  opponentId: string | null
+  getPlayer: (id: string) => { name?: string } | undefined
+  variant?: 'full' | 'compact' | 'result'
+  className?: string
+}) {
+  if (skills.length === 0) return null
+  const textSize = variant === 'compact' ? 'text-xs' : 'text-sm'
+  const renderSide = (id: string | null, align: 'left' | 'right') => {
+    const list = id ? skills.filter((as) => as.activatedBy === id) : []
+    return (
+      <div
+        data-testid={align === 'left' ? 'active-skills-self' : 'active-skills-opponent'}
+        className={`min-w-0 flex-1 space-y-0.5 ${align === 'right' ? 'text-right' : 'text-left'}`}
+      >
+        {list.length > 0 && (
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            {id === userId ? 'You' : getPlayer(id!)?.name || 'Opponent'}
+          </div>
+        )}
+        {list.map((as, i) => {
+          const isSyn = as.skill.id.startsWith('synergy:')
+          return (
+            <div key={i} className={`${textSize} leading-tight`}>
+              <span className={`font-bold ${isSyn ? 'text-cyan-300' : 'text-pink-400'}`}>{as.skill.name}</span>
+              <span className="text-zinc-500">{isSyn ? ' in effect' : ' used'}</span>
+              {variant === 'full' && as.skill.description && (
+                <span className="block text-xs text-zinc-400">{as.skill.description}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+  const pad = variant === 'compact' ? 'px-3 py-1.5' : 'px-4 py-2'
+  return (
+    <div className={`flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 ${pad} ${className}`}>
+      {renderSide(userId, 'left')}
+      <div className="w-px self-stretch bg-white/10" />
+      {renderSide(opponentId, 'right')}
+    </div>
+  )
+}
+
 const rarityTextColor: Record<string, string> = {
   common: 'text-zinc-400',
   uncommon: 'text-green-400',
@@ -341,22 +393,27 @@ export default function ArenaBattle({
     // ALL matches so every client stays in lockstep (no spectator races ahead).
     const actsOf = (m: MatchResult): SkillActivation[] => (m.faceOffs[cardIdx] as FaceOffDetail | undefined)?.activations ?? []
     const preOf = (acts: SkillActivation[]) => acts.filter((a) => a.phase === 'onStars').length
+    const diceOf = (acts: SkillActivation[]) => acts.filter((a) => a.phase === 'onDiceOverride' || a.phase === 'onDice').length
     const allMatches = precomputed?.matches ?? []
     const myMatch = allMatches.find((m) => m.player1Id === userId || m.player2Id === userId)
     const myActs = myMatch ? actsOf(myMatch) : []
-    const myPre = preOf(myActs)         // my onStars (pre-roll) activation count
+    const myPre = preOf(myActs)         // my onStars (pre-roll) activations
+    const myDice = diceOf(myActs)       // my dice activations (revealed during rolling)
     const myTotal = myActs.length
     const gPre = Math.max(0, ...allMatches.map((m) => preOf(actsOf(m))))
-    const gPost = Math.max(0, ...allMatches.map((m) => actsOf(m).length - preOf(actsOf(m))))
+    const gDice = Math.max(0, ...allMatches.map((m) => diceOf(actsOf(m))))
+    const gPost = Math.max(0, ...allMatches.map((m) => actsOf(m).length - preOf(actsOf(m)) - diceOf(actsOf(m))))
     const stepDur = 700
-    const stepped = !ARENA_FAST && (gPre > 0 || gPost > 0)
+    const stepped = !ARENA_FAST && (gPre > 0 || gDice > 0 || gPost > 0)
     const powerExtra = stepped && gPre > 0 ? gPre * stepDur : 0
+    const rollExtra = stepped && gDice > 0 ? gDice * stepDur : 0   // step each dice effect during rolling
     const mergeExtra = stepped && gPost > 0 ? (gPost + 1) * stepDur : 0
     const [P, R, M, RES, DON] = [FACEOFF_PHASES[1][0], FACEOFF_PHASES[2][0], FACEOFF_PHASES[3][0], FACEOFF_PHASES[4][0], FACEOFF_PHASES[5][0]]
-    const mergeStartMs = M + powerExtra
+    const rollingStartMs = R + powerExtra
+    const mergeStartMs = M + powerExtra + rollExtra
     const phases: [number, 'enter' | 'power' | 'rolling' | 'merge' | 'result' | 'done'][] = [
-      [0, 'enter'], [P, 'power'], [R + powerExtra, 'rolling'], [M + powerExtra, 'merge'],
-      [RES + powerExtra + mergeExtra, 'result'], [DON + powerExtra + mergeExtra, 'done'],
+      [0, 'enter'], [P, 'power'], [rollingStartMs, 'rolling'], [mergeStartMs, 'merge'],
+      [RES + powerExtra + rollExtra + mergeExtra, 'result'], [DON + powerExtra + rollExtra + mergeExtra, 'done'],
     ]
 
     const startTime = performance.now()
@@ -407,15 +464,15 @@ export default function ArenaBattle({
       }
       // Advance how many of MY activations are revealed, per phase:
       //  power → step through my onStars (0..myPre), before the roll
-      //  rolling → hold at myPre (roll uses the boosted stats)
-      //  merge+ → step through the rest (myPre..myTotal)
+      //  rolling → step through my dice effects one at a time (myPre..myPre+myDice)
+      //  merge+ → step through the rest (totals/damage) up to myTotal
       if (myTotal > 0) {
         let s: number
         if (!stepped) s = myTotal
         else if (currentPhaseName === 'enter') s = 0
         else if (currentPhaseName === 'power') s = Math.min(myPre, Math.max(0, Math.floor((elapsed - P) / stepDur)))
-        else if (currentPhaseName === 'rolling') s = myPre
-        else s = Math.min(myTotal, myPre + Math.max(0, Math.floor((elapsed - mergeStartMs) / stepDur)))
+        else if (currentPhaseName === 'rolling') s = myPre + Math.min(myDice, Math.max(0, Math.floor((elapsed - rollingStartMs) / stepDur)))
+        else s = Math.min(myTotal, myPre + myDice + Math.max(0, Math.floor((elapsed - mergeStartMs) / stepDur)))
         if (s !== lastStep) { lastStep = s; setSkillStep(s) }
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -635,17 +692,7 @@ export default function ArenaBattle({
 
             return (
               <div className="space-y-4 animate-[fadeIn_0.5s_ease-out]">
-                {myMatchSkills.length > 0 && (
-                  <div className="rounded-lg border border-pink-800 bg-pink-950/20 px-4 py-2 text-center">
-                    {myMatchSkills.map((as, i) => (
-                      <div key={i} className="text-sm">
-                        <span className="font-bold text-pink-400">{as.skill.name}</span>
-                        <span className="text-zinc-400"> — {as.skill.description}</span>
-                        <span className="text-zinc-600"> (by {getPlayer(as.activatedBy)?.name})</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <MatchSkillSides skills={myMatchSkills} userId={userId} opponentId={opponentId} getPlayer={getPlayer} variant="full" />
 
                 {(() => {
                   const myMatch = precomputed!.matches.find((m) => m.player1Id === userId || m.player2Id === userId)
@@ -815,16 +862,12 @@ export default function ArenaBattle({
           {battlePhase === 'fighting' && precomputed && (() => {
             const myMatchIdx = precomputed.matches.findIndex((m) => m.player1Id === userId || m.player2Id === userId)
             const otherMatches = precomputed.matches.map((m, i) => ({ match: m, idx: i })).filter((_, i) => i !== myMatchIdx)
+            const fightMatch = myMatchIdx >= 0 ? precomputed.matches[myMatchIdx] : null
+            const fightOpponentId = fightMatch ? (fightMatch.player1Id === userId ? fightMatch.player2Id : fightMatch.player1Id) : null
 
             return (
               <div className="space-y-4">
-                {myMatchSkills.length > 0 && (
-                  <div className="rounded-lg border border-pink-800 bg-pink-950/20 px-3 py-1.5 text-center">
-                    {myMatchSkills.map((as, i) => (
-                      <span key={i} className="text-xs"><span className="font-bold text-pink-400">{as.skill.name}</span><span className="text-zinc-500"> active</span></span>
-                    ))}
-                  </div>
-                )}
+                <MatchSkillSides skills={myMatchSkills} userId={userId} opponentId={fightOpponentId} getPlayer={getPlayer} variant="compact" />
                 <div className="text-center text-xs text-zinc-500">Card {cardIdx + 1}/5</div>
 
                 {myMatchIdx >= 0 && !matchKo.has(myMatchIdx) && (() => {
@@ -945,21 +988,13 @@ export default function ArenaBattle({
 
           {/* Round end */}
           {(battlePhase === 'round-end') && precomputed && (() => {
+            const endMatch = precomputed.matches.find((m) => m.player1Id === userId || m.player2Id === userId)
+            const endOpponentId = endMatch ? (endMatch.player1Id === userId ? endMatch.player2Id : endMatch.player1Id) : null
             return (
               <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 animate-[fadeIn_0.5s_ease-out]">
                 <h3 className="mb-4 text-lg font-bold text-center">Round {roundNum} Complete</h3>
 
-                {myMatchSkills.length > 0 && (
-                  <div className="mb-4 rounded-lg border border-pink-800 bg-pink-950/20 px-4 py-2">
-                    {myMatchSkills.map((as, i) => (
-                      <div key={i} className="text-sm text-center">
-                        <span className="text-white font-medium">{getPlayer(as.activatedBy)?.name}</span>
-                        <span className="text-zinc-500"> used </span>
-                        <span className="font-bold text-pink-400">{as.skill.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <MatchSkillSides skills={myMatchSkills} userId={userId} opponentId={endOpponentId} getPlayer={getPlayer} variant="result" className="mb-4" />
 
                 <div className="mb-6 space-y-1">
                   {precomputed.matches.map((m, i) => {

@@ -34,6 +34,8 @@ export type OpHandler = {
   defaultKind: EffectKind[]
   params: ParamSpec[]
   build: (params: Record<string, unknown>) => BattleEffectHooks
+  // Optional short range/label for the dice-roll UI (e.g. "1-3", "0-10").
+  rangeLabel?: (params: Record<string, unknown>) => string
 }
 
 const num = (p: Record<string, unknown>, k: string, d: number): number =>
@@ -50,6 +52,7 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
   dice_bonus: {
     id: 'dice_bonus', label: 'Dice bonus', phase: 'faceoff', defaultKind: ['dice'],
     params: [{ key: 'amount', type: 'number', label: 'Bonus', default: 2, min: 1, max: 10 }],
+    rangeLabel: (p) => `+${num(p, 'amount', 2)}`,
     build: (p) => {
       const amt = num(p, 'amount', 2)
       return {
@@ -63,14 +66,20 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
   },
   extra_dice: {
     id: 'extra_dice', label: 'Roll an extra die', phase: 'faceoff', defaultKind: ['extraDice'],
-    params: [{ key: 'max', type: 'number', label: 'Die max', default: 2, min: 1, max: 12 }],
+    params: [
+      { key: 'min', type: 'number', label: 'Die min', default: 0, min: 0, max: 12 },
+      { key: 'max', type: 'number', label: 'Die max', default: 2, min: 1, max: 12 },
+    ],
+    rangeLabel: (p) => `${num(p, 'min', 0)}-${num(p, 'max', 2)}`,
     build: (p) => {
-      const max = num(p, 'max', 2)
+      const min = num(p, 'min', 0)
+      const max = Math.max(min, num(p, 'max', 2))
+      const span = max - min + 1
       return {
         onDice: (s) => ({
           ...s,
-          bonusRoll1: s.bonusRoll1 + Math.floor(s.rand() * (max + 1)),
-          bonusRoll2: s.bonusRoll2 + Math.floor(s.rand() * (max + 1)),
+          bonusRoll1: s.bonusRoll1 + min + Math.floor(s.rand() * span),
+          bonusRoll2: s.bonusRoll2 + min + Math.floor(s.rand() * span),
         }),
       }
     },
@@ -78,6 +87,7 @@ export const OP_REGISTRY: Record<string, OpHandler> = {
   big_dice: {
     id: 'big_dice', label: 'Big dice (lower rarity)', phase: 'faceoff', defaultKind: ['dice'],
     params: [{ key: 'max', type: 'number', label: 'Max roll', default: 10, min: 1, max: 20 }],
+    rangeLabel: (p) => `0-${num(p, 'max', 10)}`,
     build: (p) => {
       const max = num(p, 'max', 10)
       return {

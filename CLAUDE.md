@@ -1,6 +1,10 @@
 @AGENTS.md
 @CONTEXT.md
 
+## ⚠️ Never push automatically
+
+**Do NOT `git commit`, `git push`, `git merge` to main, or `supabase db push` after making changes unless the user explicitly says so in that message.** After implementing and testing, stop and report — then WAIT for the user's confirmation before committing or pushing anything. "Approval" given for one change does not carry over to the next; ask again each time. When in doubt, do not push.
+
 ## Development Workflow
 
 When working on features or bug fixes, follow this workflow:
