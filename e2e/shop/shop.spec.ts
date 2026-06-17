@@ -53,6 +53,48 @@ test.describe('Shop', () => {
     await test.info().attach('buy-modal', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
+  test('buy modal shows the pack card grid, with blanks for undiscovered cards', async ({ page }) => {
+    const id = await getPlayerId()
+    const SECRET_CARD = 'dddddddd-0010-0000-0000-000000000000' // Earth Worm Secret (secret_rare)
+    // Make one card undiscovered by removing it from the player's collection.
+    await fetch(`${LOCAL_URL}/rest/v1/user_cards?user_id=eq.${id}&card_id=eq.${SECRET_CARD}`, { method: 'DELETE', headers })
+    try {
+      await login(page, TEST_PLAYER)
+      await page.goto('/shop')
+      await page.getByText('Starter Pack').click()
+
+      const grid = page.getByTestId('pack-card-grid')
+      await expect(grid).toBeVisible({ timeout: 5000 })
+
+      // Every card in the pack is represented (Starter Pack seeds all 10 cards).
+      const tiles = grid.getByTestId('tiny-card')
+      expect(await tiles.count()).toBe(10)
+
+      // The removed card shows as a blank: present as a tile, but with no <img>.
+      const blanks = grid.locator('[data-testid="tiny-card"][data-owned="false"]')
+      expect(await blanks.count()).toBeGreaterThanOrEqual(1)
+      await expect(blanks.first().locator('img')).toHaveCount(0)
+
+      // DOM-leak guard: the undiscovered card's name appears NOWHERE in the
+      // modal, but an owned card's name IS present (in its hover tooltip).
+      const modal = page.locator('div.surface').filter({ hasText: 'Cards in this pack' })
+      await expect(modal).not.toContainText('Earth Worm Secret')
+      await expect(modal).toContainText('Fire Drake Common') // owned, in this pack
+
+      const owned = grid.locator('[data-testid="tiny-card"][data-owned="true"]')
+      expect(await owned.count()).toBeGreaterThanOrEqual(1)
+
+      await test.info().attach('pack-card-grid', { body: await page.screenshot(), contentType: 'image/png' })
+    } finally {
+      // Restore so other specs still see the player owning everything.
+      await fetch(`${LOCAL_URL}/rest/v1/user_cards`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ user_id: id, card_id: SECRET_CARD, count: 1 }),
+      })
+    }
+  })
+
   test('buy modal shows correct prices', async ({ page }) => {
     await login(page, TEST_PLAYER)
     await page.goto('/shop')
