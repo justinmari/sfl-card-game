@@ -88,4 +88,11 @@ test.describe('Admin Cards', () => {
       await test.info().attach('card-hover', { body: await page.screenshot(), contentType: 'image/png' })
     }
   })
+
+  test('manage cards respects the compact-cards preference', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sfl-preferences', JSON.stringify({ compactCards: true })))
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/cards')
+    await expect(page.getByTestId('admin-cards')).toHaveAttribute('data-compact', 'true', { timeout: 10000 })
+  })
 })

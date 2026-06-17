@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import { RARITIES } from '@/lib/rarities'
 import { CompactFilterBar, useCardFilters, type SortOption, type FilterSelect } from '@/components/card-filters'
+import { usePreferences } from '@/lib/preferences'
 
 type Creature = {
   id: string
@@ -33,6 +34,9 @@ type Card = {
 
 export default function CardList({ cards, creatures, types, cardsInPacks = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[] }) {
   const typeNameMap = useMemo(() => new Map(types.map((t) => [t.id, t.name])), [types])
+  const { preferences } = usePreferences()
+  const compact = preferences.compactCards
+  const cardSize = compact ? 'sm' : 'md'
   const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
   const [filterNotInPack, setFilterNotInPack] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -338,9 +342,9 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [] }:
         </div>
       )}
 
-      <div className="flex flex-wrap gap-4">
+      <div data-testid="admin-cards" data-compact={compact ? 'true' : 'false'} className="flex flex-wrap gap-4">
         {filteredCards.map((card) => (
-          <TradingCard key={card.id} testId="admin-card" card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size="md" className="group">
+          <TradingCard key={card.id} testId="admin-card" card={{ ...card, creature_name: card.creatures?.name || null, typeNames: (card.card_types || []).map((ct) => typeNameMap.get(ct.type_id) || '').filter(Boolean) }} size={cardSize} className="group">
             <div className="absolute right-1.5 top-1.5 hidden gap-1 group-hover:flex">
               <button
                 onClick={() => startEdit(card)}
