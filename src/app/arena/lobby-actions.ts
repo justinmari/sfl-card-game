@@ -159,42 +159,25 @@ type Sb = Awaited<ReturnType<typeof createClient>>
 type ValidatedDeckCard = { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds: string[] }
 
 // Resolve a player's arena deck authoritatively from the DB: requires the saved
-// deck at `slot` to have EXACTLY 5 cards, all owned by the player. Returns the
-// server-built card list (never trusting any client-supplied card data) or an
-// error. Used both when readying up and again at session start so a forged
-// arena_lobby_players.deck_cards row can't sneak in unowned/over-powered cards.
+// deck at `slot` to have EXACTLY 5 unique cards, all owned by the player.
+// Returns the server-built card list (never trusting any client-supplied card
+// data) or an error. Used both when readying up and again at session start so a
+// forged arena_lobby_players.deck_cards row can't sneak in unowned cards.
+//
+// Goes through the rpc_resolve_arena_deck SECURITY DEFINER function: the host
+// re-validates OTHER players' decks at game start, and `decks`/`user_cards` are
+// RLS-scoped to their owner, so a direct read as the host returns nothing. The
+// RPC reads them under definer rights, guarded to lobby co-members.
 async function resolveArenaDeck(supabase: Sb, userId: string, deckSlot: number | null | undefined): Promise<{ deck: ValidatedDeckCard[] } | { error: string }> {
   if (deckSlot == null) return { error: 'No deck selected' }
-  const { data: deck } = await supabase.from('decks').select('card_ids').eq('user_id', userId).eq('slot', deckSlot).single()
-  const cardIds = (deck?.card_ids as string[] | undefined) ?? []
-  if (cardIds.length !== 5) return { error: 'Deck must have exactly 5 cards' }
-
-  const { data: cards } = await supabase
-    .from('cards')
-    .select('id, name, image_url, rarity, creatures(name), card_skills(skill_id)')
-    .in('id', cardIds)
-  if (!cards || cards.length !== 5) return { error: 'Invalid deck' }
-
-  const { data: owned } = await supabase
-    .from('user_cards')
-    .select('card_id')
-    .eq('user_id', userId)
-    .in('card_id', cardIds)
-    .gt('count', 0)
-  const ownedIds = new Set((owned || []).map((o) => o.card_id))
-  if (!cardIds.every((id) => ownedIds.has(id))) return { error: "Deck contains cards you don't own" }
-
-  const deckCards: ValidatedDeckCard[] = cards.map((c) => {
-    const card = c as unknown as {
-      id: string; name: string; image_url: string | null; rarity: string
-      creatures: { name: string } | null; card_skills: { skill_id: string }[]
-    }
-    return {
-      id: card.id, name: card.name, image_url: card.image_url, rarity: card.rarity,
-      creature_name: card.creatures?.name || null,
-      dbSkillIds: (card.card_skills || []).map((s) => s.skill_id),
-    }
-  })
+  const { data, error } = await supabase.rpc('rpc_resolve_arena_deck', { p_user_id: userId, p_slot: deckSlot })
+  if (error) return { error: error.message }
+  const rows = (data as { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; skill_ids: string[] | null }[] | null) ?? []
+  if (rows.length !== 5) return { error: 'Invalid deck' }
+  const deckCards: ValidatedDeckCard[] = rows.map((c) => ({
+    id: c.id, name: c.name, image_url: c.image_url, rarity: c.rarity,
+    creature_name: c.creature_name, dbSkillIds: c.skill_ids ?? [],
+  }))
   return { deck: deckCards }
 }
 
