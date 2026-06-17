@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
 import { autoDistribute } from '@/lib/auto-distribute'
 import PackWrapper from '@/components/pack-wrapper'
+import CardPicker from './card-picker'
 
 type Pack = {
   id: string
@@ -33,6 +34,10 @@ type Card = {
   id: string
   name: string
   rarity: string
+  image_url: string | null
+  description?: string | null
+  creature_name?: string | null
+  typeNames?: string[]
 }
 
 export default function PackList({ packs, allCards }: { packs: Pack[]; allCards: Card[] }) {
@@ -186,7 +191,7 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
       {/* Edit modal */}
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 p-6">
             <h3 className="mb-4 text-lg font-semibold">Edit Pack</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -252,26 +257,11 @@ export default function PackList({ packs, allCards }: { packs: Pack[]; allCards:
                 </div>
               </div>
 
-              {/* Add cards */}
+              {/* Add cards — collection-style browser (filters, styling, compact pref) */}
               {availableEditCards.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-sm text-zinc-400">Add Cards</label>
-                  <div className="flex flex-wrap gap-1">
-                    {availableEditCards.map((card) => (
-                      <button
-                        key={card.id}
-                        type="button"
-                        onClick={() => addCardToEdit(card.id)}
-                        className="flex items-center gap-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs hover:border-zinc-500"
-                      >
-                        <span>+</span>
-                        <span>{card.name}</span>
-                        <span className={`rounded px-1 py-0.5 text-[10px] ${rarityBadgeColors[card.rarity]}`}>
-                          {card.rarity}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <label className="mb-2 block text-sm text-zinc-400">Add Cards</label>
+                  <CardPicker cards={availableEditCards} onPick={addCardToEdit} />
                 </div>
               )}
 

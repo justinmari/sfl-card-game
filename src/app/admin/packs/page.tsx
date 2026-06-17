@@ -18,8 +18,25 @@ export default async function AdminPacksPage() {
 
   const { data: cards } = await supabase
     .from('cards')
-    .select('*')
+    .select('*, creatures(name), card_types(types(name))')
     .order('name')
+
+  const allCards = (cards || []).map((row) => {
+    const c = row as unknown as {
+      id: string; name: string; rarity: string; image_url: string | null; description: string | null
+      creatures: { name: string } | null
+      card_types: { types: { name: string } | null }[]
+    }
+    return {
+      id: c.id,
+      name: c.name,
+      rarity: c.rarity,
+      image_url: c.image_url ?? null,
+      description: c.description ?? null,
+      creature_name: c.creatures?.name ?? null,
+      typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
+    }
+  })
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -34,7 +51,7 @@ export default async function AdminPacksPage() {
             + Create New Pack
           </Link>
         </div>
-        <PackList packs={packs || []} allCards={cards || []} />
+        <PackList packs={packs || []} allCards={allCards} />
       </main>
     </div>
   )
