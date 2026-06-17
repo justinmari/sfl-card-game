@@ -20,6 +20,14 @@ type EffectOption = { id: string; key: string; name: string; op: string }
 
 const SCOPES = ['synergy_cards', 'own', 'matchup', 'arena']
 const TARGETS = ['allies', 'enemies', 'everyone']
+// Friendlier labels — the stored values stay allies/enemies/everyone. Arena is a
+// free-for-all (no teams), so "allies" really just means the synergy owner's own
+// cards in the round's 1v1 face-off.
+const TARGET_LABEL: Record<string, string> = {
+  allies: 'Self (your cards)',
+  enemies: 'Opponent',
+  everyone: 'Everyone',
+}
 
 export default function SynergyList({ synergies, types, effects }: { synergies: Synergy[]; types: TypeOption[]; effects: EffectOption[] }) {
   const router = useRouter()
@@ -133,7 +141,7 @@ export default function SynergyList({ synergies, types, effects }: { synergies: 
               {SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select aria-label="Target" value={e.target} onChange={(ev) => setEffs((prev) => prev.map((x, j) => j === i ? { ...x, target: ev.target.value } : x))} className="input-arcade px-2 py-1 text-sm">
-              {TARGETS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TARGETS.map((t) => <option key={t} value={t}>{TARGET_LABEL[t] ?? t}</option>)}
             </select>
             <button onClick={() => setEffs((prev) => prev.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300">×</button>
           </div>
@@ -168,7 +176,7 @@ export default function SynergyList({ synergies, types, effects }: { synergies: 
                 <p className="mt-1 text-xs text-zinc-400">
                   {s.synergy_requirements.map((r) => `${r.count}× ${typeName(r.type_id)}`).join(' + ') || 'no recipe'}
                   {' → '}
-                  {s.synergy_effects.map((e) => `${effectName(e.battle_effect_id)} (${e.scope}/${e.target})`).join(', ') || 'no effects'}
+                  {s.synergy_effects.map((e) => `${effectName(e.battle_effect_id)} (${e.scope}/${TARGET_LABEL[e.target] ?? e.target})`).join(', ') || 'no effects'}
                 </p>
               </div>
               <div className="flex flex-none gap-2">
