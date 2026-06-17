@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import TradingCard, { rarityStarCount, rarityStarColor } from '@/components/trading-card'
 import { rarityLabel, RARITIES } from '@/lib/rarities'
-import { CompactFilterBar, type FilterSelect } from '@/components/card-filters'
+import { CompactFilterBar, sectionize, type FilterSelect } from '@/components/card-filters'
+import Pagination from '@/components/pagination'
 import { usePreferences } from '@/lib/preferences'
+
+const PAGE_SIZE = 24
 
 type Card = {
   id: string
@@ -131,29 +134,15 @@ export default function CollectionGrid({
     return items
   }, [filtered, sort])
 
-  // Group cards into labeled sections for the Acquired (by day) and Rarity (by tier) sorts.
-  const sections = useMemo(() => {
-    if (sort !== 'date' && sort !== 'rarity') return null
-    const groups: { label: string; items: typeof sorted }[] = []
-    let currentKey = ''
-    for (const item of sorted) {
-      let key: string
-      let label: string
-      if (sort === 'date') {
-        key = item.obtainedAt ? item.obtainedAt.slice(0, 10) : 'Unknown'
-        label = key === 'Unknown' ? 'Unknown' : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-      } else {
-        key = item.card.rarity
-        label = rarityLabel[item.card.rarity] || item.card.rarity
-      }
-      if (key !== currentKey) {
-        currentKey = key
-        groups.push({ label, items: [] })
-      }
-      groups[groups.length - 1].items.push(item)
-    }
-    return groups
-  }, [sorted, sort])
+  // Numbered pagination over the sorted list (resets to page 1 when filters change).
+  const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [search, activePack, activeRarity, activeCreature, activeType, sort])
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageItems = useMemo(() => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [sorted, currentPage])
+
+  // Section headers (rarity tiers / days) drawn within the current page.
+  const sections = useMemo(() => sectionize(pageItems, sort, (i) => i.card.rarity, (i) => i.obtainedAt), [pageItems, sort])
 
   const filteredTotal = sorted.reduce((sum, { count }) => sum + count, 0)
 
@@ -326,7 +315,7 @@ export default function CollectionGrid({
         </div>
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
-          {sorted.map(({ card, count }) => (
+          {pageItems.map(({ card, count }) => (
             <div key={card.id} className="sm:contents">
               <div className="sm:hidden">
                 <TradingCard
@@ -350,6 +339,7 @@ export default function CollectionGrid({
         </div>
       )}
       </div>
+      <Pagination page={currentPage} pageCount={pageCount} onPage={setPage} />
     </>
   )
 }

@@ -4,6 +4,40 @@ import { RARITIES, rarityLabel } from '@/lib/rarities'
 
 type SortOption = 'rarity' | 'name' | 'date'
 
+/**
+ * Group an already-sorted list into labeled sections for the "rarity" and
+ * "date" sorts (returns null for any other sort, i.e. render flat). Shared by
+ * the collection and admin card grids so both section the same way.
+ */
+export function sectionize<T>(
+  items: T[],
+  sort: string,
+  getRarity: (item: T) => string,
+  getDate: (item: T) => string | undefined,
+): { label: string; items: T[] }[] | null {
+  if (sort !== 'date' && sort !== 'rarity') return null
+  const groups: { label: string; items: T[] }[] = []
+  let currentKey = ''
+  for (const item of items) {
+    let key: string
+    let label: string
+    if (sort === 'date') {
+      const d = getDate(item)
+      key = d ? d.slice(0, 10) : 'Unknown'
+      label = key === 'Unknown' ? 'Unknown' : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    } else {
+      key = getRarity(item)
+      label = rarityLabel[key] || key
+    }
+    if (key !== currentKey) {
+      currentKey = key
+      groups.push({ label, items: [] })
+    }
+    groups[groups.length - 1].items.push(item)
+  }
+  return groups
+}
+
 const rarityOrder: Record<string, number> = {
   secret_rare: 0,
   legendary: 1,
