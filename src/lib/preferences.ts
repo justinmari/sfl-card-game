@@ -1,13 +1,28 @@
 import { useCallback, useEffect, useState } from 'react'
 
+/** How fast the pack-reveal "Auto" button flips through cards. */
+export type AutoRevealSpeed = 'slow' | 'normal' | 'fast'
+
+const AUTO_REVEAL_SPEEDS: readonly AutoRevealSpeed[] = ['slow', 'normal', 'fast']
+
+/** Per-step delay (ms) for the pack-reveal Auto mode, keyed by speed preference. */
+export const AUTO_REVEAL_DELAY_MS: Record<AutoRevealSpeed, number> = {
+  slow: 1400,
+  normal: 800,
+  fast: 400,
+}
+
 /** User-level display preferences, persisted per-device in localStorage. */
 export type Preferences = {
   /** Show smaller, denser cards when viewing the collection. */
   compactCards: boolean
+  /** Pace of the pack-reveal Auto button. */
+  autoRevealSpeed: AutoRevealSpeed
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
   compactCards: false,
+  autoRevealSpeed: 'normal',
 }
 
 export const PREFERENCES_STORAGE_KEY = 'sfl-preferences'
@@ -23,6 +38,9 @@ export function parsePreferences(raw: string | null): Preferences {
     return {
       compactCards:
         typeof obj.compactCards === 'boolean' ? obj.compactCards : DEFAULT_PREFERENCES.compactCards,
+      autoRevealSpeed: AUTO_REVEAL_SPEEDS.includes(obj.autoRevealSpeed as AutoRevealSpeed)
+        ? (obj.autoRevealSpeed as AutoRevealSpeed)
+        : DEFAULT_PREFERENCES.autoRevealSpeed,
     }
   } catch {
     return { ...DEFAULT_PREFERENCES }

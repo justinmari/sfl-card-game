@@ -1,6 +1,12 @@
 'use client'
 
-import { usePreferences } from '@/lib/preferences'
+import { usePreferences, type AutoRevealSpeed } from '@/lib/preferences'
+
+const AUTO_REVEAL_OPTIONS: { value: AutoRevealSpeed; label: string }[] = [
+  { value: 'slow', label: 'Slow' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'fast', label: 'Fast' },
+]
 
 export default function PreferencesForm() {
   const { preferences, setPreference, loaded } = usePreferences()
@@ -35,6 +41,33 @@ export default function PreferencesForm() {
             }`}
           />
         </button>
+      </div>
+
+      <div className="surface flex items-center justify-between gap-4 rounded-xl p-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white">Auto reveal speed</p>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            How fast the pack-reveal Auto button flips through cards.
+          </p>
+        </div>
+        <div role="group" aria-label="Auto reveal speed" className="flex flex-shrink-0 rounded-lg bg-zinc-800 p-0.5">
+          {AUTO_REVEAL_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={preferences.autoRevealSpeed === opt.value}
+              disabled={!loaded}
+              onClick={() => setPreference('autoRevealSpeed', opt.value)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                preferences.autoRevealSpeed === opt.value
+                  ? 'bg-violet-600 text-white shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

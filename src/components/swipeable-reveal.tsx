@@ -5,6 +5,8 @@ import FlippableCard from './flippable-card'
 import CompactCard from './compact-card'
 import RarityCelebration from './rarity-celebration'
 import { playSwipe, playFlip, playCelebration } from '@/lib/sounds'
+import { useBodyScrollLock } from '@/lib/use-body-scroll-lock'
+import { usePreferences, AUTO_REVEAL_DELAY_MS } from '@/lib/preferences'
 
 type CardData = {
   id: string
@@ -42,6 +44,8 @@ export default function SwipeableReveal({
   const [celebrateTrigger, setCelebrateTrigger] = useState(0)
   const dragStartRef = useRef<number | null>(null)
   const isLast = currentIndex >= cards.length - 1
+  const { preferences } = usePreferences()
+  const autoDelayMs = AUTO_REVEAL_DELAY_MS[preferences.autoRevealSpeed]
 
   // Shared drag logic
   const startDrag = (x: number) => {
@@ -127,13 +131,9 @@ export default function SwipeableReveal({
   const nextCard = currentIndex + 1 < cards.length ? cards[currentIndex + 1] : null
 
   // Lock background scroll while the reveal is open so swipes don't drag the page.
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useBodyScrollLock(true)
 
-  // Auto swipe mode — stops on new cards
+  // Auto swipe mode — stops on new cards. Pace is the user's autoRevealSpeed pref.
   useEffect(() => {
     if (autoMode && !animatingOut && currentIndex < cards.length - 1) {
       const nextCard = cards[currentIndex + 1]
@@ -142,18 +142,18 @@ export default function SwipeableReveal({
         autoRef.current = setTimeout(() => {
           goNext()
           setAutoMode(false)
-        }, 800)
+        }, autoDelayMs)
       } else {
         autoRef.current = setTimeout(() => {
           goNext()
-        }, 800)
+        }, autoDelayMs)
       }
       return () => { if (autoRef.current) clearTimeout(autoRef.current) }
     }
     if (autoMode && currentIndex >= cards.length - 1) {
       setAutoMode(false)
     }
-  }, [autoMode, animatingOut, currentIndex, cards.length])
+  }, [autoMode, animatingOut, currentIndex, cards.length, autoDelayMs])
 
   useEffect(() => {
     if (!hasShownFirst && cards.length > 0) {
@@ -251,7 +251,7 @@ export default function SwipeableReveal({
           return (
             <div
               key={i}
-              className="absolute inset-0 flex items-center justify-center px-8"
+              className="absolute inset-0 flex items-center justify-center px-4 sm:px-8"
               style={{
                 zIndex,
                 transform: isCurrent
@@ -261,7 +261,7 @@ export default function SwipeableReveal({
                 transition: (isDragging && isCurrent && !animatingOut) ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
               }}
             >
-              <div className="relative">
+              <div className="relative scale-[1.12] sm:scale-100">
                 <FlippableCard
                   card={card}
                   size="lg"

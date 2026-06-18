@@ -7,6 +7,7 @@ import PackWrapper from '@/components/pack-wrapper'
 import SwipeableReveal from '@/components/swipeable-reveal'
 import TinyCard from '@/components/tiny-card'
 import { rarityBadgeColors, rarityLabel } from '@/lib/rarities'
+import { useBodyScrollLock } from '@/lib/use-body-scroll-lock'
 import type { TinyCardEntry } from '@/lib/pack-cards'
 
 type Pack = {
@@ -41,6 +42,10 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
   const [currentGruten, setCurrentGruten] = useState(gruten)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Lock background scroll while the buy modal is open so the card-pool list
+  // scrolls internally instead of dragging the page behind it on mobile.
+  useBodyScrollLock(selectedPack !== null)
 
   const handleBuy = async (packId: string, quantity: number) => {
     setBuying(true)

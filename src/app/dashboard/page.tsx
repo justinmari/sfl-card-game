@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isArenaEnabled, isSuggestionsEnabled } from '@/lib/arena-settings'
 import AppNavbar from '@/components/app-navbar'
 import DashTile from '@/components/dash-tile'
+import ChangelogTeaser from '@/components/changelog-teaser'
 import DashboardToast from './dashboard-toast'
 
 export default async function DashboardPage() {
@@ -34,6 +35,14 @@ export default async function DashboardPage() {
   const arenaEnabled = await isArenaEnabled()
   const suggestionsEnabled = await isSuggestionsEnabled()
   const isAdmin = profile.role === 'admin'
+
+  // Latest changelog entry for the dashboard "what's new" teaser.
+  const { data: latestChangelog } = await supabase
+    .from('changelogs')
+    .select('version, title, content, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   // Pending card-suggestion count for the admin notification badge.
   let pendingSuggestions = 0
@@ -66,6 +75,8 @@ export default async function DashboardPage() {
         <p className="mb-8 text-zinc-400">
           {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
         </p>
+
+        {latestChangelog && <ChangelogTeaser entry={latestChangelog} />}
 
         {/* Main — bento grid: Shop hero + four standard tiles */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:auto-rows-[8.5rem]">

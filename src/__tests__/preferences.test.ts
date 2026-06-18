@@ -26,7 +26,7 @@ describe('parsePreferences', () => {
   it('returns defaults when JSON is not an object', () => {
     expect(parsePreferences('42')).toEqual(DEFAULT_PREFERENCES)
     expect(parsePreferences('"hello"')).toEqual(DEFAULT_PREFERENCES)
-    expect(parsePreferences('[1,2,3]')).toEqual({ compactCards: false })
+    expect(parsePreferences('[1,2,3]')).toEqual(DEFAULT_PREFERENCES)
   })
 
   it('returns defaults for an empty object', () => {
@@ -34,8 +34,8 @@ describe('parsePreferences', () => {
   })
 
   it('reads a valid compactCards value', () => {
-    expect(parsePreferences('{"compactCards":true}')).toEqual({ compactCards: true })
-    expect(parsePreferences('{"compactCards":false}')).toEqual({ compactCards: false })
+    expect(parsePreferences('{"compactCards":true}')).toEqual({ ...DEFAULT_PREFERENCES, compactCards: true })
+    expect(parsePreferences('{"compactCards":false}')).toEqual({ ...DEFAULT_PREFERENCES, compactCards: false })
   })
 
   it('falls back to default when compactCards is the wrong type', () => {
@@ -44,8 +44,19 @@ describe('parsePreferences', () => {
     expect(parsePreferences('{"compactCards":null}')).toEqual(DEFAULT_PREFERENCES)
   })
 
+  it('reads a valid autoRevealSpeed value', () => {
+    expect(parsePreferences('{"autoRevealSpeed":"slow"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'slow' })
+    expect(parsePreferences('{"autoRevealSpeed":"fast"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'fast' })
+  })
+
+  it('falls back to default when autoRevealSpeed is invalid', () => {
+    expect(parsePreferences('{"autoRevealSpeed":"warp"}')).toEqual(DEFAULT_PREFERENCES)
+    expect(parsePreferences('{"autoRevealSpeed":3}')).toEqual(DEFAULT_PREFERENCES)
+    expect(parsePreferences('{"autoRevealSpeed":null}')).toEqual(DEFAULT_PREFERENCES)
+  })
+
   it('ignores unknown keys', () => {
-    expect(parsePreferences('{"compactCards":true,"theme":"dark"}')).toEqual({ compactCards: true })
+    expect(parsePreferences('{"compactCards":true,"theme":"dark"}')).toEqual({ ...DEFAULT_PREFERENCES, compactCards: true })
   })
 
   it('does not mutate DEFAULT_PREFERENCES', () => {
@@ -57,11 +68,14 @@ describe('parsePreferences', () => {
 
 describe('serializePreferences', () => {
   it('round-trips through parse', () => {
-    const prefs: Preferences = { compactCards: true }
+    const prefs: Preferences = { compactCards: true, autoRevealSpeed: 'fast' }
     expect(parsePreferences(serializePreferences(prefs))).toEqual(prefs)
   })
 
   it('produces valid JSON', () => {
-    expect(JSON.parse(serializePreferences({ compactCards: false }))).toEqual({ compactCards: false })
+    expect(JSON.parse(serializePreferences({ compactCards: false, autoRevealSpeed: 'normal' }))).toEqual({
+      compactCards: false,
+      autoRevealSpeed: 'normal',
+    })
   })
 })

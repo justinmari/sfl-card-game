@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import TradingCard, { rarityStarCount, rarityStarColor } from '@/components/trading-card'
+import CompactCard from '@/components/compact-card'
 import { rarityLabel, RARITIES } from '@/lib/rarities'
 import { CompactFilterBar, sectionize, type FilterSelect } from '@/components/card-filters'
 import Pagination from '@/components/pagination'
@@ -291,13 +292,16 @@ export default function CollectionGrid({
                 {section.items.map(({ card, count }) => (
                   <div key={card.id} className="sm:contents">
                     <div className="sm:hidden">
-                      <TradingCard
-                        card={card}
-                        size="sm"
-                        count={count}
+                      <button
+                        type="button"
                         onClick={() => setSelected({ card, count })}
-                        className="!w-full"
-                      />
+                        className="relative block w-full text-left"
+                      >
+                        <CompactCard card={card} />
+                        {count > 1 && (
+                          <span className="absolute right-1 top-1 z-10 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white">×{count}</span>
+                        )}
+                      </button>
                     </div>
                     <div className="hidden sm:block" data-testid="collection-card-desktop">
                       <TradingCard
@@ -318,13 +322,16 @@ export default function CollectionGrid({
           {pageItems.map(({ card, count }) => (
             <div key={card.id} className="sm:contents">
               <div className="sm:hidden">
-                <TradingCard
-                  card={card}
-                  size="sm"
-                  count={count}
+                <button
+                  type="button"
                   onClick={() => setSelected({ card, count })}
-                  className="!w-full"
-                />
+                  className="relative block w-full text-left"
+                >
+                  <CompactCard card={card} />
+                  {count > 1 && (
+                    <span className="absolute right-1 top-1 z-10 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white">×{count}</span>
+                  )}
+                </button>
               </div>
               <div className="hidden sm:block">
                 <TradingCard
