@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { SKILL_REGISTRY, resolveSkills } from '@/lib/skills'
 
 describe('SKILL_REGISTRY', () => {
-  it('contains all 13 skills', () => {
-    expect(Object.keys(SKILL_REGISTRY)).toHaveLength(13)
+  it('contains all 14 skills', () => {
+    expect(Object.keys(SKILL_REGISTRY)).toHaveLength(14)
   })
 
   it('every skill has required fields', () => {
@@ -25,7 +25,7 @@ describe('SKILL_REGISTRY', () => {
   const expectedSkills = [
     'double-edge', 'loaded-dice', 'snake-eyes', 'all-or-nothing',
     'scramble', 'leveler', 'beatdown', 'reverse-uno', 'underdog',
-    'heal-instead', 'brown-tint', 'gift-exchange', 'final-form',
+    'heal-instead', 'brown-tint', 'gift-exchange', 'final-form', 'reflect',
   ]
 
   it.each(expectedSkills)('contains skill: %s', (id) => {

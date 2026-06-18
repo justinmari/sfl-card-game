@@ -74,7 +74,8 @@ INSERT INTO skills (id, name, description) VALUES
  ('heal-instead','Fountain of Youth','All players heal damage taken this round instead of losing HP'),
  ('brown-tint','Muddy Waters','Adds a brown tint to all players'' cards this round'),
  ('gift-exchange','Gift Exchange','All cards are shuffled together and randomly dealt into new decks for this round'),
- ('final-form','Final Form','All common cards become secret rares this round — for both players')
+ ('final-form','Final Form','All common cards become secret rares this round — for both players'),
+ ('reflect','Reflect','Any damage taken by either player this round is reflected back at whoever dealt it')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO skill_effects (skill_id, battle_effect_id, ordinal)
@@ -83,7 +84,8 @@ SELECT s.id, be.id, m.ordinal FROM (VALUES
  ('all-or-nothing','double-damage',0),('scramble','randomize-rarity',0),('leveler','level-power',0),
  ('beatdown','flat-damage-3',0),('reverse-uno','reverse-damage',0),('underdog','big-dice',0),
  ('heal-instead','heal-instead',0),('brown-tint','brown-tint',0),('gift-exchange','redeal-all',0),
- ('final-form','ascend-rarity',0),('final-form','ascend-power',1)
+ ('final-form','ascend-rarity',0),('final-form','ascend-power',1),
+ ('reflect','reverse-damage',0)
 ) AS m(skill_id, effect_key, ordinal)
 JOIN skills s ON s.id=m.skill_id JOIN battle_effects be ON be.key=m.effect_key
 ON CONFLICT (skill_id, battle_effect_id) DO NOTHING;

@@ -12,6 +12,7 @@ export { SKILL_HEAL_INSTEAD } from './heal-instead'
 export { SKILL_BROWN_TINT } from './brown-tint'
 export { SKILL_GIFT_EXCHANGE } from './gift-exchange'
 export { SKILL_FINAL_FORM } from './final-form'
+export { SKILL_REFLECT } from './reflect'
 
 import type { Skill } from './types'
 import { SKILL_DOUBLE_EDGE } from './double-edge'
@@ -27,6 +28,7 @@ import { SKILL_HEAL_INSTEAD } from './heal-instead'
 import { SKILL_BROWN_TINT } from './brown-tint'
 import { SKILL_GIFT_EXCHANGE } from './gift-exchange'
 import { SKILL_FINAL_FORM } from './final-form'
+import { SKILL_REFLECT } from './reflect'
 
 // Registry — maps DB skill IDs to full definitions
 // Add new skills here after creating their file
@@ -44,6 +46,7 @@ export const SKILL_REGISTRY: Record<string, Skill> = {
   'brown-tint': SKILL_BROWN_TINT,
   'gift-exchange': SKILL_GIFT_EXCHANGE,
   'final-form': SKILL_FINAL_FORM,
+  'reflect': SKILL_REFLECT,
 }
 
 import { buildEffectFromRow, type BattleEffectRow } from '@/lib/battle-effects/loader'
