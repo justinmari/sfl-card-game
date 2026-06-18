@@ -14,7 +14,8 @@ export default function ChangelogTeaser({ entry }: { entry: ChangelogEntry }) {
   return (
     <Link
       href="/changelog"
-      className="surface group mb-8 block rounded-2xl p-5 transition-colors hover:bg-white/5"
+      data-testid="changelog-teaser"
+      className="surface group mt-10 block rounded-2xl p-5 transition-colors hover:bg-white/5"
     >
       <div className="mb-2 flex items-center gap-2">
         <ScrollText className="h-4 w-4 flex-none text-violet-400" />

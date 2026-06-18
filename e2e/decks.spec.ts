@@ -129,3 +129,18 @@ test.describe('Decks', () => {
     }
   })
 })
+
+test.describe('Decks (mobile)', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('renders compact deck cards on mobile, not the desktop cards', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/decks')
+    await expect(page.getByText('Player Deck')).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByTestId('deck-card-mobile').first()).toBeVisible({ timeout: 5000 })
+    // The desktop card variant is hidden at mobile width (hidden sm:block).
+    await expect(page.getByTestId('deck-card-desktop').first()).toBeHidden()
+    await test.info().attach('decks-mobile', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+})

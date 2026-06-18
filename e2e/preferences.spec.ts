@@ -63,4 +63,23 @@ test.describe('Preferences', () => {
     await expect(page.getByTestId('collection-cards')).toHaveAttribute('data-compact', 'true')
     await test.info().attach('collection-compact', { body: await page.screenshot(), contentType: 'image/png' })
   })
+
+  test('auto reveal speed defaults to Normal and persists across reload', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/preferences')
+
+    const group = page.getByRole('group', { name: 'Auto reveal speed' })
+    await expect(group).toBeVisible({ timeout: 10000 })
+    await expect(group.getByRole('button', { name: 'Normal' })).toHaveAttribute('aria-pressed', 'true')
+
+    await group.getByRole('button', { name: 'Fast' }).click()
+    await expect(group.getByRole('button', { name: 'Fast' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(group.getByRole('button', { name: 'Normal' })).toHaveAttribute('aria-pressed', 'false')
+
+    // Persisted in localStorage — survives a reload
+    await page.reload()
+    const groupAfter = page.getByRole('group', { name: 'Auto reveal speed' })
+    await expect(groupAfter.getByRole('button', { name: 'Fast' })).toHaveAttribute('aria-pressed', 'true', { timeout: 10000 })
+    await test.info().attach('auto-reveal-fast', { body: await page.screenshot(), contentType: 'image/png' })
+  })
 })

@@ -107,3 +107,9 @@ SELECT s.id, be.id, m.scope, m.target, m.ordinal FROM (VALUES
   ('aaaa0002-0000-0000-0000-000000000000', 'drowsy',    'non_synergy_cards', 'everyone', 0)
 ) AS m(synergy_id, effect_key, scope, target, ordinal)
 JOIN synergies s ON s.id=m.synergy_id::uuid JOIN battle_effects be ON be.key=m.effect_key;
+
+-- A changelog entry so the dashboard "what's new" teaser and /changelog page
+-- have content in local dev / e2e.
+INSERT INTO changelogs (id, version, title, content) VALUES
+  ('eeee0001-0000-0000-0000-000000000000', '9.9.9', 'Local Dev Update', 'Seeded changelog entry for local dev and e2e tests.')
+ON CONFLICT (id) DO NOTHING;

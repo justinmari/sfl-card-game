@@ -268,10 +268,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
                 <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
                   {cards.map((card, i) => (
                     <div key={card.id}>
-                      <div className="sm:hidden">
+                      <div className="sm:hidden" data-testid="deck-card-mobile">
                         <CompactCard card={card} />
                       </div>
-                      <div className="hidden sm:block">
+                      <div className="hidden sm:block" data-testid="deck-card-desktop">
                         <TradingCard card={card} size="sm" className="!w-full" />
                       </div>
                       <div className="mt-1 text-center text-[9px] text-zinc-500">#{i + 1}</div>

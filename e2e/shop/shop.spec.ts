@@ -115,6 +115,27 @@ test.describe('Shop', () => {
     await expect(page.getByText('Buy 1 pack')).not.toBeVisible()
   })
 
+  test('buy modal locks background scroll while open', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/shop')
+    await expect(page.getByText('Starter Pack')).toBeVisible({ timeout: 10000 })
+
+    const bodyOverflow = () => page.evaluate(() => document.body.style.overflow)
+
+    // Not locked before the modal opens.
+    await expect.poll(bodyOverflow).not.toBe('hidden')
+
+    await page.getByText('Starter Pack').click()
+    await expect(page.getByText('Buy 1 pack')).toBeVisible({ timeout: 5000 })
+    // Locked while the modal is open so the card pool scrolls instead of the page.
+    await expect.poll(bodyOverflow).toBe('hidden')
+
+    // Restored after closing.
+    await page.click('button:has-text("Cancel")')
+    await expect(page.getByText('Buy 1 pack')).not.toBeVisible()
+    await expect.poll(bodyOverflow).not.toBe('hidden')
+  })
+
   test('buying a pack shows card reveal', async ({ page }) => {
     test.setTimeout(60000)
     await login(page, TEST_PLAYER)

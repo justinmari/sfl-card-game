@@ -127,3 +127,32 @@ test.describe('Collection', () => {
     await test.info().attach('filter-type', { body: await page.screenshot(), contentType: 'image/png' })
   })
 })
+
+test.describe('Collection (mobile)', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('renders compact cards on mobile, not the desktop cards', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByTestId('collection-card-mobile').first()).toBeVisible({ timeout: 5000 })
+    // The desktop variant is hidden at mobile width (hidden sm:block).
+    await expect(page.getByTestId('collection-card-desktop').first()).toBeHidden()
+    await test.info().attach('collection-mobile', { body: await page.screenshot(), contentType: 'image/png' })
+  })
+
+  test('tapping a mobile card opens the full-card detail modal', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await expect(page.locator('text=/\\d+ card/')).toBeVisible({ timeout: 10000 })
+
+    await page.getByTestId('collection-card-mobile').first().click()
+    await expect(page.getByText(/Owned: x\d+/)).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('button:has-text("Close")')).toBeVisible()
+    await test.info().attach('collection-mobile-modal', { body: await page.screenshot(), contentType: 'image/png' })
+
+    await page.click('button:has-text("Close")')
+    await expect(page.getByText(/Owned: x\d+/)).not.toBeVisible()
+  })
+})

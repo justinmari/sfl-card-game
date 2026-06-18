@@ -294,6 +294,7 @@ export default function CollectionGrid({
                     <div className="sm:hidden">
                       <button
                         type="button"
+                        data-testid="collection-card-mobile"
                         onClick={() => setSelected({ card, count })}
                         className="relative block w-full text-left"
                       >
@@ -324,6 +325,7 @@ export default function CollectionGrid({
               <div className="sm:hidden">
                 <button
                   type="button"
+                  data-testid="collection-card-mobile"
                   onClick={() => setSelected({ card, count })}
                   className="relative block w-full text-left"
                 >

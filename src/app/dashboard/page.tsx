@@ -76,8 +76,6 @@ export default async function DashboardPage() {
           {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
         </p>
 
-        {latestChangelog && <ChangelogTeaser entry={latestChangelog} />}
-
         {/* Main — bento grid: Shop hero + four standard tiles */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:auto-rows-[8.5rem]">
           <DashTile
@@ -157,6 +155,8 @@ export default async function DashboardPage() {
             </div>
           </>
         )}
+
+        {latestChangelog && <ChangelogTeaser entry={latestChangelog} />}
       </main>
     </div>
   )
