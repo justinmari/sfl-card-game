@@ -70,6 +70,30 @@ test.describe('Decks', () => {
     await test.info().attach('card-search', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
+  test('can filter the card picker by type', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/decks')
+    await expect(page.getByText('Player Deck')).toBeVisible({ timeout: 10000 })
+    await page.locator('button:has-text("Edit")').first().click()
+    await expect(page.getByText('Edit Deck')).toBeVisible({ timeout: 5000 })
+
+    const typeFilter = page.getByLabel('Filter by type')
+    await expect(typeFilter).toBeVisible()
+
+    const picker = page.getByTestId('card-picker')
+    const allCount = await picker.locator('button').count()
+
+    // Seed assigns the Fire type to exactly two cards (Fire Drake Common + Rare).
+    await typeFilter.selectOption('Fire')
+    await expect(picker.locator('button')).toHaveCount(2)
+    expect(allCount).toBeGreaterThan(2)
+    await test.info().attach('type-filtered-picker', { body: await page.screenshot(), contentType: 'image/png' })
+
+    // Resetting to all types restores the full list.
+    await typeFilter.selectOption('')
+    await expect(picker.locator('button')).toHaveCount(allCount)
+  })
+
   test('can remove a card from deck', async ({ page }) => {
     await login(page, TEST_PLAYER)
     await page.goto('/decks')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
@@ -34,6 +34,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
   const [editName, setEditName] = useState('')
   const [editCardIds, setEditCardIds] = useState<string[]>([])
   const [cardSearch, setCardSearch] = useState('')
+  const [activeType, setActiveType] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -43,6 +44,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     setEditName(deck.name)
     setEditCardIds([...deck.cardIds])
     setCardSearch('')
+    setActiveType(null)
     setError(null)
   }
 
@@ -85,12 +87,28 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     setSaving(false)
   }
 
+  // Types present in the owned cards (plus an "Untyped" bucket)
+  const ownedTypes = useMemo(() => {
+    const names = new Set<string>()
+    let hasUntyped = false
+    ownedCards.forEach((c) => {
+      if (c.typeNames && c.typeNames.length > 0) c.typeNames.forEach((n) => names.add(n))
+      else hasUntyped = true
+    })
+    return { names: [...names].sort(), hasUntyped }
+  }, [ownedCards])
+
   const filteredCards = ownedCards
     .filter((c) => !cardSearch || c.name.toLowerCase().includes(cardSearch.toLowerCase()))
+    .filter((c) => {
+      if (!activeType) return true
+      if (activeType === '__untyped__') return !c.typeNames || c.typeNames.length === 0
+      return c.typeNames?.includes(activeType)
+    })
     .sort((a, b) => (rarityOrder[a.rarity] ?? 99) - (rarityOrder[b.rarity] ?? 99))
 
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [cardSearch, editingSlot])
+  useEffect(() => { setPage(1) }, [cardSearch, activeType, editingSlot])
   const pageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
   const pageCards = filteredCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
@@ -175,15 +193,31 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
             {/* Card picker */}
             <div className="mb-4">
               <label className="mb-2 block text-sm text-zinc-400">Add Cards</label>
-              <input
-                type="text"
-                value={cardSearch}
-                onChange={(e) => setCardSearch(e.target.value)}
-                placeholder="Search cards..."
-                className="input-arcade mb-3 w-full px-3 py-2 text-sm"
-              />
+              <div className="mb-3 flex gap-2">
+                <input
+                  type="text"
+                  value={cardSearch}
+                  onChange={(e) => setCardSearch(e.target.value)}
+                  placeholder="Search cards..."
+                  className="input-arcade min-w-0 flex-1 px-3 py-2 text-sm"
+                />
+                {(ownedTypes.names.length > 0 || ownedTypes.hasUntyped) && (
+                  <select
+                    aria-label="Filter by type"
+                    value={activeType || ''}
+                    onChange={(e) => setActiveType(e.target.value || null)}
+                    className="input-arcade max-w-[9rem] shrink-0 px-2.5 py-2 text-sm"
+                  >
+                    <option value="">All types</option>
+                    {ownedTypes.names.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                    {ownedTypes.hasUntyped && <option value="__untyped__">Untyped</option>}
+                  </select>
+                )}
+              </div>
               <div>
-                <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
+                <div className="grid grid-cols-5 gap-2 sm:grid-cols-6" data-testid="card-picker">
                   {pageCards.map((card) => {
                     const isSelected = editCardIds.includes(card.id)
                     const atSecretLimit = !isSelected && card.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1
