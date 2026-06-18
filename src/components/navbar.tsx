@@ -15,9 +15,10 @@ type NavbarProps = {
   backHref?: string
   backLabel?: string
   title?: string
+  version?: string | null
 }
 
-export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, packageCount = 0, packageTotal = 0, backHref, backLabel, title }: NavbarProps) {
+export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, packageCount = 0, packageTotal = 0, backHref, backLabel, title, version }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [claimed, setClaimed] = useState(false)
   const [showReward, setShowReward] = useState(false)
@@ -79,7 +80,7 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, pack
           )}
           <Link href="/dashboard" className="font-display text-xl font-bold tracking-tight">
             <span className="text-arcade-gradient">{title || 'SFL TCG'}</span>
-            {!title && <span className="ml-2 text-[10px] font-normal text-zinc-500">v0.4.6</span>}
+            {!title && version && <span className="ml-2 text-[10px] font-normal text-zinc-500">v{version}</span>}
           </Link>
         </div>
 

@@ -54,4 +54,12 @@ test.describe('Dashboard', () => {
     await expect(page).toHaveURL(/\/changelog/)
     await test.info().attach('changelog-teaser', { body: await page.screenshot(), contentType: 'image/png' })
   })
+
+  test('navbar version reflects the latest changelog entry', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/dashboard')
+    // The home navbar's version badge is driven by the latest changelogs row
+    // (seeded as v9.9.9 in supabase/seed.sql), not a hardcoded string.
+    await expect(page.locator('nav').getByText('v9.9.9')).toBeVisible({ timeout: 10000 })
+  })
 })

@@ -19,6 +19,9 @@ export default async function AppNavbar({
   // Unopened care packages waiting for this user.
   let packageCount = 0
   let packageTotal = 0
+  // The titleless (home) navbar shows the app version, sourced from the latest
+  // changelog entry so it always tracks what's actually been shipped.
+  let version: string | null = null
   if (profile) {
     const supabase = await createClient()
     const { data: pkgs } = await supabase
@@ -29,6 +32,17 @@ export default async function AppNavbar({
       .gt('expires_at', new Date().toISOString())
     packageCount = pkgs?.length ?? 0
     packageTotal = (pkgs ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
+
+    if (!title) {
+      const { data: latest } = await supabase
+        .from('changelogs')
+        .select('version')
+        .not('version', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      version = latest?.version ?? null
+    }
   }
 
   return (
@@ -42,6 +56,7 @@ export default async function AppNavbar({
       backHref={backHref}
       backLabel={backLabel}
       title={title}
+      version={version}
     />
   )
 }
