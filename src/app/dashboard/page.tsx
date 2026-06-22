@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
   Swords, LayoutGrid,
-  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine, Receipt,
+  Images, Package, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine, Receipt, Gem,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -140,6 +140,7 @@ export default async function DashboardPage() {
             </h3>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <DashTile href="/admin/cards" icon={Images} title="Manage Cards" subtitle="Upload & edit cards" accent="amber" />
+              <DashTile href="/admin/holo" icon={Gem} title="Holo Preview" subtitle="Preview card finishes" accent="amber" />
               <DashTile href="/admin/packs" icon={Package} title="Manage Packs" subtitle="Configure packs" accent="amber" />
               <DashTile href="/admin/creatures" icon={Ghost} title="Creatures" subtitle="Card characters" accent="amber" />
               <DashTile href="/admin/types" icon={Tags} title="Types" subtitle="Manage type labels" accent="amber" />

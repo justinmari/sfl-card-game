@@ -183,3 +183,375 @@ body {
   60% { transform: translate(4px, 3px); }
   75% { transform: translate(-3px, 1px); }
 }
+
+/* ---------- Holo editions (cosmetic card finishes) ----------
+   Driven by --mx/--my (pointer position %) and --holo (0/1 hover) which
+   TradingCard sets on the card inner, reusing its existing pointer tracking. */
+.holo-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 11;
+}
+
+/* Foil — cool metallic streaks that sweep with the pointer. `screen` blends
+   brighten the card (visible even over dark art); the inset ring + glow make
+   the finish read as special even at rest in a static grid. */
+.holo-foil {
+  background:
+    linear-gradient(110deg, transparent 30%, rgba(190, 225, 255, 0.6) 45%, transparent 60%),
+    repeating-linear-gradient(110deg,
+      rgba(150, 200, 255, 0.04) 0 8%, rgba(190, 225, 255, 0.08) 8% 16%);
+  background-size: 250% 100%, 100% 100%;
+  background-position: calc(var(--mx, 50%) * 1.6) 0, 0 0;
+  mix-blend-mode: screen;
+  /* Subtle at rest (no haze); the sheen blooms on hover. */
+  opacity: calc(0.26 + var(--holo, 0) * 0.64);
+  box-shadow: inset 0 0 0 1.5px rgba(125, 190, 255, 0.55), inset 0 0 22px rgba(125, 190, 255, 0.3);
+}
+
+/* Golden — Hearthstone-style: warm gold tint, a diagonal light band that
+   sweeps continuously, and twinkling sparkle glints (::after). */
+.holo-golden {
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(255, 240, 180, 0.5) 47%,
+      rgba(255, 255, 255, 0.78) 50%, rgba(255, 230, 160, 0.5) 53%, transparent 62%),
+    linear-gradient(160deg, rgba(214, 164, 52, 0.32), rgba(120, 82, 22, 0.16));
+  background-size: 250% 100%, 100% 100%;
+  background-position: -60% 0, 0 0;
+  mix-blend-mode: screen;
+  opacity: calc(0.7 + var(--holo, 0) * 0.25);
+  box-shadow: inset 0 0 0 1.5px rgba(245, 205, 95, 0.65), inset 0 0 26px rgba(232, 172, 52, 0.4);
+  animation: goldSweep 3.5s linear infinite;
+}
+.holo-golden::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255, 255, 255, 0.95) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 68% 50%, rgba(255, 248, 210, 0.95) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 44% 78%, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 82% 68%, rgba(255, 240, 180, 0.9) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 33% 58%, rgba(255, 255, 255, 0.85) 0 1px, transparent 2.5px);
+  mix-blend-mode: screen;
+  animation: goldTwinkle 2.4s ease-in-out infinite;
+}
+@keyframes goldSweep {
+  0% { background-position: -60% 0, 0 0; }
+  100% { background-position: 160% 0, 0 0; }
+}
+@keyframes goldTwinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-golden,
+  .holo-golden::after { animation: none; }
+}
+
+/* Signature — Hearthstone-style: soft, elegant pastel-prismatic sheen that
+   drifts slowly. More refined and subtle than Golden. */
+.holo-signature {
+  background:
+    linear-gradient(125deg, transparent 28%, rgba(180, 210, 255, 0.4) 42%,
+      rgba(255, 190, 230, 0.4) 50%, rgba(200, 255, 230, 0.4) 58%, transparent 72%);
+  background-size: 220% 220%;
+  background-position: 30% 40%;
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.4);
+  box-shadow: inset 0 0 0 1.5px rgba(205, 222, 255, 0.55), inset 0 0 26px rgba(165, 195, 255, 0.3);
+  animation: sigDrift 7s ease-in-out infinite alternate;
+}
+@keyframes sigDrift {
+  0% { background-position: 28% 38%; }
+  100% { background-position: 72% 62%; }
+}
+
+/* Diamond — Hearthstone's top tier: crystalline facets, a rotating prismatic
+   refraction (::before), and bright twinkling sparkles (::after). */
+.holo-diamond {
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 13px),
+    linear-gradient(160deg, rgba(150, 220, 255, 0.2), rgba(220, 180, 255, 0.15));
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + var(--holo, 0) * 0.3);
+  box-shadow: inset 0 0 0 1.5px rgba(212, 240, 255, 0.7), inset 0 0 28px rgba(150, 210, 255, 0.42);
+}
+.holo-diamond::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  background: conic-gradient(from 0deg,
+    transparent, rgba(120, 220, 255, 0.55), transparent,
+    rgba(255, 150, 230, 0.55), transparent, rgba(180, 255, 210, 0.55), transparent);
+  mix-blend-mode: screen;
+  animation: diamondSpin 7s linear infinite;
+}
+.holo-diamond::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 1) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 72% 45%, rgba(220, 245, 255, 1) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 1) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 85% 80%, rgba(210, 240, 255, 1) 0 1.5px, transparent 3px);
+  mix-blend-mode: screen;
+  animation: goldTwinkle 2s ease-in-out infinite;
+}
+@keyframes diamondSpin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-signature,
+  .holo-diamond::before,
+  .holo-diamond::after { animation: none; }
+}
+
+/* Holographic — rainbow sheen + sparkle grain. Does NOT track the pointer:
+   the rainbow nudges over and brightens slightly on hover. */
+.holo-holographic {
+  background:
+    repeating-radial-gradient(circle at 50% 45%,
+      rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 6px),
+    linear-gradient(115deg, rgba(255, 60, 180, 0.6), rgba(255, 210, 80, 0.55),
+      rgba(80, 255, 200, 0.55), rgba(150, 90, 255, 0.6));
+  background-size: 200% 200%, 300% 300%;
+  /* Sparkle rings stay fixed on the card surface so they tilt with the card;
+     only the rainbow nudges over on hover. */
+  background-position:
+    50% 45%,
+    calc(42% + var(--holo, 0) * 16%) 50%;
+  mix-blend-mode: screen;
+  /* Toned down overall and calmer on hover. */
+  opacity: calc(0.42 - var(--holo, 0) * 0.1);
+  box-shadow: inset 0 0 0 1.5px rgba(244, 114, 182, 0.55), inset 0 0 24px rgba(244, 114, 182, 0.32);
+  transition: background-position 0.2s ease-out, opacity 0.3s ease;
+}
+
+/* Polychrome — a rotating rainbow prism: a full-spectrum conic gradient
+   (::before) that spins. Rotation is seamless, so there's no loop/snap. */
+.holo-polychrome {
+  overflow: hidden;
+  mix-blend-mode: screen;
+  /* Calmer on hover so the card art/tilt reads through. */
+  opacity: calc(0.55 - var(--holo, 0) * 0.2);
+  box-shadow: inset 0 0 0 1.5px rgba(168, 85, 247, 0.6), inset 0 0 26px rgba(168, 85, 247, 0.35);
+}
+.holo-polychrome::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  background: conic-gradient(from 0deg,
+    #ff2d9b, #ff9a2d, #f5ff2d, #2dff9a, #2d9bff, #9b2dff, #ff2d9b);
+  animation: diamondSpin 8s linear infinite;
+}
+
+/* Negative — the whole card inverts (see TradingCard). Two flavors:
+   - .holo-negative      → dark cosmic: the starfield overlay counter-inverts so
+                           it stays in its original space colors on top.
+   - .holo-negative-true → true photo negative: overlay inverts with the card. */
+.holo-negative,
+.holo-negative-true {
+  background:
+    radial-gradient(2px 2px at 20% 30%, #fff, transparent),
+    radial-gradient(2px 2px at 70% 60%, #c7b3ff, transparent),
+    radial-gradient(1.5px 1.5px at 45% 80%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 85% 25%, #a78bfa, transparent),
+    linear-gradient(120deg, rgba(120, 20, 220, 0.55), rgba(0, 0, 0, 0.1), rgba(0, 170, 210, 0.55));
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 250% 250%;
+  background-position: 0 0, 0 0, 0 0, 0 0, var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + var(--holo, 0) * 0.3);
+  box-shadow: inset 0 0 0 1.5px rgba(147, 51, 234, 0.6), inset 0 0 28px rgba(147, 51, 234, 0.4);
+  animation: holoDrift 8s ease-in-out infinite alternate;
+}
+@keyframes holoDrift {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(50deg); }
+}
+
+/* Aurora — flowing northern-lights ribbons that drift across */
+.holo-aurora {
+  background:
+    linear-gradient(115deg, transparent 18%, rgba(60, 230, 160, 0.5) 34%, transparent 50%, rgba(120, 90, 230, 0.5) 66%, transparent 82%),
+    linear-gradient(160deg, transparent 28%, rgba(40, 200, 210, 0.4) 50%, transparent 72%);
+  background-size: 220% 220%, 240% 240%;
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  opacity: calc(0.55 - var(--holo, 0) * 0.12);
+  animation: auroraDrift 12s ease-in-out infinite alternate;
+}
+@keyframes auroraDrift {
+  0% { background-position: 0% 0%, 100% 0%; }
+  100% { background-position: 100% 100%, 0% 100%; }
+}
+
+/* Lava — molten flowing glow + glowing cracks (::after) */
+.holo-lava {
+  background:
+    radial-gradient(ellipse 50% 40% at 30% 30%, rgba(255, 120, 20, 0.6), transparent 65%),
+    radial-gradient(ellipse 45% 50% at 70% 70%, rgba(230, 40, 20, 0.55), transparent 65%),
+    radial-gradient(ellipse 40% 40% at 55% 45%, rgba(255, 200, 40, 0.45), transparent 60%);
+  background-size: 170% 170%;
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + var(--holo, 0) * 0.2);
+  animation: lavaFlow 9s ease-in-out infinite alternate;
+}
+.holo-lava::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(35deg, transparent 48%, rgba(255, 180, 40, 0.7) 49.5%, transparent 51%),
+    linear-gradient(-20deg, transparent 63%, rgba(255, 140, 30, 0.6) 64.5%, transparent 66%);
+  mix-blend-mode: screen;
+}
+@keyframes lavaFlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* Electric — arcing hairline bolts + a flickering blue glow */
+.holo-electric {
+  background:
+    linear-gradient(75deg, transparent 47%, rgba(120, 200, 255, 0.8) 48%, transparent 49%),
+    linear-gradient(100deg, transparent 62%, rgba(180, 230, 255, 0.7) 63%, transparent 64%),
+    radial-gradient(ellipse at 50% 50%, rgba(60, 120, 255, 0.3), transparent 70%);
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.3);
+  animation: zap 0.35s steps(2) infinite;
+}
+@keyframes zap {
+  0%, 100% { opacity: 0.35; background-position: 0% 0%, 0% 0%, 0 0; }
+  50% { opacity: 0.85; background-position: 6% 0%, -6% 0%, 0 0; }
+}
+
+/* Water — rippling caustic light patterns */
+.holo-water {
+  background:
+    repeating-radial-gradient(circle at 30% 40%, rgba(120, 220, 255, 0.18) 0 6px, transparent 6px 16px),
+    repeating-radial-gradient(circle at 70% 60%, rgba(160, 240, 255, 0.14) 0 8px, transparent 8px 20px);
+  background-size: 140% 140%, 160% 160%;
+  mix-blend-mode: screen;
+  opacity: calc(0.55 + var(--holo, 0) * 0.2);
+  animation: waterRipple 8s ease-in-out infinite alternate;
+}
+@keyframes waterRipple {
+  0% { background-position: 0% 0%, 100% 100%; }
+  100% { background-position: 20% 15%, 80% 85%; }
+}
+
+/* Pearlescent — soft mother-of-pearl iridescence */
+.holo-pearl {
+  background: linear-gradient(120deg,
+    rgba(255, 240, 250, 0.45), rgba(220, 235, 255, 0.4), rgba(230, 255, 240, 0.4),
+    rgba(255, 245, 225, 0.4), rgba(255, 240, 250, 0.45));
+  background-size: 250% 250%;
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.25);
+  animation: pearlShift 8s ease-in-out infinite alternate;
+}
+@keyframes pearlShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Kaleidoscope — rotating mirrored faceted shards (::before) */
+.holo-kaleido {
+  overflow: hidden;
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.25);
+}
+.holo-kaleido::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255, 80, 180, 0.5) 0 15deg, rgba(80, 200, 255, 0.5) 15deg 30deg,
+    rgba(255, 220, 80, 0.5) 30deg 45deg, rgba(120, 255, 160, 0.5) 45deg 60deg);
+  animation: diamondSpin 12s linear infinite;
+}
+
+/* Vaporwave — retro perspective grid + sunset gradient, scrolling */
+.holo-vapor {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 120, 180, 0.6) 0 12%, rgba(255, 180, 90, 0.3) 12% 22%, transparent 30%),
+    repeating-linear-gradient(0deg, transparent 0 11px, rgba(255, 80, 200, 0.4) 11px 12px),
+    repeating-linear-gradient(90deg, transparent 0 11px, rgba(80, 220, 255, 0.3) 11px 12px),
+    linear-gradient(180deg, rgba(120, 60, 200, 0.4), rgba(255, 90, 150, 0.3));
+  background-size: 100% 100%, 100% 12px, 100% 100%, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.55 + var(--holo, 0) * 0.2);
+  animation: vaporScroll 4s linear infinite;
+}
+@keyframes vaporScroll {
+  0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: 0 0, 0 12px, 0 0, 0 0; }
+}
+
+/* Gemstone tints — Ruby / Emerald / Sapphire recolors of the Diamond effect
+   (faceted base + rotating colored prism ::before + twinkling sparkles ::after) */
+.holo-ruby,
+.holo-emerald,
+.holo-sapphire {
+  overflow: hidden;
+  background: repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 13px);
+  mix-blend-mode: screen;
+  opacity: calc(0.6 + var(--holo, 0) * 0.3);
+}
+.holo-ruby { box-shadow: inset 0 0 0 1.5px rgba(255, 120, 140, 0.7), inset 0 0 28px rgba(255, 40, 80, 0.4); }
+.holo-emerald { box-shadow: inset 0 0 0 1.5px rgba(120, 255, 180, 0.7), inset 0 0 28px rgba(20, 200, 110, 0.4); }
+.holo-sapphire { box-shadow: inset 0 0 0 1.5px rgba(140, 190, 255, 0.7), inset 0 0 28px rgba(40, 90, 255, 0.4); }
+.holo-ruby::before,
+.holo-emerald::before,
+.holo-sapphire::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  mix-blend-mode: screen;
+  animation: diamondSpin 7s linear infinite;
+}
+.holo-ruby::before { background: conic-gradient(from 0deg, transparent, rgba(255, 80, 120, 0.6), transparent, rgba(255, 180, 200, 0.6), transparent, rgba(200, 20, 60, 0.6), transparent); }
+.holo-emerald::before { background: conic-gradient(from 0deg, transparent, rgba(60, 230, 140, 0.6), transparent, rgba(180, 255, 210, 0.6), transparent, rgba(20, 170, 90, 0.6), transparent); }
+.holo-sapphire::before { background: conic-gradient(from 0deg, transparent, rgba(80, 150, 255, 0.6), transparent, rgba(180, 210, 255, 0.6), transparent, rgba(30, 70, 210, 0.6), transparent); }
+.holo-ruby::after,
+.holo-emerald::after,
+.holo-sapphire::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 25%, #fff 0 1.5px, transparent 3px),
+    radial-gradient(circle at 72% 45%, #fff 0 1.5px, transparent 3px),
+    radial-gradient(circle at 50% 75%, #fff 0 1.5px, transparent 3px),
+    radial-gradient(circle at 85% 80%, #fff 0 1.5px, transparent 3px);
+  mix-blend-mode: screen;
+  animation: goldTwinkle 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-polychrome::before,
+  .holo-negative,
+  .holo-aurora,
+  .holo-lava,
+  .holo-electric,
+  .holo-water,
+  .holo-pearl,
+  .holo-kaleido::before,
+  .holo-vapor,
+  .holo-ruby::before,
+  .holo-emerald::before,
+  .holo-sapphire::before,
+  .holo-ruby::after,
+  .holo-emerald::after,
+  .holo-sapphire::after { animation: none; }
+}

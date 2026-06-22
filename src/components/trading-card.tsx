@@ -95,7 +95,19 @@ type CardData = {
   typeNames?: string[]
   author_name?: string | null
   author_anonymous?: boolean | null
+  /** Cosmetic holo finish on the owned copy: 'foil' | 'holographic' | 'polychrome' | 'negative'. */
+  edition?: string | null
 }
+
+const HOLO_EDITIONS = new Set([
+  // Balatro-style
+  'foil', 'holographic', 'polychrome', 'negative', 'negative-true',
+  // Hearthstone-style
+  'golden', 'signature', 'diamond',
+  // Extra full-surface finishes (exploration)
+  'aurora', 'lava', 'electric', 'water', 'pearl', 'kaleido', 'vapor',
+  'ruby', 'emerald', 'sapphire',
+])
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -152,6 +164,11 @@ export default function TradingCard({
 }) {
   const s = sizeClasses[size]
   const stars = rarityStarCount[card.rarity] || 1
+  const edition = card.edition && HOLO_EDITIONS.has(card.edition) ? card.edition : null
+  const negInvert = 'invert(1) hue-rotate(180deg)'
+  // 'negative-true' inverts the entire card (pale photo-negative). 'negative'
+  // inverts only the art + text so the cosmic overlay stays dark on top.
+  const invertContent = edition === 'negative' ? negInvert : undefined
   const cardRef = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 })
   const [shine, setShine] = useState({ x: 50, y: 50 })
@@ -181,6 +198,11 @@ export default function TradingCard({
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
 
+  const cardTransform = isHovered
+    ? `perspective(800px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) scale(1.05)`
+    : 'perspective(800px) rotateX(0) rotateY(0) scale(1)'
+  const cardTransition = isHovered ? 'transform 0.1s ease-out, box-shadow 0.3s' : 'transform 0.4s ease-out, box-shadow 0.3s'
+
   return (
     <div
       ref={cardRef}
@@ -195,12 +217,16 @@ export default function TradingCard({
       <div
         className={`relative flex flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
         style={{
-          transform: isHovered
-            ? `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) scale(1.05)`
-            : 'rotateX(0) rotateY(0) scale(1)',
-          transition: isHovered ? 'transform 0.1s ease-out, box-shadow 0.3s' : 'transform 0.4s ease-out, box-shadow 0.3s',
+          transform: cardTransform,
+          transition: cardTransition,
           transformStyle: 'preserve-3d',
-        }}
+          // Negative edition inverts the entire card — art, text, and chrome.
+          filter: edition === 'negative-true' ? negInvert : undefined,
+          // Pointer position + hover state for the holo edition layer (CSS reads these).
+          '--mx': `${shine.x}%`,
+          '--my': `${shine.y}%`,
+          '--holo': isHovered ? 1 : 0,
+        } as React.CSSProperties}
       >
         {/* Shine overlay */}
         <div
@@ -213,11 +239,14 @@ export default function TradingCard({
           }}
         />
 
+        {/* Holo edition finish (cosmetic, pointer-reactive) */}
+        {edition && <div data-testid="holo-layer" data-edition={edition} className={`holo-layer holo-${edition}`} aria-hidden />}
+
         {/* Accent gradient at top */}
         <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${rarityAccent[card.rarity]} pointer-events-none`} />
 
         {/* Image */}
-        <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
+        <div className="relative mx-2 mt-2 overflow-hidden rounded-xl" style={{ filter: invertContent }}>
           {card.image_url ? (
             // Plain <img>: static cards stay static, animated WebP/GIF autoplay
             // natively (GPU-cheap). No canvas/poster work — that previously
@@ -264,7 +293,7 @@ export default function TradingCard({
         </div>
 
         {/* Card info */}
-        <div className="flex flex-1 flex-col px-3 py-2.5">
+        <div className="flex flex-1 flex-col px-3 py-2.5" style={{ filter: invertContent }}>
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (
