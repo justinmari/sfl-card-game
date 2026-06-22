@@ -16,7 +16,7 @@ export default async function ProfilePage() {
     .gt('count', 0)
 
   const ownedCards = (userCards || []).map((uc) => {
-    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_types: { types: { name: string } | null }[] }
+    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_types: { types: { name: string } | null }[]; author_name: string | null; author_anonymous: boolean | null }
     return {
       id: uc.card_id,
       name: c.name,
@@ -25,6 +25,8 @@ export default async function ProfilePage() {
       rarity: c.rarity,
       creature_name: c.creatures?.name || null,
       typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
+      author_name: c.author_name,
+      author_anonymous: c.author_anonymous,
     }
   })
 

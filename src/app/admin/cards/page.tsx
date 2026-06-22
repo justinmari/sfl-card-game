@@ -25,6 +25,13 @@ export default async function AdminCardsPage() {
     .select('id, name')
     .order('name')
 
+  // Users an admin can attribute a card to (admins can read all profiles).
+  const { data: users } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .not('full_name', 'is', null)
+    .order('full_name')
+
   // Get all card IDs that are in at least one pack
   const { data: packCards } = await supabase
     .from('pack_cards')
@@ -48,8 +55,8 @@ export default async function AdminCardsPage() {
       <AppNavbar backHref="/dashboard" title="Manage Cards" />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <CardUploadForm creatures={creatures || []} types={types || []} />
-        <CardList cards={cards || []} creatures={creatures || []} types={types || []} cardsInPacks={[...cardsInPacks] as string[]} packFilters={packFilters} />
+        <CardUploadForm creatures={creatures || []} types={types || []} authorId={profile.id} authorName={profile.full_name || null} />
+        <CardList cards={cards || []} creatures={creatures || []} types={types || []} cardsInPacks={[...cardsInPacks] as string[]} packFilters={packFilters} users={users || []} />
       </main>
     </div>
   )

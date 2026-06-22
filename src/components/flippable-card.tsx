@@ -20,6 +20,8 @@ type CardData = {
   rarity: string
   creature_name?: string | null
   typeNames?: string[]
+  author_name?: string | null
+  author_anonymous?: boolean | null
 }
 
 export default function FlippableCard({ card, size = 'sm', forceFlip = false }: { card: CardData; size?: 'sm' | 'md' | 'lg'; forceFlip?: boolean }) {

@@ -29,6 +29,8 @@ type PulledCard = {
   description: string | null
   creature_name: string | null
   typeNames?: string[]
+  author_name?: string | null
+  author_anonymous?: boolean | null
   is_new?: boolean
 }
 

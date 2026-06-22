@@ -51,6 +51,100 @@ test.describe('Admin Gruten Logs', () => {
   })
 })
 
+test.describe('Card suggestion reward', () => {
+  test('adding a suggested card pays the suggester 500G', async ({ page }) => {
+    const usersRes = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    const player = ((await usersRes.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com')
+
+    const TITLE = 'E2E reward probe'
+    const enc = encodeURIComponent(TITLE)
+    // Clean up any leftovers from a prior run.
+    await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}`, { method: 'DELETE', headers: svc })
+
+    const profBefore = await (await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}&select=gruten`, { headers: svc })).json()
+    const before = profBefore[0].gruten as number
+
+    await fetch(`${LOCAL}/rest/v1/card_suggestions`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify({ user_id: player.id, title: TITLE, status: 'pending', rarity: 'common' }),
+    })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/suggestions')
+    const card = page.locator('div.space-y-4 > div', { hasText: TITLE })
+    await expect(card).toBeVisible({ timeout: 10000 })
+    await card.getByRole('button', { name: 'Add to Game' }).click()
+    // After the add, the suggestion leaves the pending list.
+    await expect(page.getByText(TITLE)).toHaveCount(0, { timeout: 10000 })
+
+    // The suggester's balance went up by exactly 500, logged as a suggestion_reward.
+    await expect.poll(async () => {
+      const p = await (await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}&select=gruten`, { headers: svc })).json()
+      return p[0].gruten
+    }, { timeout: 10000 }).toBe(before + 500)
+
+    const txns = await (await fetch(
+      `${LOCAL}/rest/v1/gruten_transactions?user_id=eq.${player.id}&type=eq.suggestion_reward&order=created_at.desc&limit=1`,
+      { headers: svc },
+    )).json()
+    expect(txns.length).toBe(1)
+    expect(txns[0].amount).toBe(500)
+    // The audit row carries enough context to trace it back to the card.
+    expect(txns[0].metadata).toMatchObject({ title: TITLE })
+
+    // It shows up in the admin Gruten transaction audit, labeled and filterable.
+    await page.goto('/admin/transactions')
+    const log = page.getByTestId('transaction-log')
+    await expect(log).toBeVisible({ timeout: 10000 })
+    await page.getByLabel('Filter by player').selectOption(player.id)
+    await page.getByLabel('Filter by type').selectOption('suggestion_reward')
+    const row = log.locator('[data-testid="txn-row"]', { hasText: 'Suggestion reward' }).first()
+    await expect(row).toBeVisible()
+    await expect(row).toContainText('+500')
+
+    // Cleanup: remove the seeded suggestion + card + reward txn, restore balance.
+    await fetch(`${LOCAL}/rest/v1/gruten_transactions?id=eq.${txns[0].id}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}`, {
+      method: 'PATCH', headers: svc, body: JSON.stringify({ gruten: before }),
+    })
+  })
+})
+
+test.describe('Card suggestion reward notification', () => {
+  test('player sees a one-time toast when their card was added, then it is marked seen', async ({ page }) => {
+    const usersRes = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    const player = ((await usersRes.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com')
+
+    const TITLE = 'E2E toast probe'
+    const enc = encodeURIComponent(TITLE)
+    await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
+    // Seed an already-added, paid, but unseen reward — the state that drives the toast.
+    await fetch(`${LOCAL}/rest/v1/card_suggestions`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify({ user_id: player.id, title: TITLE, status: 'added', reward_paid: true, reward_seen: false }),
+    })
+
+    // login() lands on /dashboard, where the navbar mounts and fires the toast.
+    await login(page, TEST_PLAYER)
+
+    const toast = page.getByTestId('suggestion-reward-toast')
+    await expect(toast).toBeVisible({ timeout: 10000 })
+    await expect(toast).toContainText(TITLE)
+    await expect(toast).toContainText('+500 Gruten')
+
+    // The toast marks the reward seen, so it won't fire again.
+    await expect.poll(async () => {
+      const r = await (await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}&select=reward_seen`, { headers: svc })).json()
+      return r[0]?.reward_seen
+    }, { timeout: 10000 }).toBe(true)
+
+    await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
+  })
+})
+
 test.describe('Card suggestion notification badge', () => {
   test('a pending suggestion shows a badge on the Card Suggestions tile', async ({ page }) => {
     // Seed one pending suggestion (unique title so we can clean it up).

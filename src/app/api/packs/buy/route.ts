@@ -23,9 +23,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  // Attach each pulled card's type names so the reveal cards show Type tags,
-  // matching the collection. (buy_pack doesn't return types.)
-  const result = data as { cards?: { id: string; typeNames?: string[] }[] } | null
+  // Attach each pulled card's type names + author credit so the reveal cards
+  // match the collection. (buy_pack doesn't return types or author.)
+  const result = data as { cards?: { id: string; typeNames?: string[]; author_name?: string | null; author_anonymous?: boolean | null }[] } | null
   if (result?.cards?.length) {
     const ids = [...new Set(result.cards.map((c) => c.id))]
     const { data: typeRows } = await supabase
@@ -37,7 +37,17 @@ export async function POST(request: Request) {
       if (!row.types?.name) continue
       typeMap.set(row.card_id, [...(typeMap.get(row.card_id) ?? []), row.types.name])
     }
-    for (const c of result.cards) c.typeNames = typeMap.get(c.id) ?? []
+    const { data: authorRows } = await supabase
+      .from('cards')
+      .select('id, author_name, author_anonymous')
+      .in('id', ids)
+    const authorMap = new Map((authorRows ?? []).map((r) => [r.id, r]))
+    for (const c of result.cards) {
+      c.typeNames = typeMap.get(c.id) ?? []
+      const a = authorMap.get(c.id)
+      c.author_name = a?.author_name ?? null
+      c.author_anonymous = a?.author_anonymous ?? false
+    }
   }
 
   return NextResponse.json(data)

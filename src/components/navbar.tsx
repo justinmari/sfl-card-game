@@ -12,20 +12,37 @@ type NavbarProps = {
   canClaimDaily?: boolean
   packageCount?: number
   packageTotal?: number
+  suggestionRewards?: string[]
   backHref?: string
   backLabel?: string
   title?: string
   version?: string | null
 }
 
-export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, packageCount = 0, packageTotal = 0, backHref, backLabel, title, version }: NavbarProps) {
+const SUGGESTION_REWARD_AMOUNT = 500
+
+export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, packageCount = 0, packageTotal = 0, suggestionRewards = [], backHref, backLabel, title, version }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [claimed, setClaimed] = useState(false)
   const [showReward, setShowReward] = useState(false)
   const [packagesOpened, setPackagesOpened] = useState(false)
   const [packageReward, setPackageReward] = useState<{ amount: number; opened: number } | null>(null)
+  const [suggestionReward, setSuggestionReward] = useState<{ titles: string[]; total: number } | null>(null)
+  const suggestionShownRef = useRef(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Announce added-card rewards once: show a toast and mark them seen so the
+  // toast never re-fires on later loads. The gruten is already in the balance.
+  useEffect(() => {
+    if (suggestionShownRef.current || suggestionRewards.length === 0) return
+    suggestionShownRef.current = true
+    setSuggestionReward({ titles: suggestionRewards, total: suggestionRewards.length * SUGGESTION_REWARD_AMOUNT })
+    const supabase = createClient()
+    supabase.rpc('mark_suggestion_rewards_seen').then(() => router.refresh())
+    const t = setTimeout(() => setSuggestionReward(null), 6000)
+    return () => clearTimeout(t)
+  }, [suggestionRewards, router])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -192,6 +209,22 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, pack
               {packageReward.opened > 1 ? `${packageReward.opened} Care Packages Opened!` : 'Care Package Opened!'}
             </p>
             <p className="text-xs text-violet-300">+{packageReward.amount.toLocaleString()} Gruten added to your balance</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {suggestionReward && (
+      <div data-testid="suggestion-reward-toast" className="surface fixed bottom-6 right-6 z-50 animate-[slideUp_0.3s_ease-out] rounded-xl border border-emerald-400/40 px-5 py-3 shadow-[0_0_24px_-4px_rgba(16,185,129,0.55)]">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              {suggestionReward.titles.length > 1
+                ? `${suggestionReward.titles.length} of your cards were added to the game!`
+                : `Your card “${suggestionReward.titles[0]}” was added to the game!`}
+            </p>
+            <p className="text-xs text-emerald-300">+{suggestionReward.total.toLocaleString()} Gruten added to your balance</p>
           </div>
         </div>
       </div>

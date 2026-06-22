@@ -18,6 +18,7 @@ type Suggestion = {
   creature_name: string | null
   status: string
   admin_notes: string | null
+  is_anonymous: boolean
   created_at: string
 }
 
@@ -71,6 +72,11 @@ export default function SuggestionList({
             image_url: suggestion.image_url,
             rarity: rar,
             creature_id: cid,
+            // Persist who suggested it. The DB always keeps the uploader
+            // (author_id); the public name is hidden when they chose anonymous.
+            author_id: suggestion.user_id,
+            author_name: suggestion.is_anonymous ? null : suggestion.user_name,
+            author_anonymous: suggestion.is_anonymous,
           })
           if (insertError) throw insertError
         }

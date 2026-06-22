@@ -11,6 +11,8 @@ type Card = {
   rarity: string
   description: string | null
   creature_name: string | null
+  author_name?: string | null
+  author_anonymous?: boolean | null
 }
 
 type Player = {

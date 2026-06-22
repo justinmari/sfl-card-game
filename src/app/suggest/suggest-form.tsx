@@ -21,6 +21,7 @@ export default function SuggestForm({
   const [description, setDescription] = useState('')
   const [rarity, setRarity] = useState('common')
   const [creatureId, setCreatureId] = useState<string | null>(null)
+  const [anonymous, setAnonymous] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -73,6 +74,7 @@ export default function SuggestForm({
         p_image_url: imageUrl,
         p_rarity: rarity,
         p_creature_id: creatureId,
+        p_is_anonymous: anonymous,
       })
       if (rpcError) throw rpcError
 
@@ -82,6 +84,7 @@ export default function SuggestForm({
       setDescription('')
       setRarity('common')
       setCreatureId(null)
+      setAnonymous(false)
       setFile(null)
       setPreview(null)
       router.refresh()
@@ -215,6 +218,18 @@ export default function SuggestForm({
             </select>
           </div>
 
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-400">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              disabled={atLimit}
+              className="h-4 w-4 accent-violet-500"
+            />
+            Submit anonymously
+            <span className="text-xs text-zinc-600">(your name is hidden from players)</span>
+          </label>
+
           <button
             type="button"
             onClick={() => setShowReview(true)}
@@ -241,6 +256,7 @@ export default function SuggestForm({
               {cardPreview.creature_name && (
                 <p><span className="text-zinc-300">Creature:</span> {cardPreview.creature_name}</p>
               )}
+              <p><span className="text-zinc-300">Author:</span> {anonymous ? 'Anonymous' : 'Credited to you'}</p>
             </div>
             <p className="mb-6 text-xs text-amber-400">You will not be able to remove this submission once confirmed.</p>
             <div className="flex gap-3">

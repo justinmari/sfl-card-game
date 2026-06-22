@@ -29,9 +29,10 @@ type PendingCard = {
   type_ids: string[]
 }
 
-export default function CardUploadForm({ creatures, types }: { creatures: Creature[]; types: CardType[] }) {
+export default function CardUploadForm({ creatures, types, authorId, authorName }: { creatures: Creature[]; types: CardType[]; authorId: string; authorName: string | null }) {
   const [pending, setPending] = useState<PendingCard[]>([])
   const [defaultRarity, setDefaultRarity] = useState('common')
+  const [anonymous, setAnonymous] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +113,10 @@ export default function CardUploadForm({ creatures, types }: { creatures: Creatu
           rarity: card.rarity,
           image_url: publicUrl,
           creature_id: card.creature_id || null,
+          // Attribute the upload to this admin; hide the name if anonymous.
+          author_id: authorId,
+          author_name: anonymous ? null : authorName,
+          author_anonymous: anonymous,
         }).select('id').single()
 
         if (insertError) throw new Error(`Failed to save "${card.name}": ${insertError.message}`)
@@ -184,6 +189,15 @@ export default function CardUploadForm({ creatures, types }: { creatures: Creatu
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              className="h-4 w-4 accent-violet-500"
+            />
+            Anonymous author
+          </label>
         </div>
       </div>
 

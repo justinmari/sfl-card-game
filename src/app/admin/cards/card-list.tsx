@@ -25,6 +25,11 @@ type CardType = {
   name: string
 }
 
+type User = {
+  id: string
+  full_name: string | null
+}
+
 type Card = {
   id: string
   name: string
@@ -34,10 +39,13 @@ type Card = {
   creature_id: string | null
   creatures: { name: string } | null
   card_types: { type_id: string }[]
+  author_id: string | null
+  author_name: string | null
+  author_anonymous: boolean | null
   created_at: string
 }
 
-export default function CardList({ cards, creatures, types, cardsInPacks = [], packFilters = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[]; packFilters?: PackFilter[] }) {
+export default function CardList({ cards, creatures, types, cardsInPacks = [], packFilters = [], users = [] }: { cards: Card[]; creatures: Creature[]; types: CardType[]; cardsInPacks?: string[]; packFilters?: PackFilter[]; users?: User[] }) {
   const typeNameMap = useMemo(() => new Map(types.map((t) => [t.id, t.name])), [types])
   const { preferences } = usePreferences()
   const compact = preferences.compactCards
@@ -52,6 +60,8 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
   const [editRarity, setEditRarity] = useState('')
   const [editCreatureId, setEditCreatureId] = useState('')
   const [editTypeIds, setEditTypeIds] = useState<Set<string>>(new Set())
+  const [editAuthorId, setEditAuthorId] = useState('')
+  const [editAuthorAnonymous, setEditAuthorAnonymous] = useState(false)
   const [editFile, setEditFile] = useState<File | null>(null)
   const [editPreview, setEditPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -128,6 +138,8 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
     setEditRarity(card.rarity)
     setEditCreatureId(card.creature_id || '')
     setEditTypeIds(new Set((card.card_types || []).map((ct) => ct.type_id)))
+    setEditAuthorId(card.author_id || '')
+    setEditAuthorAnonymous(card.author_anonymous || false)
     setEditFile(null)
     setEditPreview(null)
   }
@@ -151,11 +163,18 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
     setSaving(true)
     try {
       const supabase = createClient()
-      const updates: Record<string, string | null> = {
+      const updates: Record<string, string | null | boolean> = {
         name: editName,
         description: editDescription || null,
         rarity: editRarity,
         creature_id: editCreatureId || null,
+        // Author: keep the real uploader (author_id) for the DB; the public
+        // name is hidden when anonymous. Clearing the picker removes the author.
+        author_id: editAuthorId || null,
+        author_name: !editAuthorId || editAuthorAnonymous
+          ? null
+          : users.find((u) => u.id === editAuthorId)?.full_name || null,
+        author_anonymous: editAuthorId ? editAuthorAnonymous : false,
       }
 
       // Upload new image if selected
@@ -313,6 +332,30 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-zinc-400">Author</label>
+                <select
+                  value={editAuthorId}
+                  onChange={(e) => setEditAuthorId(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-zinc-500 focus:outline-none"
+                >
+                  <option value="">No author</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.id.slice(0, 8)}</option>
+                  ))}
+                </select>
+                {editAuthorId && (
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={editAuthorAnonymous}
+                      onChange={(e) => setEditAuthorAnonymous(e.target.checked)}
+                      className="h-4 w-4 accent-violet-500"
+                    />
+                    Show as Anonymous to players
+                  </label>
+                )}
               </div>
               {types.length > 0 && (
                 <div>

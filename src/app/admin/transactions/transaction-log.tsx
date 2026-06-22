@@ -24,6 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
   arena_reward: 'Arena reward',
   card_scrap: 'Card scrap',
   care_package: 'Care package',
+  suggestion_reward: 'Suggestion reward',
 }
 
 export default function TransactionLog({ players = [] }: { players?: Player[] }) {

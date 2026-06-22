@@ -37,7 +37,7 @@ export default async function CollectionPage() {
   const totalCards = rows.reduce((sum, uc) => sum + uc.count, 0)
 
   const cardCounts = rows.map((uc) => {
-    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[]; card_types: { types: { name: string } | null }[] }
+    const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_skills: { skill_id: string }[]; card_types: { types: { name: string } | null }[]; author_name: string | null; author_anonymous: boolean | null }
     return {
       card: {
         id: uc.card_id,
@@ -49,6 +49,8 @@ export default async function CollectionPage() {
         skillNames: (c.card_skills || []).map((s) => skillNameMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.name || s.skill_id),
         skillDescriptions: (c.card_skills || []).map((s) => skillDescMap.get(s.skill_id) || SKILL_REGISTRY[s.skill_id]?.description || ''),
         typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
+        author_name: c.author_name,
+        author_anonymous: c.author_anonymous,
       },
       count: uc.count,
       obtainedAt: uc.obtained_at as string,
