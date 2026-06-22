@@ -111,6 +111,81 @@ test.describe('Card suggestion reward', () => {
       method: 'PATCH', headers: svc, body: JSON.stringify({ gruten: before }),
     })
   })
+
+  test('adding multiple suggested cards pays 500 for each', async ({ page }) => {
+    const usersRes = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    const player = ((await usersRes.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com')
+    const stamp = Date.now()
+    const titles = [1, 2, 3].map((n) => `E2E multi reward ${stamp}-${n}`)
+
+    for (const t of titles) {
+      await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+      await fetch(`${LOCAL}/rest/v1/cards?name=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+    }
+    const before = (await (await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}&select=gruten`, { headers: svc })).json())[0].gruten as number
+    await fetch(`${LOCAL}/rest/v1/card_suggestions`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify(titles.map((t) => ({ user_id: player.id, title: t, status: 'pending', rarity: 'common' }))),
+    })
+
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/suggestions')
+    for (const t of titles) {
+      const card = page.locator('div.space-y-4 > div', { hasText: t })
+      await expect(card).toBeVisible({ timeout: 10000 })
+      await card.getByRole('button', { name: 'Add to Game' }).click()
+      await expect(page.getByText(t)).toHaveCount(0, { timeout: 10000 })
+    }
+
+    // Each add paid 500 → +1500 total, three distinct reward rows.
+    await expect.poll(async () => {
+      const p = await (await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}&select=gruten`, { headers: svc })).json()
+      return p[0].gruten
+    }, { timeout: 10000 }).toBe(before + 1500)
+
+    const txns = await (await fetch(`${LOCAL}/rest/v1/gruten_transactions?user_id=eq.${player.id}&type=eq.suggestion_reward&select=amount,metadata`, { headers: svc })).json()
+    const mine = (txns as { amount: number; metadata: { title?: string } }[]).filter((t) => titles.includes(t.metadata?.title ?? ''))
+    expect(mine.length).toBe(3)
+    expect(mine.every((t) => t.amount === 500)).toBe(true)
+
+    for (const t of titles) {
+      await fetch(`${LOCAL}/rest/v1/cards?name=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+      await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+    }
+    await fetch(`${LOCAL}/rest/v1/gruten_transactions?user_id=eq.${player.id}&type=eq.suggestion_reward`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${player.id}`, { method: 'PATCH', headers: svc, body: JSON.stringify({ gruten: before }) })
+  })
+
+  test('player sees a combined toast when multiple of their cards were added', async ({ page }) => {
+    const usersRes = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    const player = ((await usersRes.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com')
+    const stamp = Date.now()
+    const titles = [1, 2, 3].map((n) => `E2E multi toast ${stamp}-${n}`)
+
+    // Clean slate: mark any pre-existing rewards seen so exactly our 3 are unseen.
+    await fetch(`${LOCAL}/rest/v1/card_suggestions?user_id=eq.${player.id}&status=eq.added`, {
+      method: 'PATCH', headers: svc, body: JSON.stringify({ reward_seen: true }),
+    })
+    for (const t of titles) await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/card_suggestions`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify(titles.map((t) => ({ user_id: player.id, title: t, status: 'added', reward_paid: true, reward_seen: false }))),
+    })
+
+    await login(page, TEST_PLAYER)
+    const toast = page.getByTestId('suggestion-reward-toast')
+    await expect(toast).toBeVisible({ timeout: 10000 })
+    await expect(toast).toContainText('3 of your cards were added to the game!')
+    await expect(toast).toContainText('+1,500 Gruten')
+
+    // All three got marked seen, so the toast won't fire again.
+    await expect.poll(async () => {
+      const r = await (await fetch(`${LOCAL}/rest/v1/card_suggestions?user_id=eq.${player.id}&status=eq.added&reward_paid=eq.true&reward_seen=eq.false&select=id`, { headers: svc })).json()
+      return r.length
+    }, { timeout: 10000 }).toBe(0)
+
+    for (const t of titles) await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${encodeURIComponent(t)}`, { method: 'DELETE', headers: svc })
+  })
 })
 
 test.describe('Card suggestion reward notification', () => {

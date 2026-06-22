@@ -52,7 +52,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
   const cardSize = compact ? 'sm' : 'md'
   const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
   const packCardSets = useMemo(() => new Map(packFilters.map((p) => [p.id, new Set(p.cardIds)])), [packFilters])
-  const [filterNotInPack, setFilterNotInPack] = useState(false)
+  const [filterNotInPack, setFilterNotInPack] = useState(true)
   const [filterPack, setFilterPack] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -69,7 +69,7 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
   const [filterRarity, setFilterRarity] = useState<string | null>(null)
   const [filterCreature, setFilterCreature] = useState<string | null>(null)
   const [filterType, setFilterType] = useState<string | null>(null)
-  const [sort, setSort] = useState<SortOption>('date')
+  const [sort, setSort] = useState<SortOption>('rarity')
   const router = useRouter()
   const { sortCards, filterCards } = useCardFilters(cards)
 
@@ -269,7 +269,6 @@ export default function CardList({ cards, creatures, types, cardsInPacks = [], p
         sortOptions={[
           { value: 'rarity', label: 'Rarity' },
           { value: 'name', label: 'Name' },
-          { value: 'date', label: 'Date' },
         ]}
         sort={sort}
         onSortChange={(v) => setSort(v as SortOption)}
