@@ -31,7 +31,7 @@ test.describe('Card authors', () => {
     await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${encodeURIComponent(TITLE)}`, { method: 'DELETE', headers: svc })
   })
 
-  test('adding a credited suggestion persists the author and shows it on the card', async ({ page }) => {
+  test('adding a credited suggestion persists the author on the card', async ({ page }) => {
     const pid = await playerId()
     const TITLE = `E2E credited card ${Date.now()}`
     const enc = encodeURIComponent(TITLE)
@@ -49,17 +49,11 @@ test.describe('Card authors', () => {
     await card.getByRole('button', { name: 'Add to Game' }).click()
     await expect(page.getByText(TITLE)).toHaveCount(0, { timeout: 10000 })
 
-    // The new card persists the real uploader and a public credit.
+    // The new card persists the real uploader and a public credit name.
     await expect.poll(async () => {
       const r = await (await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}&select=author_id,author_name,author_anonymous`, { headers: svc })).json()
       return r[0]
     }, { timeout: 10000 }).toMatchObject({ author_id: pid, author_name: 'Test Player', author_anonymous: false })
-
-    // And it renders "by Test Player" on the trading card.
-    await page.goto('/admin/cards')
-    await page.getByPlaceholder('Search cards...').fill(TITLE)
-    const adminCard = page.locator('[data-testid="admin-card"]', { hasText: TITLE })
-    await expect(adminCard.getByTestId('card-author')).toContainText('by Test Player')
 
     await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}`, { method: 'DELETE', headers: svc })
     await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
@@ -111,7 +105,7 @@ test.describe('Card authors', () => {
     await fetch(`${LOCAL}/rest/v1/profiles?id=eq.${pid}`, { method: 'PATCH', headers: svc, body: JSON.stringify({ gruten: before }) })
   })
 
-  test('adding an anonymous suggestion keeps the uploader but shows Anonymous', async ({ page }) => {
+  test('adding an anonymous suggestion keeps the uploader but hides the name', async ({ page }) => {
     const pid = await playerId()
     const TITLE = `E2E anon card ${Date.now()}`
     const enc = encodeURIComponent(TITLE)
@@ -135,12 +129,69 @@ test.describe('Card authors', () => {
       return r[0]
     }, { timeout: 10000 }).toMatchObject({ author_id: pid, author_name: null, author_anonymous: true })
 
-    await page.goto('/admin/cards')
-    await page.getByPlaceholder('Search cards...').fill(TITLE)
-    const adminCard = page.locator('[data-testid="admin-card"]', { hasText: TITLE })
-    await expect(adminCard.getByTestId('card-author')).toContainText('by Anonymous')
-
     await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}`, { method: 'DELETE', headers: svc })
     await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.${enc}`, { method: 'DELETE', headers: svc })
+  })
+})
+
+test.describe('Card author in the collection modal', () => {
+  async function pid(): Promise<string> {
+    const res = await fetch(`${LOCAL}/auth/v1/admin/users?page=1&per_page=50`, { headers: svc })
+    return ((await res.json()).users || []).find((u: { email: string }) => u.email === 'player@test.com').id
+  }
+
+  // Give the player a card with a known author, then assert the modal shows it.
+  async function seedOwnedCard(playerId: string, name: string, author: { author_name: string | null; author_anonymous: boolean }) {
+    const enc = encodeURIComponent(name)
+    await fetch(`${LOCAL}/rest/v1/cards?name=eq.${enc}`, { method: 'DELETE', headers: svc })
+    const ins = await fetch(`${LOCAL}/rest/v1/cards`, {
+      method: 'POST', headers: { ...svc, Prefer: 'return=representation' },
+      body: JSON.stringify({ name, rarity: 'rare', author_id: playerId, ...author }),
+    })
+    const cardId = (await ins.json())[0].id
+    await fetch(`${LOCAL}/rest/v1/user_cards`, {
+      method: 'POST', headers: svc,
+      body: JSON.stringify({ user_id: playerId, card_id: cardId, count: 1 }),
+    })
+    return cardId
+  }
+
+  async function cleanup(cardId: string, name: string) {
+    await fetch(`${LOCAL}/rest/v1/user_cards?card_id=eq.${cardId}`, { method: 'DELETE', headers: svc })
+    await fetch(`${LOCAL}/rest/v1/cards?name=eq.${encodeURIComponent(name)}`, { method: 'DELETE', headers: svc })
+  }
+
+  test('shows "by <name>" for a credited card', async ({ page }) => {
+    const playerId = await pid()
+    const NAME = `E2E modal credited ${Date.now()}`
+    const cardId = await seedOwnedCard(playerId, NAME, { author_name: 'Cred Author', author_anonymous: false })
+
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await page.getByPlaceholder('Search cards...').fill(NAME)
+    await page.getByTestId('collection-card-desktop').first().click()
+
+    const author = page.getByTestId('modal-card-author')
+    await expect(author).toBeVisible({ timeout: 10000 })
+    await expect(author).toHaveText('by Cred Author')
+
+    await cleanup(cardId, NAME)
+  })
+
+  test('shows "by Anonymous" for an anonymous card', async ({ page }) => {
+    const playerId = await pid()
+    const NAME = `E2E modal anon ${Date.now()}`
+    const cardId = await seedOwnedCard(playerId, NAME, { author_name: null, author_anonymous: true })
+
+    await login(page, TEST_PLAYER)
+    await page.goto('/collection')
+    await page.getByPlaceholder('Search cards...').fill(NAME)
+    await page.getByTestId('collection-card-desktop').first().click()
+
+    const author = page.getByTestId('modal-card-author')
+    await expect(author).toBeVisible({ timeout: 10000 })
+    await expect(author).toHaveText('by Anonymous')
+
+    await cleanup(cardId, NAME)
   })
 })

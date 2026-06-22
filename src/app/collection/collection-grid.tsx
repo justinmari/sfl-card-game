@@ -20,6 +20,8 @@ type Card = {
   skillNames?: string[]
   skillDescriptions?: string[]
   typeNames?: string[]
+  author_name?: string | null
+  author_anonymous?: boolean | null
 }
 
 type PackFilter = {
@@ -257,6 +259,11 @@ export default function CollectionGrid({
               <span>Owned: x{selected.count}</span>
               <span>#{selected.card.id.slice(0, 8)}</span>
             </div>
+            {(selected.card.author_anonymous || selected.card.author_name) && (
+              <p data-testid="modal-card-author" className="mt-2 text-sm italic text-zinc-400">
+                by {selected.card.author_anonymous ? 'Anonymous' : selected.card.author_name}
+              </p>
+            )}
             {selected.card.skillNames && selected.card.skillNames.length > 0 && (
               <div className="mt-3 w-full max-w-xs">
                 {selected.card.skillNames.map((name, i) => (

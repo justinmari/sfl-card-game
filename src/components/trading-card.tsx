@@ -152,7 +152,6 @@ export default function TradingCard({
 }) {
   const s = sizeClasses[size]
   const stars = rarityStarCount[card.rarity] || 1
-  const authorCredit = card.author_anonymous ? 'Anonymous' : card.author_name || null
   const cardRef = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 })
   const [shine, setShine] = useState({ x: 50, y: 50 })
@@ -274,12 +273,6 @@ export default function TradingCard({
               <p className={`${s.desc} text-zinc-700 italic leading-snug`}>No description</p>
             )}
           </div>
-
-          {authorCredit && (
-            <p data-testid="card-author" className={`${s.label} mt-1 truncate italic text-zinc-500`}>
-              by {authorCredit}
-            </p>
-          )}
 
           {/* Stars + Skill indicator (icon only; details in hover tooltip) */}
           <div className={`mt-auto flex items-center justify-between gap-2 pt-2`}>
