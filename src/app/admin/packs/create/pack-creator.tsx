@@ -36,7 +36,7 @@ const rarityOrder: Record<string, number> = {
 
 export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[]; cardsInPacks?: string[] }) {
   const cardsInPacksSet = useMemo(() => new Set(cardsInPacks), [cardsInPacks])
-  const [filterNotInPack, setFilterNotInPack] = useState(false)
+  const [filterNotInPack, setFilterNotInPack] = useState(true)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [cardsPerPack, setCardsPerPack] = useState(5)
@@ -53,34 +53,22 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
   const router = useRouter()
   const { sortCards, filterCards } = useCardFilters(cards)
 
-  // Get unique dates from cards
-  const dates = useMemo(() => {
-    const dateSet = new Set<string>()
-    for (const card of cards) {
-      dateSet.add(card.created_at.split('T')[0])
-    }
-    return [...dateSet].sort((a, b) => b.localeCompare(a))
-  }, [cards])
+  // All cards matching the search / rarity / not-in-pack filters, sorted.
+  const visibleCards = useMemo(() => {
+    const base = filterNotInPack ? cards.filter((c) => !cardsInPacksSet.has(c.id)) : cards
+    return sortCards(filterCards(base, cardSearch, cardFilterRarity), cardSort)
+  }, [cards, cardSearch, cardFilterRarity, cardSort, filterNotInPack, cardsInPacksSet])
 
-  const [selectedDate, setSelectedDate] = useState(dates[0] || '')
-
-  // Cards for the selected date, with search/rarity filters and sort
-  const dayCards = useMemo(() => {
-    let dateFiltered = cards.filter((c) => c.created_at.split('T')[0] === selectedDate)
-    if (filterNotInPack) dateFiltered = dateFiltered.filter((c) => !cardsInPacksSet.has(c.id))
-    return sortCards(filterCards(dateFiltered, cardSearch, cardFilterRarity), cardSort)
-  }, [cards, selectedDate, cardSearch, cardFilterRarity, cardSort, filterNotInPack])
-
-  // Group day cards by rarity
-  const groupedDayCards = useMemo(() => {
+  // Group cards by rarity for display.
+  const groupedCards = useMemo(() => {
     const groups = new Map<string, Card[]>()
-    for (const card of dayCards) {
+    for (const card of visibleCards) {
       const existing = groups.get(card.rarity) || []
       existing.push(card)
       groups.set(card.rarity, existing)
     }
     return groups
-  }, [dayCards])
+  }, [visibleCards])
 
   const selectedCardIds = new Set(selected.map((s) => s.card_id))
   const totalPercentage = selected.reduce((sum, s) => sum + s.pull_percentage, 0)
@@ -105,9 +93,9 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
     setSelected(autoDistribute(selected, cards))
   }
 
-  const selectAllDay = () => {
+  const selectAllVisible = () => {
     const newSelected = [...selected]
-    for (const card of dayCards) {
+    for (const card of visibleCards) {
       if (!selectedCardIds.has(card.id)) {
         newSelected.push({ card_id: card.id, pull_percentage: 0 })
       }
@@ -115,9 +103,9 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
     setSelected(newSelected)
   }
 
-  const deselectAllDay = () => {
-    const dayCardIds = new Set(dayCards.map((c) => c.id))
-    setSelected(selected.filter((s) => !dayCardIds.has(s.card_id)))
+  const deselectAllVisible = () => {
+    const visibleIds = new Set(visibleCards.map((c) => c.id))
+    setSelected(selected.filter((s) => !visibleIds.has(s.card_id)))
   }
 
   const handleSubmit = async () => {
@@ -173,11 +161,6 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-  }
-
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       {/* Card browser */}
@@ -189,7 +172,7 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
           onRarityChange={setCardFilterRarity}
           sort={cardSort}
           onSortChange={setCardSort}
-          count={dayCards.length}
+          count={visibleCards.length}
         />
         <div className="mb-4 flex items-center gap-2">
           <button
@@ -200,53 +183,25 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
           </button>
         </div>
 
-        {/* Date selector */}
-        <div className="mb-6 flex items-center gap-3">
-          <button
-            onClick={() => {
-              const idx = dates.indexOf(selectedDate)
-              if (idx < dates.length - 1) setSelectedDate(dates[idx + 1])
-            }}
-            disabled={dates.indexOf(selectedDate) >= dates.length - 1}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
-          >
-            &larr; Older
-          </button>
-          <div className="flex-1 text-center">
-            <p className="text-sm font-medium text-white">{selectedDate ? formatDate(selectedDate) : 'No cards'}</p>
-            <p className="text-xs text-zinc-500">{dayCards.length} card{dayCards.length !== 1 ? 's' : ''}</p>
-          </div>
-          <button
-            onClick={() => {
-              const idx = dates.indexOf(selectedDate)
-              if (idx > 0) setSelectedDate(dates[idx - 1])
-            }}
-            disabled={dates.indexOf(selectedDate) <= 0}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-30"
-          >
-            Newer &rarr;
-          </button>
-        </div>
-
-        {dayCards.length > 0 && (
+        {visibleCards.length > 0 && (
           <div className="mb-4 flex gap-2">
             <button
-              onClick={selectAllDay}
+              onClick={selectAllVisible}
               className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
             >
-              Select all from this day
+              Select all
             </button>
             <button
-              onClick={deselectAllDay}
+              onClick={deselectAllVisible}
               className="rounded-lg border border-zinc-700 px-4 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
             >
-              Deselect all from this day
+              Deselect all
             </button>
           </div>
         )}
 
         {/* Cards grouped by rarity */}
-        {Array.from(groupedDayCards.entries()).map(([rarity, rarityCards]) => (
+        {Array.from(groupedCards.entries()).map(([rarity, rarityCards]) => (
           <div key={rarity} className="mb-6">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <span className={`rounded px-2 py-0.5 text-xs ${rarityBadgeColors[rarity]}`}>
@@ -277,8 +232,8 @@ export default function PackCreator({ cards, cardsInPacks = [] }: { cards: Card[
           </div>
         ))}
 
-        {dayCards.length === 0 && (
-          <p className="py-10 text-center text-zinc-500">No cards uploaded on this day.</p>
+        {visibleCards.length === 0 && (
+          <p className="py-10 text-center text-zinc-500">No cards match these filters.</p>
         )}
       </div>
 

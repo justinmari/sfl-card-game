@@ -133,3 +133,45 @@ test.describe('Pack card picker (collection-style)', () => {
     await expect(page.getByTestId('pack-card-picker')).toHaveAttribute('data-compact', 'true')
   })
 })
+
+test.describe('Create pack card selection', () => {
+  const LOCAL_URL = 'http://127.0.0.1:54321'
+  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+  const headers = { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' }
+  const UNPACKED = 'Create Selection Unpacked Card'
+
+  // Seed a card that is NOT in any pack so the default "not in any pack" filter
+  // has something to show. (The seed's Starter Pack contains every seed card.)
+  test.beforeAll(async () => {
+    await fetch(`${LOCAL_URL}/rest/v1/cards?name=eq.${encodeURIComponent(UNPACKED)}`, { method: 'DELETE', headers })
+    await fetch(`${LOCAL_URL}/rest/v1/cards`, { method: 'POST', headers, body: JSON.stringify({ name: UNPACKED, rarity: 'rare' }) })
+  })
+  test.afterAll(async () => {
+    await fetch(`${LOCAL_URL}/rest/v1/cards?name=eq.${encodeURIComponent(UNPACKED)}`, { method: 'DELETE', headers })
+  })
+
+  test('defaults to not-in-pack + rarity sort, with no day-by-day navigator', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/packs/create')
+    await expect(page.getByPlaceholder('Pack name')).toBeVisible({ timeout: 10000 })
+
+    // No day-by-day navigation any more.
+    await expect(page.getByRole('button', { name: 'Older' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Newer' })).toHaveCount(0)
+
+    // "Not in any pack" defaults on (amber active style) → the unpacked card shows.
+    const notInPack = page.getByRole('button', { name: 'Not in any pack' })
+    await expect(notInPack).toHaveClass(/bg-amber-600/)
+    await expect(page.getByText(UNPACKED)).toBeVisible()
+
+    // Rarity is the default sort.
+    await expect(page.getByRole('button', { name: 'Rarity', exact: true })).toHaveClass(/bg-zinc-700/)
+
+    // The filter actually narrows the list: turning it off shows more cards
+    // (the packed seed cards reappear).
+    const count = page.getByText(/^\d+ cards$/)
+    const before = parseInt((await count.textContent()) || '0', 10)
+    await notInPack.click()
+    await expect.poll(async () => parseInt((await count.textContent()) || '0', 10)).toBeGreaterThan(before)
+  })
+})
