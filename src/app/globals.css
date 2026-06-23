@@ -194,364 +194,424 @@ body {
   border-radius: inherit;
   z-index: 11;
 }
-
-/* Foil — cool metallic streaks that sweep with the pointer. `screen` blends
-   brighten the card (visible even over dark art); the inset ring + glow make
-   the finish read as special even at rest in a static grid. */
-.holo-foil {
-  background:
-    linear-gradient(110deg, transparent 30%, rgba(190, 225, 255, 0.6) 45%, transparent 60%),
-    repeating-linear-gradient(110deg,
-      rgba(150, 200, 255, 0.04) 0 8%, rgba(190, 225, 255, 0.08) 8% 16%);
-  background-size: 250% 100%, 100% 100%;
-  background-position: calc(var(--mx, 50%) * 1.6) 0, 0 0;
-  mix-blend-mode: screen;
-  /* Subtle at rest (no haze); the sheen blooms on hover. */
-  opacity: calc(0.26 + var(--holo, 0) * 0.64);
-  box-shadow: inset 0 0 0 1.5px rgba(125, 190, 255, 0.55), inset 0 0 22px rgba(125, 190, 255, 0.3);
+/* Combined editions render the ambient overlay BEHIND the photo (image + info
+   paint above at z-[1]), so the artwork stays in front of the ambient. */
+.holo-behind {
+  z-index: 0;
 }
 
-/* Golden — Hearthstone-style: warm gold tint, a diagonal light band that
-   sweeps continuously, and twinkling sparkle glints (::after). */
-.holo-golden {
-  background:
-    linear-gradient(115deg, transparent 38%, rgba(255, 240, 180, 0.5) 47%,
-      rgba(255, 255, 255, 0.78) 50%, rgba(255, 230, 160, 0.5) 53%, transparent 62%),
-    linear-gradient(160deg, rgba(214, 164, 52, 0.32), rgba(120, 82, 22, 0.16));
-  background-size: 250% 100%, 100% 100%;
-  background-position: -60% 0, 0 0;
-  mix-blend-mode: screen;
-  opacity: calc(0.7 + var(--holo, 0) * 0.25);
-  box-shadow: inset 0 0 0 1.5px rgba(245, 205, 95, 0.65), inset 0 0 26px rgba(232, 172, 52, 0.4);
-  animation: goldSweep 3.5s linear infinite;
+@keyframes spin360 {
+  to { transform: rotate(360deg); }
 }
-.holo-golden::after {
+
+@keyframes hueCycle {
+  to { filter: hue-rotate(360deg); }
+}
+
+
+/* ============================================================
+   STAR FIELD — coloured stars tiled behind the photo (shown in the card chrome).
+   Two groups (cyan / pink) on different schedules; they "twinkle" by ROTATING
+   HUE rather than fading, so they shift colour without ever blinking out. A
+   separate .star-spotlight layer brightens the stars near the cursor on hover.
+   ============================================================ */
+.star-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.star-field::before,
+.star-field::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(circle at 22% 28%, rgba(255, 255, 255, 0.95) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 68% 50%, rgba(255, 248, 210, 0.95) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 44% 78%, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 82% 68%, rgba(255, 240, 180, 0.9) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 33% 58%, rgba(255, 255, 255, 0.85) 0 1px, transparent 2.5px);
+  background-size: 58px 58px;
   mix-blend-mode: screen;
-  animation: goldTwinkle 2.4s ease-in-out infinite;
+  /* Stable but very translucent at rest — they shift hue, never fade out. */
+  opacity: 0.08;
 }
-@keyframes goldSweep {
-  0% { background-position: -60% 0, 0 0; }
-  100% { background-position: 160% 0, 0 0; }
+/* Group A — cyan, one hue rhythm. */
+.star-field::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cpath id='s' d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.401 8.168L12 18.896l-7.335 3.866 1.401-8.168L.132 9.21l8.2-1.192z'/%3E%3C/defs%3E%3Cg%3E%3Cuse href='%23s' fill='%239fe0ff' transform='translate(4 6) scale(0.26)'/%3E%3Cuse href='%23s' fill='%23ffb0e0' transform='translate(50 10) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23b0ffd0' transform='translate(40 24) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23c8a8ff' transform='translate(6 38) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23ffe0a0' transform='translate(48 50) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23a0ffb0' transform='translate(54 16) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23ffa0b0' transform='translate(38 38) scale(0.18)'/%3E%3Cuse href='%23s' fill='%23a0c0ff' transform='translate(46 8) scale(0.16)'/%3E%3Cuse href='%23s' fill='%23f0c0ff' transform='translate(34 58) scale(0.2)'/%3E%3C/g%3E%3C/svg%3E");
+  animation: starHue 4s linear infinite;
 }
-@keyframes goldTwinkle {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
+/* Group B — pink, a different rhythm + offset (twinkles out of sync). */
+.star-field::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cpath id='s' d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.401 8.168L12 18.896l-7.335 3.866 1.401-8.168L.132 9.21l8.2-1.192z'/%3E%3C/defs%3E%3Cg%3E%3Cuse href='%23s' fill='%23ffc0a0' transform='translate(30 3) scale(0.18)'/%3E%3Cuse href='%23s' fill='%23a0e8ff' transform='translate(16 20) scale(0.3)'/%3E%3Cuse href='%23s' fill='%23d0ffa0' transform='translate(56 34) scale(0.22)'/%3E%3Cuse href='%23s' fill='%23ffa0d0' transform='translate(28 44) scale(0.28)'/%3E%3Cuse href='%23s' fill='%23b0d0ff' transform='translate(18 56) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23ffe8a0' transform='translate(22 32) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23b8ffe0' transform='translate(10 50) scale(0.22)'/%3E%3Cuse href='%23s' fill='%23d0a0ff' transform='translate(54 48) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23a0ffc8' transform='translate(2 24) scale(0.22)'/%3E%3C/g%3E%3C/svg%3E");
+  animation: starHue 5.5s linear -2s infinite;
 }
-@media (prefers-reduced-motion: reduce) {
-  .holo-golden,
-  .holo-golden::after { animation: none; }
+@keyframes starHue {
+  to { filter: hue-rotate(360deg); }
+}
+/* Hover flashlight — brightens the stars near the cursor. The mask (spotlight)
+   and hover gate live on the element; the two coloured groups live on its
+   pseudos so the revealed stars keep shifting hue (out of sync) on hover. */
+.star-spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  -webkit-mask: radial-gradient(circle 130px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 42%, rgba(255, 255, 255, 0.25) 66%, transparent 84%);
+          mask: radial-gradient(circle 130px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 42%, rgba(255, 255, 255, 0.25) 66%, transparent 84%);
+  opacity: calc(var(--holo, 0) * 0.9);
+  transition: opacity 0.25s ease;
+}
+.star-spotlight::before,
+.star-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-size: 58px 58px;
+  mix-blend-mode: screen;
+}
+.star-spotlight::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cpath id='s' d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.401 8.168L12 18.896l-7.335 3.866 1.401-8.168L.132 9.21l8.2-1.192z'/%3E%3C/defs%3E%3Cg%3E%3Cuse href='%23s' fill='%239fe0ff' transform='translate(4 6) scale(0.26)'/%3E%3Cuse href='%23s' fill='%23ffb0e0' transform='translate(50 10) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23b0ffd0' transform='translate(40 24) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23c8a8ff' transform='translate(6 38) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23ffe0a0' transform='translate(48 50) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23a0ffb0' transform='translate(54 16) scale(0.2)'/%3E%3Cuse href='%23s' fill='%23ffa0b0' transform='translate(38 38) scale(0.18)'/%3E%3Cuse href='%23s' fill='%23a0c0ff' transform='translate(46 8) scale(0.16)'/%3E%3Cuse href='%23s' fill='%23f0c0ff' transform='translate(34 58) scale(0.2)'/%3E%3C/g%3E%3C/svg%3E");
+  animation: starHue 4s linear infinite;
+}
+.star-spotlight::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cpath id='s' d='M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.401 8.168L12 18.896l-7.335 3.866 1.401-8.168L.132 9.21l8.2-1.192z'/%3E%3C/defs%3E%3Cg%3E%3Cuse href='%23s' fill='%23ffc0a0' transform='translate(30 3) scale(0.18)'/%3E%3Cuse href='%23s' fill='%23a0e8ff' transform='translate(16 20) scale(0.3)'/%3E%3Cuse href='%23s' fill='%23d0ffa0' transform='translate(56 34) scale(0.22)'/%3E%3Cuse href='%23s' fill='%23ffa0d0' transform='translate(28 44) scale(0.28)'/%3E%3Cuse href='%23s' fill='%23b0d0ff' transform='translate(18 56) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23ffe8a0' transform='translate(22 32) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23b8ffe0' transform='translate(10 50) scale(0.22)'/%3E%3Cuse href='%23s' fill='%23d0a0ff' transform='translate(54 48) scale(0.24)'/%3E%3Cuse href='%23s' fill='%23a0ffc8' transform='translate(2 24) scale(0.22)'/%3E%3C/g%3E%3C/svg%3E");
+  animation: starHue 5.5s linear -2s infinite;
 }
 
-/* Signature — Hearthstone-style: soft, elegant pastel-prismatic sheen that
-   drifts slowly. More refined and subtle than Golden. */
-.holo-signature {
-  background:
-    linear-gradient(125deg, transparent 28%, rgba(180, 210, 255, 0.4) 42%,
-      rgba(255, 190, 230, 0.4) 50%, rgba(200, 255, 230, 0.4) 58%, transparent 72%);
+/* Passive hue drift for the galaxy ambient wash. */
+.holo-passive {
+  animation: hueCycle 16s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-passive,
+  .star-field::before,
+  .star-field::after,
+  .star-spotlight::before,
+  .star-spotlight::after { animation: none; }
+}
+
+/* ============================================================
+   LINE FIELD — diagonal gold lines behind the photo (chrome only), with the
+   same flashlight spotlight as the star field. The Gold Rare combined edition
+   pairs this with the Royal gold ambience overlay.
+   ============================================================ */
+.line-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.line-field::before,
+.line-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(45deg,
+    rgba(255, 224, 138, 0.85) 0 1.5px, transparent 1.5px 13px);
+  mix-blend-mode: screen;
+}
+.line-field::before {
+  /* Faint ambient lines, always visible. */
+  opacity: 0.05;
+}
+/* Spotlight reveal: brighter lines near the cursor on hover. */
+.line-field::after {
+  -webkit-mask: radial-gradient(circle 130px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 42%, rgba(255, 255, 255, 0.25) 66%, transparent 84%);
+          mask: radial-gradient(circle 130px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 42%, rgba(255, 255, 255, 0.25) 66%, transparent 84%);
+  opacity: calc(var(--holo, 0) * 0.7);
+  transition: opacity 0.25s ease;
+}
+
+/* ============================================================
+   DIAMOND FIELD — a filled, faceted brilliant-cut diamond behind the card text.
+   Base layer: a soft, very subtle pale gem (no hard edges). Hover layer: the
+   SAME facets but each filled a distinct, saturated cool tint, with a hue +
+   brightness shimmer — so on hover every segment refracts a different, shifting
+   colour. Softened with a slight blur so the edges never read as lines.
+   ============================================================ */
+.diamond-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+/* Base faceted gem — soft and very subtle (like the star pattern at rest). */
+.diamond-field::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 96'%3E%3Cpolygon points='22,12 8,35 31,35' fill='%23e6f4ff'/%3E%3Cpolygon points='22,12 31,35 40,12' fill='%23cfe8ff'/%3E%3Cpolygon points='40,12 31,35 50,35' fill='%23eef9ff'/%3E%3Cpolygon points='40,12 50,35 60,12' fill='%23d6edff'/%3E%3Cpolygon points='60,12 50,35 69,35' fill='%23c4e2fb'/%3E%3Cpolygon points='60,12 69,35 78,12' fill='%23b3d8f6'/%3E%3Cpolygon points='78,12 69,35 92,35' fill='%238fc2ea'/%3E%3Cpolygon points='8,35 31,35 50,88' fill='%23d2e8fb'/%3E%3Cpolygon points='31,35 50,35 50,88' fill='%23eaf6ff'/%3E%3Cpolygon points='50,35 69,35 50,88' fill='%23cfe5f8'/%3E%3Cpolygon points='69,35 92,35 50,88' fill='%237fb4dd'/%3E%3C/svg%3E") no-repeat 50% 95% / 42% auto;
+  mix-blend-mode: screen;
+  filter: blur(0.8px);
+  opacity: 0.08;
+}
+/* Refraction layer — each facet a distinct saturated cool tint; hue + brightness
+   shimmer makes each segment refract a different shifting colour on hover. The
+   spotlight focuses it near the cursor. */
+.diamond-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 96'%3E%3Cpolygon points='22,12 8,35 31,35' fill='%2384e6ff'/%3E%3Cpolygon points='22,12 31,35 40,12' fill='%238fb0ff'/%3E%3Cpolygon points='40,12 31,35 50,35' fill='%23c0f5ff'/%3E%3Cpolygon points='40,12 50,35 60,12' fill='%237fc6ff'/%3E%3Cpolygon points='60,12 50,35 69,35' fill='%235fe6d6'/%3E%3Cpolygon points='60,12 69,35 78,12' fill='%23b09cff'/%3E%3Cpolygon points='78,12 69,35 92,35' fill='%236aaaff'/%3E%3Cpolygon points='8,35 31,35 50,88' fill='%2380e2ff'/%3E%3Cpolygon points='31,35 50,35 50,88' fill='%23ccccff'/%3E%3Cpolygon points='50,35 69,35 50,88' fill='%2370f0c8'/%3E%3Cpolygon points='69,35 92,35 50,88' fill='%237f9cff'/%3E%3C/svg%3E") no-repeat 50% 95% / 42% auto;
+  mix-blend-mode: screen;
+  opacity: calc(var(--holo, 0) * 0.55);
+  animation: diamondFire 3.4s ease-in-out infinite;
+  transition: opacity 0.25s ease;
+}
+@keyframes diamondFire {
+  0%, 100% { filter: blur(0.5px) brightness(1.05) hue-rotate(-32deg); }
+  50% { filter: blur(0.5px) brightness(1.5) hue-rotate(32deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .diamond-field::after { animation: none; filter: blur(0.5px) brightness(1.25); }
+}
+
+/* ============================================================
+   COMBINED-EDITION FOIL LAYERS — the ambient colour wash sits BEHIND the photo
+   (paired with .holo-behind); the moving sheen/highlight rides ON TOP of it.
+   Split out from the standalone Galaxy / Royal foils so each half takes its own
+   z-index. The fields (stars/lines) + flashlight also stay behind.
+   ============================================================ */
+/* Galaxy: passive rainbow ambient wash (goes BEHIND the photo). Static position
+   (the hue slowly drifts via .holo-passive) — the pointer-reactive rainbow lives
+   on the top layer instead. */
+.holo-galaxy-ambient {
+  overflow: hidden;
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(255, 45, 155, 0.32), rgba(255, 154, 45, 0.32), rgba(245, 255, 45, 0.32),
+    rgba(45, 255, 154, 0.32), rgba(45, 155, 255, 0.32), rgba(155, 45, 255, 0.32),
+    rgba(255, 45, 155, 0.32));
+  background-size: 220% 220%;
+  background-position: 50% 50%;
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.15);
+  box-shadow: inset 0 0 0 1.5px rgba(180, 120, 255, 0.5), inset 0 0 22px rgba(168, 85, 247, 0.3);
+  transition: opacity 0.3s ease;
+}
+/* Galaxy hover foil — rides ON TOP of the photo while hovered: a rainbow conic
+   that recenters on the pointer, plus a white sheen band that slides with it. */
+.holo-galaxy-top {
+  overflow: hidden;
+  background: conic-gradient(from 0deg at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 45, 155, 0.4), rgba(255, 154, 45, 0.4), rgba(245, 255, 45, 0.4),
+    rgba(45, 255, 154, 0.4), rgba(45, 155, 255, 0.4), rgba(155, 45, 255, 0.4),
+    rgba(255, 45, 155, 0.4));
+  background-size: 220% 220%;
+  background-position: var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: screen;
+  /* Only while hovered, over the photo. */
+  opacity: calc(var(--holo, 0) * 0.5);
+  transition: opacity 0.3s ease;
+}
+.holo-galaxy-top::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 34%, rgba(255, 150, 210, 0.16) 43%,
+    rgba(255, 255, 255, 0.4) 50%, rgba(205, 255, 205, 0.16) 57%, transparent 66%);
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  background-position: calc(var(--mx, 50%) * 1.6) 0;
+  mix-blend-mode: screen;
+}
+/* Royal gold: amber ambient base (goes behind the photo). */
+.holo-gold-ambient {
+  background: linear-gradient(160deg, rgba(176, 120, 32, 0.42), rgba(86, 58, 16, 0.26));
+  mix-blend-mode: screen;
+  opacity: calc(0.5 + var(--holo, 0) * 0.25);
+  box-shadow: inset 0 0 0 2px rgba(250, 216, 112, 0.78), inset 0 0 30px rgba(212, 160, 52, 0.45);
+}
+/* Royal gold: drifting light band (stays on top). */
+.holo-gold-sheen {
+  background: linear-gradient(125deg, transparent 30%, rgba(255, 232, 165, 0.4) 45%,
+    rgba(255, 214, 125, 0.5) 50%, rgba(214, 162, 62, 0.4) 55%, transparent 70%);
   background-size: 220% 220%;
   background-position: 30% 40%;
   mix-blend-mode: screen;
-  opacity: calc(0.5 + var(--holo, 0) * 0.4);
-  box-shadow: inset 0 0 0 1.5px rgba(205, 222, 255, 0.55), inset 0 0 26px rgba(165, 195, 255, 0.3);
-  animation: sigDrift 7s ease-in-out infinite alternate;
-}
-@keyframes sigDrift {
-  0% { background-position: 28% 38%; }
-  100% { background-position: 72% 62%; }
-}
-
-/* Diamond — Hearthstone's top tier: crystalline facets, a rotating prismatic
-   refraction (::before), and bright twinkling sparkles (::after). */
-.holo-diamond {
-  overflow: hidden;
-  background:
-    repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 13px),
-    linear-gradient(160deg, rgba(150, 220, 255, 0.2), rgba(220, 180, 255, 0.15));
-  mix-blend-mode: screen;
-  opacity: calc(0.6 + var(--holo, 0) * 0.3);
-  box-shadow: inset 0 0 0 1.5px rgba(212, 240, 255, 0.7), inset 0 0 28px rgba(150, 210, 255, 0.42);
-}
-.holo-diamond::before {
-  content: "";
-  position: absolute;
-  inset: -45%;
-  background: conic-gradient(from 0deg,
-    transparent, rgba(120, 220, 255, 0.55), transparent,
-    rgba(255, 150, 230, 0.55), transparent, rgba(180, 255, 210, 0.55), transparent);
-  mix-blend-mode: screen;
-  animation: diamondSpin 7s linear infinite;
-}
-.holo-diamond::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 1) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 72% 45%, rgba(220, 245, 255, 1) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 1) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 85% 80%, rgba(210, 240, 255, 1) 0 1.5px, transparent 3px);
-  mix-blend-mode: screen;
-  animation: goldTwinkle 2s ease-in-out infinite;
-}
-@keyframes diamondSpin {
-  to { transform: rotate(360deg); }
+  /* Always visible (behind the photo); a touch stronger on hover. */
+  opacity: calc(0.4 + var(--holo, 0) * 0.3);
+  transition: opacity 0.3s ease;
+  animation: goldDrift 7s ease-in-out infinite alternate;
 }
 @media (prefers-reduced-motion: reduce) {
-  .holo-signature,
-  .holo-diamond::before,
-  .holo-diamond::after { animation: none; }
+  .holo-gold-sheen { animation: none; }
 }
 
-/* Holographic — rainbow sheen + sparkle grain. Does NOT track the pointer:
-   the rainbow nudges over and brightens slightly on hover. */
-.holo-holographic {
-  background:
-    repeating-radial-gradient(circle at 50% 45%,
-      rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 6px),
-    linear-gradient(115deg, rgba(255, 60, 180, 0.6), rgba(255, 210, 80, 0.55),
-      rgba(80, 255, 200, 0.55), rgba(150, 90, 255, 0.6));
-  background-size: 200% 200%, 300% 300%;
-  /* Sparkle rings stay fixed on the card surface so they tilt with the card;
-     only the rainbow nudges over on hover. */
-  background-position:
-    50% 45%,
-    calc(42% + var(--holo, 0) * 16%) 50%;
-  mix-blend-mode: screen;
-  /* Toned down overall and calmer on hover. */
-  opacity: calc(0.42 - var(--holo, 0) * 0.1);
-  box-shadow: inset 0 0 0 1.5px rgba(244, 114, 182, 0.55), inset 0 0 24px rgba(244, 114, 182, 0.32);
-  transition: background-position 0.2s ease-out, opacity 0.3s ease;
-}
-
-/* Polychrome — a rotating rainbow prism: a full-spectrum conic gradient
-   (::before) that spins. Rotation is seamless, so there's no loop/snap. */
-.holo-polychrome {
+/* Diamond: icy azure ambient wash behind the photo, with a visible shimmer
+   pulse (brightness wax/wane) so it reads even at rest. */
+.holo-diamond-ambient {
   overflow: hidden;
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(130, 205, 255, 0.34), rgba(90, 175, 250, 0.34), rgba(185, 230, 255, 0.34),
+    rgba(100, 185, 245, 0.34), rgba(150, 215, 255, 0.34), rgba(110, 190, 250, 0.34),
+    rgba(130, 205, 255, 0.34));
+  background-size: 220% 220%;
+  background-position: 50% 50%;
   mix-blend-mode: screen;
-  /* Calmer on hover so the card art/tilt reads through. */
-  opacity: calc(0.55 - var(--holo, 0) * 0.2);
-  box-shadow: inset 0 0 0 1.5px rgba(168, 85, 247, 0.6), inset 0 0 26px rgba(168, 85, 247, 0.35);
+  opacity: calc(0.45 + var(--holo, 0) * 0.2);
+  box-shadow: inset 0 0 0 1.5px rgba(150, 205, 255, 0.6), inset 0 0 24px rgba(110, 185, 250, 0.42);
+  animation: diamondShimmer 4.5s ease-in-out infinite;
 }
-.holo-polychrome::before {
-  content: "";
-  position: absolute;
-  inset: -45%;
-  background: conic-gradient(from 0deg,
-    #ff2d9b, #ff9a2d, #f5ff2d, #2dff9a, #2d9bff, #9b2dff, #ff2d9b);
-  animation: diamondSpin 8s linear infinite;
+@keyframes diamondShimmer {
+  0%, 100% { filter: brightness(0.78); }
+  50% { filter: brightness(1.4); }
 }
-
-/* Negative — the whole card inverts (see TradingCard). Two flavors:
-   - .holo-negative      → dark cosmic: the starfield overlay counter-inverts so
-                           it stays in its original space colors on top.
-   - .holo-negative-true → true photo negative: overlay inverts with the card. */
-.holo-negative,
-.holo-negative-true {
-  background:
-    radial-gradient(2px 2px at 20% 30%, #fff, transparent),
-    radial-gradient(2px 2px at 70% 60%, #c7b3ff, transparent),
-    radial-gradient(1.5px 1.5px at 45% 80%, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 85% 25%, #a78bfa, transparent),
-    linear-gradient(120deg, rgba(120, 20, 220, 0.55), rgba(0, 0, 0, 0.1), rgba(0, 170, 210, 0.55));
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 250% 250%;
-  background-position: 0 0, 0 0, 0 0, 0 0, var(--mx, 50%) var(--my, 50%);
-  mix-blend-mode: screen;
-  opacity: calc(0.6 + var(--holo, 0) * 0.3);
-  box-shadow: inset 0 0 0 1.5px rgba(147, 51, 234, 0.6), inset 0 0 28px rgba(147, 51, 234, 0.4);
-  animation: holoDrift 8s ease-in-out infinite alternate;
-}
-@keyframes holoDrift {
-  from { filter: hue-rotate(0deg); }
-  to { filter: hue-rotate(50deg); }
-}
-
-/* Aurora — flowing northern-lights ribbons that drift across */
-.holo-aurora {
-  background:
-    linear-gradient(115deg, transparent 18%, rgba(60, 230, 160, 0.5) 34%, transparent 50%, rgba(120, 90, 230, 0.5) 66%, transparent 82%),
-    linear-gradient(160deg, transparent 28%, rgba(40, 200, 210, 0.4) 50%, transparent 72%);
-  background-size: 220% 220%, 240% 240%;
-  filter: blur(1px);
-  mix-blend-mode: screen;
-  opacity: calc(0.55 - var(--holo, 0) * 0.12);
-  animation: auroraDrift 12s ease-in-out infinite alternate;
-}
-@keyframes auroraDrift {
-  0% { background-position: 0% 0%, 100% 0%; }
-  100% { background-position: 100% 100%, 0% 100%; }
-}
-
-/* Lava — molten flowing glow + glowing cracks (::after) */
-.holo-lava {
-  background:
-    radial-gradient(ellipse 50% 40% at 30% 30%, rgba(255, 120, 20, 0.6), transparent 65%),
-    radial-gradient(ellipse 45% 50% at 70% 70%, rgba(230, 40, 20, 0.55), transparent 65%),
-    radial-gradient(ellipse 40% 40% at 55% 45%, rgba(255, 200, 40, 0.45), transparent 60%);
-  background-size: 170% 170%;
-  mix-blend-mode: screen;
-  opacity: calc(0.6 + var(--holo, 0) * 0.2);
-  animation: lavaFlow 9s ease-in-out infinite alternate;
-}
-.holo-lava::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    linear-gradient(35deg, transparent 48%, rgba(255, 180, 40, 0.7) 49.5%, transparent 51%),
-    linear-gradient(-20deg, transparent 63%, rgba(255, 140, 30, 0.6) 64.5%, transparent 66%);
-  mix-blend-mode: screen;
-}
-@keyframes lavaFlow {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
-}
-
-/* Electric — arcing hairline bolts + a flickering blue glow */
-.holo-electric {
-  background:
-    linear-gradient(75deg, transparent 47%, rgba(120, 200, 255, 0.8) 48%, transparent 49%),
-    linear-gradient(100deg, transparent 62%, rgba(180, 230, 255, 0.7) 63%, transparent 64%),
-    radial-gradient(ellipse at 50% 50%, rgba(60, 120, 255, 0.3), transparent 70%);
-  background-size: 200% 200%, 200% 200%, 100% 100%;
-  mix-blend-mode: screen;
-  opacity: calc(0.5 + var(--holo, 0) * 0.3);
-  animation: zap 0.35s steps(2) infinite;
-}
-@keyframes zap {
-  0%, 100% { opacity: 0.35; background-position: 0% 0%, 0% 0%, 0 0; }
-  50% { opacity: 0.85; background-position: 6% 0%, -6% 0%, 0 0; }
-}
-
-/* Water — rippling caustic light patterns */
-.holo-water {
-  background:
-    repeating-radial-gradient(circle at 30% 40%, rgba(120, 220, 255, 0.18) 0 6px, transparent 6px 16px),
-    repeating-radial-gradient(circle at 70% 60%, rgba(160, 240, 255, 0.14) 0 8px, transparent 8px 20px);
-  background-size: 140% 140%, 160% 160%;
-  mix-blend-mode: screen;
-  opacity: calc(0.55 + var(--holo, 0) * 0.2);
-  animation: waterRipple 8s ease-in-out infinite alternate;
-}
-@keyframes waterRipple {
-  0% { background-position: 0% 0%, 100% 100%; }
-  100% { background-position: 20% 15%, 80% 85%; }
-}
-
-/* Pearlescent — soft mother-of-pearl iridescence */
-.holo-pearl {
-  background: linear-gradient(120deg,
-    rgba(255, 240, 250, 0.45), rgba(220, 235, 255, 0.4), rgba(230, 255, 240, 0.4),
-    rgba(255, 245, 225, 0.4), rgba(255, 240, 250, 0.45));
-  background-size: 250% 250%;
-  mix-blend-mode: screen;
-  opacity: calc(0.5 + var(--holo, 0) * 0.25);
-  animation: pearlShift 8s ease-in-out infinite alternate;
-}
-@keyframes pearlShift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
-}
-
-/* Kaleidoscope — rotating mirrored faceted shards (::before) */
-.holo-kaleido {
-  overflow: hidden;
-  mix-blend-mode: screen;
-  opacity: calc(0.5 + var(--holo, 0) * 0.25);
-}
-.holo-kaleido::before {
-  content: "";
-  position: absolute;
-  inset: -50%;
-  background: repeating-conic-gradient(from 0deg,
-    rgba(255, 80, 180, 0.5) 0 15deg, rgba(80, 200, 255, 0.5) 15deg 30deg,
-    rgba(255, 220, 80, 0.5) 30deg 45deg, rgba(120, 255, 160, 0.5) 45deg 60deg);
-  animation: diamondSpin 12s linear infinite;
-}
-
-/* Vaporwave — retro perspective grid + sunset gradient, scrolling */
-.holo-vapor {
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 120, 180, 0.6) 0 12%, rgba(255, 180, 90, 0.3) 12% 22%, transparent 30%),
-    repeating-linear-gradient(0deg, transparent 0 11px, rgba(255, 80, 200, 0.4) 11px 12px),
-    repeating-linear-gradient(90deg, transparent 0 11px, rgba(80, 220, 255, 0.3) 11px 12px),
-    linear-gradient(180deg, rgba(120, 60, 200, 0.4), rgba(255, 90, 150, 0.3));
-  background-size: 100% 100%, 100% 12px, 100% 100%, 100% 100%;
-  mix-blend-mode: screen;
-  opacity: calc(0.55 + var(--holo, 0) * 0.2);
-  animation: vaporScroll 4s linear infinite;
-}
-@keyframes vaporScroll {
-  0% { background-position: 0 0, 0 0, 0 0, 0 0; }
-  100% { background-position: 0 0, 0 12px, 0 0, 0 0; }
-}
-
-/* Gemstone tints — Ruby / Emerald / Sapphire recolors of the Diamond effect
-   (faceted base + rotating colored prism ::before + twinkling sparkles ::after) */
-.holo-ruby,
-.holo-emerald,
-.holo-sapphire {
-  overflow: hidden;
-  background: repeating-linear-gradient(58deg, rgba(255, 255, 255, 0.07) 0 6px, transparent 6px 13px);
-  mix-blend-mode: screen;
-  opacity: calc(0.6 + var(--holo, 0) * 0.3);
-}
-.holo-ruby { box-shadow: inset 0 0 0 1.5px rgba(255, 120, 140, 0.7), inset 0 0 28px rgba(255, 40, 80, 0.4); }
-.holo-emerald { box-shadow: inset 0 0 0 1.5px rgba(120, 255, 180, 0.7), inset 0 0 28px rgba(20, 200, 110, 0.4); }
-.holo-sapphire { box-shadow: inset 0 0 0 1.5px rgba(140, 190, 255, 0.7), inset 0 0 28px rgba(40, 90, 255, 0.4); }
-.holo-ruby::before,
-.holo-emerald::before,
-.holo-sapphire::before {
-  content: "";
-  position: absolute;
-  inset: -50%;
-  mix-blend-mode: screen;
-  animation: diamondSpin 7s linear infinite;
-}
-.holo-ruby::before { background: conic-gradient(from 0deg, transparent, rgba(255, 80, 120, 0.6), transparent, rgba(255, 180, 200, 0.6), transparent, rgba(200, 20, 60, 0.6), transparent); }
-.holo-emerald::before { background: conic-gradient(from 0deg, transparent, rgba(60, 230, 140, 0.6), transparent, rgba(180, 255, 210, 0.6), transparent, rgba(20, 170, 90, 0.6), transparent); }
-.holo-sapphire::before { background: conic-gradient(from 0deg, transparent, rgba(80, 150, 255, 0.6), transparent, rgba(180, 210, 255, 0.6), transparent, rgba(30, 70, 210, 0.6), transparent); }
-.holo-ruby::after,
-.holo-emerald::after,
-.holo-sapphire::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 30% 25%, #fff 0 1.5px, transparent 3px),
-    radial-gradient(circle at 72% 45%, #fff 0 1.5px, transparent 3px),
-    radial-gradient(circle at 50% 75%, #fff 0 1.5px, transparent 3px),
-    radial-gradient(circle at 85% 80%, #fff 0 1.5px, transparent 3px);
-  mix-blend-mode: screen;
-  animation: goldTwinkle 2s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .holo-polychrome::before,
-  .holo-negative,
-  .holo-aurora,
-  .holo-lava,
-  .holo-electric,
-  .holo-water,
-  .holo-pearl,
-  .holo-kaleido::before,
-  .holo-vapor,
-  .holo-ruby::before,
-  .holo-emerald::before,
-  .holo-sapphire::before,
-  .holo-ruby::after,
-  .holo-emerald::after,
-  .holo-sapphire::after { animation: none; }
+  .holo-diamond-ambient { animation: none; }
+}
+/* Diamond hover foil — a bright azure/white sheen riding on top while hovered. */
+.holo-diamond-top {
+  overflow: hidden;
+  background: conic-gradient(from 0deg at var(--mx, 50%) var(--my, 50%),
+    rgba(205, 235, 255, 0.4), rgba(170, 210, 255, 0.4), rgba(235, 248, 255, 0.4),
+    rgba(150, 200, 245, 0.4), rgba(210, 236, 255, 0.4), rgba(185, 222, 255, 0.4),
+    rgba(205, 235, 255, 0.4));
+  background-size: 220% 220%;
+  background-position: var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: screen;
+  opacity: calc(var(--holo, 0) * 0.5);
+  transition: opacity 0.3s ease;
+}
+.holo-diamond-top::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 34%, rgba(210, 235, 255, 0.18) 43%,
+    rgba(255, 255, 255, 0.45) 50%, rgba(210, 235, 255, 0.18) 57%, transparent 66%);
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  background-position: calc(var(--mx, 50%) * 1.6) 0;
+  mix-blend-mode: screen;
+}
+
+/* ============================================================
+   CARD AURA — a soft coloured glow that blooms OUTSIDE the card edges. Shown on
+   hover, and forceable via the `auraActive` prop (e.g. during a craft/pull
+   celebration). Rainbow for the galaxy edition, gold for the gold edition.
+   Sits behind the card (z-index -1, within the card's isolate context).
+   ============================================================ */
+.card-aura {
+  position: absolute;
+  inset: -32%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+  /* Rays fade in just outside the card edge and out toward the tips, so they
+     read as beams radiating from behind the card (not a filled disc). */
+  -webkit-mask: radial-gradient(closest-side, transparent 42%, #000 56%, transparent 100%);
+          mask: radial-gradient(closest-side, transparent 42%, #000 56%, transparent 100%);
+  /* Slow spin + a brightness pulse so the rays wax and wane. */
+  animation: spin360 20s linear infinite, auraPulse 3.6s ease-in-out infinite;
+}
+.card-aura-on {
+  opacity: 0.85;
+}
+/* Galaxy: a soft swirling nebula halo (cosmic clouds) rather than hard rays. */
+.card-aura-galaxy {
+  background:
+    radial-gradient(38% 46% at 30% 32%, rgba(168, 85, 247, 0.95), transparent 70%),
+    radial-gradient(42% 40% at 72% 30%, rgba(56, 130, 246, 0.85), transparent 70%),
+    radial-gradient(40% 46% at 68% 72%, rgba(236, 72, 153, 0.85), transparent 70%),
+    radial-gradient(32% 38% at 32% 70%, rgba(45, 212, 191, 0.6), transparent 70%),
+    radial-gradient(72% 72% at 50% 50%, rgba(76, 29, 149, 0.7), transparent 78%);
+  /* Slower swirl + a softer, cloudier pulse. */
+  animation: spin360 30s linear infinite, auraNebula 5.5s ease-in-out infinite;
+}
+/* Subtle, irregularly-spaced light rays — shared by galaxy + gold; the ray
+   colour comes from `color` (currentColor) so each edition can tint it. Uses the
+   base .card-aura animation (slightly faster spin than the nebula → parallax). */
+.card-aura-rays {
+  background: conic-gradient(from 0deg,
+    transparent 0deg 4deg, currentColor 4deg 5.5deg,
+    transparent 5.5deg 24deg, currentColor 24deg 25.5deg,
+    transparent 25.5deg 61deg, currentColor 61deg 63deg,
+    transparent 63deg 98deg, currentColor 98deg 99.5deg,
+    transparent 99.5deg 145deg, currentColor 145deg 146.5deg,
+    transparent 146.5deg 200deg, currentColor 200deg 202deg,
+    transparent 202deg 252deg, currentColor 252deg 253.5deg,
+    transparent 253.5deg 308deg, currentColor 308deg 309.5deg,
+    transparent 309.5deg 360deg);
+}
+.card-aura-galaxy-rays { color: rgba(255, 255, 255, 0.85); }
+.card-aura-gold-rays { color: rgba(255, 240, 200, 0.85); }
+.card-aura-diamond-rays { color: rgba(228, 246, 255, 0.9); }
+.card-aura-rays.card-aura-on {
+  opacity: 0.4;
+}
+/* Gold: a gold nebula halo (mirrors the galaxy nebula in warm tones). */
+.card-aura-gold {
+  background:
+    radial-gradient(38% 46% at 30% 32%, rgba(255, 200, 90, 0.95), transparent 70%),
+    radial-gradient(42% 40% at 72% 30%, rgba(255, 232, 150, 0.8), transparent 70%),
+    radial-gradient(40% 46% at 68% 72%, rgba(214, 150, 40, 0.85), transparent 70%),
+    radial-gradient(32% 38% at 32% 70%, rgba(255, 240, 190, 0.55), transparent 70%),
+    radial-gradient(72% 72% at 50% 50%, rgba(120, 70, 10, 0.7), transparent 78%);
+  animation: spin360 30s linear infinite, auraNebula 5.5s ease-in-out infinite;
+}
+/* Diamond: an icy azure/white nebula halo. */
+.card-aura-diamond {
+  background:
+    radial-gradient(38% 46% at 30% 32%, rgba(190, 225, 255, 0.95), transparent 70%),
+    radial-gradient(42% 40% at 72% 30%, rgba(150, 200, 245, 0.85), transparent 70%),
+    radial-gradient(40% 46% at 68% 72%, rgba(225, 245, 255, 0.85), transparent 70%),
+    radial-gradient(32% 38% at 32% 70%, rgba(120, 180, 235, 0.6), transparent 70%),
+    radial-gradient(72% 72% at 50% 50%, rgba(60, 110, 170, 0.6), transparent 78%);
+  animation: spin360 30s linear infinite, auraNebula 5.5s ease-in-out infinite;
+}
+@keyframes auraPulse {
+  0%, 100% { filter: blur(2px) brightness(0.55); }
+  50% { filter: blur(2px) brightness(1.25); }
+}
+@keyframes auraNebula {
+  0%, 100% { filter: blur(8px) brightness(0.6); }
+  50% { filter: blur(8px) brightness(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-aura { animation: none; filter: blur(2px) brightness(0.9); }
+}
+
+/* ============================================================
+   HOLO DISPLAY PREFERENCES (driven by <html> data attributes set from the
+   user's per-device preferences in HoloPreferences).
+   ============================================================ */
+/* Passive animations off → pause every holo animation, resume only while the
+   card is hovered. (On touch/mobile, with no hover, they stay paused.) */
+html[data-holo-passive="off"] .holo-host *,
+html[data-holo-passive="off"] .holo-host *::before,
+html[data-holo-passive="off"] .holo-host *::after {
+  animation-play-state: paused;
+}
+html[data-holo-passive="off"] .holo-host:hover *,
+html[data-holo-passive="off"] .holo-host:hover *::before,
+html[data-holo-passive="off"] .holo-host:hover *::after {
+  animation-play-state: running;
+}
+/* Auto-enable aura → show the glow aura without needing to hover. */
+html[data-holo-aura="on"] .card-aura { opacity: 0.85; }
+html[data-holo-aura="on"] .card-aura-rays { opacity: 0.4; }
+
+/* Compact cards have no chrome, so lift the behind-photo holo layers OVER the
+   tiny photo — otherwise the holo/passive animation is hidden behind the art. */
+.compact-holo .holo-behind,
+.compact-holo .star-field,
+.compact-holo .line-field,
+.compact-holo .diamond-field {
+  z-index: 11;
+}
+
+@keyframes goldDrift {
+  0% { background-position: 28% 38%, 0 0; }
+  100% { background-position: 72% 62%, 0 0; }
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import TradingCard from '@/components/trading-card'
+import CompactCard from '@/components/compact-card'
 
 type Card = {
   id: string
@@ -16,32 +17,25 @@ type Card = {
 type Edition = { value: string | null; label: string; family?: string; blurb: string }
 
 const EDITIONS: Edition[] = [
-  { value: null, label: 'Standard', blurb: 'The base card — no finish.' },
-  { value: 'foil', label: 'Foil', family: 'Balatro', blurb: 'Cool metallic streaks that sweep with the pointer.' },
-  { value: 'holographic', label: 'Holographic', family: 'Balatro', blurb: 'Rainbow sheen + sparkle rings that tilt with the card.' },
-  { value: 'polychrome', label: 'Polychrome', family: 'Balatro', blurb: 'A full-spectrum rainbow prism that slowly rotates.' },
-  { value: 'negative', label: 'Negative — dark cosmic', family: 'Balatro', blurb: 'Whole card inverted; cosmic shimmer stays dark on top.' },
-  { value: 'negative-true', label: 'Negative — true invert', family: 'Balatro', blurb: 'Whole card flips to a pale photo-negative.' },
-  { value: 'golden', label: 'Golden', family: 'Hearthstone', blurb: 'Warm gold with a sweeping light band and twinkling glints.' },
-  { value: 'signature', label: 'Signature', family: 'Hearthstone', blurb: 'Soft pastel-prismatic sheen that drifts slowly.' },
-  { value: 'diamond', label: 'Diamond', family: 'Hearthstone', blurb: 'Crystalline facets, rotating prism refraction, bright sparkles.' },
-  { value: 'aurora', label: 'Aurora', family: 'Experimental', blurb: 'Flowing northern-lights ribbons that drift across.' },
-  { value: 'lava', label: 'Lava / Magma', family: 'Experimental', blurb: 'Molten flowing glow with bright glowing cracks.' },
-  { value: 'electric', label: 'Electric', family: 'Experimental', blurb: 'Arcing hairline bolts with a flickering blue glow.' },
-  { value: 'water', label: 'Water / Caustics', family: 'Experimental', blurb: 'Rippling pool-light caustic patterns.' },
-  { value: 'pearl', label: 'Pearlescent', family: 'Experimental', blurb: 'Soft mother-of-pearl iridescence.' },
-  { value: 'kaleido', label: 'Kaleidoscope', family: 'Experimental', blurb: 'Rotating mirrored faceted shards of color.' },
-  { value: 'vapor', label: 'Vaporwave', family: 'Experimental', blurb: 'Retro perspective grid + sunset gradient, scrolling.' },
-  { value: 'ruby', label: 'Gem — Ruby', family: 'Experimental', blurb: 'Ruby-tinted crystal: faceted, prism refraction, sparkles.' },
-  { value: 'emerald', label: 'Gem — Emerald', family: 'Experimental', blurb: 'Emerald-tinted crystal: faceted, prism refraction, sparkles.' },
-  { value: 'sapphire', label: 'Gem — Sapphire', family: 'Experimental', blurb: 'Sapphire-tinted crystal: faceted, prism refraction, sparkles.' },
+  { value: null, label: 'Standard', blurb: 'The base card — no holo.' },
+  { value: 'golden', label: 'Golden', family: 'First tier', blurb: 'Amber gold ambience behind the photo + diagonal gold lines with a hover flashlight, gold rays + nebula aura.' },
+  { value: 'diamond', label: 'Diamond', family: 'Mid tier', blurb: 'Icy azure/white ambience + a faceted jewel pattern in the text area whose edges light up under the flashlight, azure rays + nebula aura.' },
+  { value: 'galaxy', label: 'Galaxy', family: 'Top tier', blurb: 'Rainbow galaxy foil + a star field behind the photo with a hover spotlight, cosmic nebula aura.' },
 ]
+
+const COUNTS = [1, 3, 5, 10, 20, 50, 100]
 
 export default function HoloPreview({ cards }: { cards: Card[] }) {
   const [selectedId, setSelectedId] = useState<string>(cards[0]?.id ?? '')
   const [index, setIndex] = useState(0)
+  const [count, setCount] = useState(1)
+  const [forceAura, setForceAura] = useState(false)
+  const [compact, setCompact] = useState(false)
   const selected = cards.find((c) => c.id === selectedId) ?? cards[0]
   const ed = EDITIONS[index]
+
+  // Bigger cards when there are few; shrink as the count grows so they tile.
+  const cardSize = count === 1 ? 'lg' : count <= 5 ? 'md' : 'sm'
 
   const go = useCallback((dir: number) => {
     setIndex((i) => (i + dir + EDITIONS.length) % EDITIONS.length)
@@ -65,7 +59,7 @@ export default function HoloPreview({ cards }: { cards: Card[] }) {
 
   return (
     <div>
-      {/* Which card to preview */}
+      {/* Which card to preview + how many */}
       <div className="mb-8 flex flex-wrap items-center gap-3">
         <label htmlFor="holo-card" className="text-sm text-zinc-400">Card</label>
         <select
@@ -79,17 +73,64 @@ export default function HoloPreview({ cards }: { cards: Card[] }) {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+
+        <label htmlFor="holo-count" className="ml-2 text-sm text-zinc-400">Cards on screen</label>
+        <select
+          id="holo-count"
+          aria-label="Cards on screen"
+          value={count}
+          onChange={(e) => setCount(Number(e.target.value))}
+          className="input-arcade px-3 py-2 text-sm"
+        >
+          {COUNTS.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+
+        <label className="ml-2 flex items-center gap-2 text-sm text-zinc-400">
+          <input
+            type="checkbox"
+            aria-label="Force aura"
+            checked={forceAura}
+            onChange={(e) => setForceAura(e.target.checked)}
+          />
+          Force aura (craft/pull)
+        </label>
+
+        <label className="ml-2 flex items-center gap-2 text-sm text-zinc-400">
+          <input
+            type="checkbox"
+            aria-label="Compact card"
+            checked={compact}
+            onChange={(e) => setCompact(e.target.checked)}
+          />
+          Compact card
+        </label>
       </div>
 
       {/* Flip-through stage */}
       <div className="flex items-center justify-center gap-4 sm:gap-8">
         <button type="button" aria-label="Previous edition" onClick={() => go(-1)} className={arrow}>‹</button>
-        <TradingCard
-          key={ed.value ?? 'standard'}
-          card={{ ...selected, edition: ed.value }}
-          size="lg"
-          testId={`holo-card-${ed.value ?? 'standard'}`}
-        />
+        <div className="flex flex-wrap items-start justify-center gap-3" data-testid="holo-grid">
+          {Array.from({ length: count }).map((_, i) =>
+            compact ? (
+              <div key={`${ed.value ?? 'standard'}-${i}`} className="w-[9rem]">
+                <CompactCard
+                  card={{ ...selected, edition: ed.value }}
+                  auraActive={forceAura}
+                />
+              </div>
+            ) : (
+              <TradingCard
+                key={`${ed.value ?? 'standard'}-${i}`}
+                card={{ ...selected, edition: ed.value }}
+                size={cardSize}
+                auraActive={forceAura}
+                testId={i === 0 ? `holo-card-${ed.value ?? 'standard'}` : undefined}
+              />
+            )
+          )}
+        </div>
         <button type="button" aria-label="Next edition" onClick={() => go(1)} className={arrow}>›</button>
       </div>
 

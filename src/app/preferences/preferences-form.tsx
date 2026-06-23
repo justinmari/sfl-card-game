@@ -1,6 +1,7 @@
 'use client'
 
-import { usePreferences, type AutoRevealSpeed } from '@/lib/preferences'
+import { useEffect, useState } from 'react'
+import { usePreferences, isTouchDevice, type AutoRevealSpeed } from '@/lib/preferences'
 
 const AUTO_REVEAL_OPTIONS: { value: AutoRevealSpeed; label: string }[] = [
   { value: 'slow', label: 'Slow' },
@@ -10,6 +11,8 @@ const AUTO_REVEAL_OPTIONS: { value: AutoRevealSpeed; label: string }[] = [
 
 export default function PreferencesForm() {
   const { preferences, setPreference, loaded } = usePreferences()
+  const [touch, setTouch] = useState(false)
+  useEffect(() => setTouch(isTouchDevice()), [])
 
   return (
     <div className="space-y-4">
@@ -38,6 +41,65 @@ export default function PreferencesForm() {
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
               preferences.compactCards ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="surface rounded-xl p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white">Passive holo animations</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Animate holo (Golden / Diamond / Galaxy) finishes at rest. When off, they only animate while you hover a card.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={preferences.passiveHoloAnimations}
+            aria-label="Passive holo animations"
+            disabled={!loaded}
+            onClick={() => setPreference('passiveHoloAnimations', !preferences.passiveHoloAnimations)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+              preferences.passiveHoloAnimations ? 'bg-violet-600 shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]' : 'bg-zinc-700'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                preferences.passiveHoloAnimations ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+        {touch && preferences.passiveHoloAnimations && (
+          <p className="mt-2 text-xs text-amber-400">
+            ⚠ On mobile this may degrade performance and battery life.
+          </p>
+        )}
+      </div>
+
+      <div className="surface flex items-center justify-between gap-4 rounded-xl p-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white">Auto-enable holo aura</p>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Show the glowing aura around holo cards without having to hover them.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={preferences.autoHoloAura}
+          aria-label="Auto-enable holo aura"
+          disabled={!loaded}
+          onClick={() => setPreference('autoHoloAura', !preferences.autoHoloAura)}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+            preferences.autoHoloAura ? 'bg-violet-600 shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]' : 'bg-zinc-700'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              preferences.autoHoloAura ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
         </button>

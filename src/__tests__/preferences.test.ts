@@ -68,14 +68,22 @@ describe('parsePreferences', () => {
 
 describe('serializePreferences', () => {
   it('round-trips through parse', () => {
-    const prefs: Preferences = { compactCards: true, autoRevealSpeed: 'fast' }
+    const prefs: Preferences = {
+      compactCards: true,
+      autoRevealSpeed: 'fast',
+      passiveHoloAnimations: false,
+      autoHoloAura: true,
+    }
     expect(parsePreferences(serializePreferences(prefs))).toEqual(prefs)
   })
 
   it('produces valid JSON', () => {
-    expect(JSON.parse(serializePreferences({ compactCards: false, autoRevealSpeed: 'normal' }))).toEqual({
+    const prefs: Preferences = {
       compactCards: false,
       autoRevealSpeed: 'normal',
-    })
+      passiveHoloAnimations: true,
+      autoHoloAura: false,
+    }
+    expect(JSON.parse(serializePreferences(prefs))).toEqual(prefs)
   })
 })

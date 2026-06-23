@@ -95,19 +95,9 @@ type CardData = {
   typeNames?: string[]
   author_name?: string | null
   author_anonymous?: boolean | null
-  /** Cosmetic holo finish on the owned copy: 'foil' | 'holographic' | 'polychrome' | 'negative'. */
+  /** Holo edition on the owned copy: 'golden' (first tier) | 'galaxy' (top tier). */
   edition?: string | null
 }
-
-const HOLO_EDITIONS = new Set([
-  // Balatro-style
-  'foil', 'holographic', 'polychrome', 'negative', 'negative-true',
-  // Hearthstone-style
-  'golden', 'signature', 'diamond',
-  // Extra full-surface finishes (exploration)
-  'aurora', 'lava', 'electric', 'water', 'pearl', 'kaleido', 'vapor',
-  'ruby', 'emerald', 'sapphire',
-])
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -153,6 +143,7 @@ export default function TradingCard({
   className = '',
   children,
   testId,
+  auraActive = false,
 }: {
   card: CardData
   size?: Size
@@ -161,17 +152,28 @@ export default function TradingCard({
   className?: string
   children?: React.ReactNode
   testId?: string
+  /** Force the edition's glow aura on (e.g. during a craft/pull celebration),
+   *  independent of hover. */
+  auraActive?: boolean
 }) {
   const s = sizeClasses[size]
   const stars = rarityStarCount[card.rarity] || 1
-  const edition = card.edition && HOLO_EDITIONS.has(card.edition) ? card.edition : null
-  const negInvert = 'invert(1) hue-rotate(180deg)'
-  // 'negative-true' inverts the entire card (pale photo-negative). 'negative'
-  // inverts only the art + text so the cosmic overlay stays dark on top.
-  const invertContent = edition === 'negative' ? negInvert : undefined
+  // The holo editions. Each splits its foil into an ambient wash behind the
+  // photo + a sheen on top, plus a behind-photo field with a pointer-following
+  // flashlight, and an outward glow aura on hover/auraActive.
+  //   'golden' — first tier  |  'diamond' — mid tier  |  'galaxy' — top tier
+  const galaxy = card.edition === 'galaxy'
+  const diamond = card.edition === 'diamond'
+  const golden = card.edition === 'golden'
+  const starField = galaxy
+  const lineField = golden
+  const diamondField = diamond
+  const aura = galaxy ? 'galaxy' : diamond ? 'diamond' : golden ? 'gold' : null
   const cardRef = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 })
-  const [shine, setShine] = useState({ x: 50, y: 50 })
+  // `c` = pointer-from-center (0 at the middle → 1 at a corner). pokemon-cards-css
+  // uses this to bloom the glare brightest when the pointer is near the centre.
+  const [shine, setShine] = useState({ x: 50, y: 50, c: 0 })
   const [isHovered, setIsHovered] = useState(false)
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -185,7 +187,7 @@ export default function TradingCard({
       rotateX: (0.5 - y) * maxTilt,
       rotateY: (x - 0.5) * maxTilt,
     })
-    setShine({ x: x * 100, y: y * 100 })
+    setShine({ x: x * 100, y: y * 100, c: Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2) })
   }, [])
 
   const handleMouseEnter = useCallback(() => setIsHovered(true), [])
@@ -193,7 +195,7 @@ export default function TradingCard({
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false)
     setTilt({ rotateX: 0, rotateY: 0 })
-    setShine({ x: 50, y: 50 })
+    setShine({ x: 50, y: 50, c: 0 })
   }, [])
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
@@ -211,21 +213,28 @@ export default function TradingCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`${s.wrapper} relative ${onClick ? 'cursor-pointer' : ''} select-none ${className}`}
+      className={`${s.wrapper} holo-host relative isolate ${onClick ? 'cursor-pointer' : ''} select-none ${className}`}
       style={{ perspective: '800px', zIndex: isHovered ? 40 : undefined }}
     >
+      {/* Outward glow aura — blooms beyond the card edges on hover or when forced.
+          A nebula halo plus a subtle irregular ray layer on top (rainbow/gold). */}
+      {aura && (
+        <>
+          <div className={`card-aura card-aura-${aura}${isHovered || auraActive ? ' card-aura-on' : ''}`} aria-hidden />
+          <div className={`card-aura card-aura-rays card-aura-${aura}-rays${isHovered || auraActive ? ' card-aura-on' : ''}`} aria-hidden />
+        </>
+      )}
+
       <div
         className={`relative flex flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
         style={{
           transform: cardTransform,
           transition: cardTransition,
-          transformStyle: 'preserve-3d',
-          // Negative edition inverts the entire card — art, text, and chrome.
-          filter: edition === 'negative-true' ? negInvert : undefined,
           // Pointer position + hover state for the holo edition layer (CSS reads these).
           '--mx': `${shine.x}%`,
           '--my': `${shine.y}%`,
           '--holo': isHovered ? 1 : 0,
+          '--pfc': shine.c,
         } as React.CSSProperties}
       >
         {/* Shine overlay */}
@@ -239,14 +248,47 @@ export default function TradingCard({
           }}
         />
 
-        {/* Holo edition finish (cosmetic, pointer-reactive) */}
-        {edition && <div data-testid="holo-layer" data-edition={edition} className={`holo-layer holo-${edition}`} aria-hidden />}
+        {/* Galaxy holo — passive rainbow ambient behind the photo, plus the
+            pointer-following rainbow + white sheen riding on top while hovered. */}
+        {galaxy && (
+          <>
+            <div className="holo-layer holo-behind holo-passive holo-galaxy-ambient" aria-hidden />
+            <div data-testid="holo-layer" className="holo-layer holo-galaxy-top" aria-hidden />
+          </>
+        )}
+
+        {/* Diamond holo — icy azure ambient behind the photo, white sheen on top. */}
+        {diamond && (
+          <>
+            <div className="holo-layer holo-behind holo-diamond-ambient" aria-hidden />
+            <div data-testid="holo-layer" className="holo-layer holo-diamond-top" aria-hidden />
+          </>
+        )}
+
+        {/* Golden holo — amber ambient + light band, both behind the photo. */}
+        {golden && (
+          <>
+            <div className="holo-layer holo-behind holo-gold-ambient" aria-hidden />
+            <div data-testid="holo-layer" className="holo-layer holo-behind holo-gold-sheen" aria-hidden />
+          </>
+        )}
+
+        {/* Behind-photo field revealed by the spotlight: stars (Galaxy) / lines
+            (Golden) / a faceted jewel in the text area (Diamond). */}
+        {starField && (
+          <>
+            <div data-testid="star-field" className="star-field" aria-hidden />
+            <div className="star-spotlight" aria-hidden />
+          </>
+        )}
+        {lineField && <div data-testid="line-field" className="line-field" aria-hidden />}
+        {diamondField && <div data-testid="diamond-field" className="diamond-field" aria-hidden />}
 
         {/* Accent gradient at top */}
         <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${rarityAccent[card.rarity]} pointer-events-none`} />
 
         {/* Image */}
-        <div className="relative mx-2 mt-2 overflow-hidden rounded-xl" style={{ filter: invertContent }}>
+        <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
           {card.image_url ? (
             // Plain <img>: static cards stay static, animated WebP/GIF autoplay
             // natively (GPU-cheap). No canvas/poster work — that previously
@@ -293,7 +335,7 @@ export default function TradingCard({
         </div>
 
         {/* Card info */}
-        <div className="flex flex-1 flex-col px-3 py-2.5" style={{ filter: invertContent }}>
+        <div className="relative flex flex-1 flex-col px-3 py-2.5">
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (
