@@ -256,7 +256,9 @@ export default function SwipeableReveal({
   const opacity = 1 - Math.abs(dragX) * 0.001
   const dragProgress = Math.min(Math.abs(dragX) / 200, 1)
   const nextItem = currentIndex + 1 < deck.length ? deck[currentIndex + 1] : null
-  const nextCardRarity = nextItem?.kind === 'card' ? nextItem.card.rarity : undefined
+  // No next-card aura while a pack is current (opening a pack shouldn't tease the
+  // first card's aura) — only when swiping between revealed cards.
+  const nextCardRarity = current?.kind !== 'pack' && nextItem?.kind === 'card' ? nextItem.card.rarity : undefined
 
   // Auto mode — advances through packs + cards; pauses after revealing a NEW card.
   useEffect(() => {
@@ -313,7 +315,7 @@ export default function SwipeableReveal({
         rarity={celebrateRarity}
         trigger={celebrateTrigger}
         auraRarity={nextCardRarity}
-        auraIntensity={isDragging ? dragProgress : 0}
+        auraIntensity={isDragging && current?.kind !== 'pack' ? dragProgress : 0}
       />
 
       {/* Header */}
@@ -385,7 +387,9 @@ export default function SwipeableReveal({
           if (!isCurrent && current?.kind === 'pack' && packRising) return null
           const isNext = i === currentIndex + 1
           const isPack = item.kind === 'pack'
-          const zIndex = deck.length - i
+          // Small, relative z so overlays (flash z-40, skip-fan z-45) always sit
+          // on top regardless of how many packs are in the set.
+          const zIndex = 30 - (i - currentIndex) * 10
           const scale = isCurrent ? 1 : isNext ? 0.95 + dragProgress * 0.05 : 0.9
           // A pack rips in place (no sideways slide); cards slide as before.
           const lift = isCurrent && isPack ? (tearing ? 1 : Math.min(Math.abs(dragX) / 130, 1)) : 0
@@ -436,7 +440,7 @@ export default function SwipeableReveal({
 
         {/* Desktop next arrow */}
         {!isLast && (
-          <div className="absolute inset-y-0 right-4 hidden items-center sm:flex" style={{ zIndex: deck.length + 10 }}>
+          <div className="absolute inset-y-0 right-4 hidden items-center sm:flex" style={{ zIndex: 36 }}>
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={goNext}
