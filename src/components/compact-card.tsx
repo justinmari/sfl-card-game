@@ -20,10 +20,13 @@ type CardData = {
 export default function CompactCard({
   card,
   showNew,
+  count,
   auraActive = false,
 }: {
   card: CardData
   showNew?: boolean
+  /** Copies owned of this card; shows an "×N" badge when > 1. */
+  count?: number
   /** Force the edition's glow aura on (e.g. during a craft/pull celebration). */
   auraActive?: boolean
 }) {
@@ -78,6 +81,12 @@ export default function CompactCard({
       )}
       {lineField && <div className="line-field" aria-hidden />}
       {diamondField && <div className="diamond-field" aria-hidden />}
+
+      {count && count > 1 && (
+        <span className="absolute right-1 top-1 z-20 rounded-md bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
+          ×{count}
+        </span>
+      )}
 
       <div className="relative z-[1] bg-zinc-900 px-1.5 py-1 text-center flex-shrink-0">
         <p className="truncate text-[9px] font-semibold text-white">{card.name}</p>

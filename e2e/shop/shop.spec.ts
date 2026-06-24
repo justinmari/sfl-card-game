@@ -143,7 +143,7 @@ test.describe('Shop', () => {
     await page.getByText('Starter Pack').click()
     await page.click('button:has-text("Buy 1 pack")')
 
-    await expect(page.getByText(/Swipe to see next|Last card!|You pulled:/)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Swipe to open|Swipe to see next|Last card!|You pulled:/).first()).toBeVisible({ timeout: 15000 })
     await test.info().attach('card-reveal', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
@@ -154,10 +154,10 @@ test.describe('Shop', () => {
     await page.getByText('Starter Pack').click()
     await page.click('button:has-text("Buy 1 pack")')
 
-    await expect(page.getByText(/Swipe to see next|Last card!/)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Swipe to open|Swipe to see next|Last card!/).first()).toBeVisible({ timeout: 15000 })
 
     // Skip/View All buttons are in the swipe view (no mobile/desktop split)
-    const skipBtn = page.locator('button:has-text("Skip & View All")')
+    const skipBtn = page.locator('button:has-text("Skip All")')
     const viewAllBtn = page.locator('button:has-text("View All")')
     if (await skipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await skipBtn.click()
@@ -182,10 +182,10 @@ test.describe('Shop', () => {
     const grutenBefore = await page.locator('text=/\\d+\\s*G/').first().textContent()
     await page.getByText('Starter Pack').click()
     await page.click('button:has-text("Buy 1 pack")')
-    await expect(page.getByText(/Swipe to see next|Last card!|You pulled:/)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Swipe to open|Swipe to see next|Last card!|You pulled:/).first()).toBeVisible({ timeout: 15000 })
 
     // Skip through the reveal
-    const skipBtn = page.locator('button:has-text("Skip & View All")')
+    const skipBtn = page.locator('button:has-text("Skip All")')
     if (await skipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await skipBtn.click()
     }

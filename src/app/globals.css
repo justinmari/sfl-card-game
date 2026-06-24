@@ -184,6 +184,90 @@ body {
   75% { transform: translate(-3px, 1px); }
 }
 
+/* Burst flash when a pack is ripped open in the reveal. */
+.pack-burst {
+  animation: packBurst 0.5s ease-out forwards;
+}
+@keyframes packBurst {
+  0% { opacity: 0.85; transform: scale(0.5); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pack-burst { animation: none; opacity: 0; }
+}
+
+/* Sparkling head that travels along the tear line as you swipe. */
+.tear-spark {
+  animation: tearSpark 0.4s ease-in-out infinite alternate;
+}
+@keyframes tearSpark {
+  0% { transform: translate(-50%, -50%) scale(0.8) rotate(0deg); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.35) rotate(45deg); opacity: 1; }
+}
+
+/* Sparkler orbs flying off the spark head. */
+.pack-spark-bit {
+  animation: packSparkBit var(--dur, 0.5s) linear infinite;
+}
+@keyframes packSparkBit {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.25); opacity: 0; }
+}
+
+/* The tear line flares bright, then vanishes fast as the pack splits. */
+.tear-flash {
+  animation: tearFlash 0.18s ease-out forwards;
+}
+@keyframes tearFlash {
+  0% { opacity: 1; filter: brightness(2.2); }
+  100% { opacity: 0; }
+}
+
+/* Bright horizontal flash sweeping the whole screen where the slice was. */
+.pack-screen-flash {
+  animation: screenFlash 0.42s ease-out forwards;
+}
+@keyframes screenFlash {
+  0% { opacity: 0; transform: translateY(-50%) scaleY(0.35); }
+  18% { opacity: 1; transform: translateY(-50%) scaleY(1); }
+  100% { opacity: 0; transform: translateY(-50%) scaleY(1.6); }
+}
+
+/* Skipped pack: fan its cards into view, hold, then fade as the next pack rises. */
+.skip-fan {
+  animation: skipFan 1.3s ease-out forwards;
+}
+@keyframes skipFan {
+  0% { opacity: 0; transform: scale(0.9); }
+  14% { opacity: 1; transform: scale(1); }
+  78% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+/* A pack rising up from the bottom of the screen to centre. */
+.pack-rise {
+  animation: packRise 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes packRise {
+  0% { transform: translateY(95vh); opacity: 0.3; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Glowing particles rising out of the slice. */
+.pack-part {
+  animation: partRise var(--dur, 1s) ease-out infinite;
+}
+@keyframes partRise {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--drift, 0px)), -150px) scale(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tear-spark, .pack-spark-bit, .tear-flash, .pack-screen-flash, .pack-part, .pack-rise { animation: none; }
+}
+
 /* ---------- Holo editions (cosmetic card finishes) ----------
    Driven by --mx/--my (pointer position %) and --holo (0/1 hover) which
    TradingCard sets on the card inner, reusing its existing pointer tracking. */

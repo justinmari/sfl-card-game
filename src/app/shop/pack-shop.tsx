@@ -40,7 +40,8 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null)
   const [buying, setBuying] = useState(false)
   const [pulledCards, setPulledCards] = useState<PulledCard[] | null>(null)
-  const [flipAll, setFlipAll] = useState(false)
+  // Pack the reveal is showing (captured at buy time, since selectedPack clears).
+  const [openedPack, setOpenedPack] = useState<{ cardsPerPack: number; name: string; image_url: string | null; price: number; created_at: string } | null>(null)
   const [currentGruten, setCurrentGruten] = useState(gruten)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -74,9 +75,15 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
       }
 
       setPulledCards(data.cards)
+      setOpenedPack({
+        cardsPerPack: selectedPack?.cards_per_pack ?? 5,
+        name: selectedPack?.name ?? 'Pack',
+        image_url: selectedPack?.image_url ?? null,
+        price: selectedPack?.price ?? 0,
+        created_at: selectedPack?.created_at ?? '',
+      })
       setCurrentGruten(data.gruten_remaining)
       setSelectedPack(null)
-      setFlipAll(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -86,6 +93,7 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
 
   const closeResults = () => {
     setPulledCards(null)
+    setOpenedPack(null)
     router.refresh()
   }
 
@@ -109,12 +117,15 @@ export default function PackShop({ packs, gruten, packOwnership, packRarityChanc
         </div>
       )}
 
-      {/* Pull results — shared for mobile and desktop */}
-      {pulledCards && (
+      {/* Pull results — per-pack open + reveal, then a deduped summary */}
+      {pulledCards && openedPack && (
         <SwipeableReveal
           cards={pulledCards}
-          flipAll={flipAll}
-          onFlipAll={() => setFlipAll(true)}
+          cardsPerPack={openedPack.cardsPerPack}
+          packName={openedPack.name}
+          packImage={openedPack.image_url}
+          packPrice={openedPack.price}
+          packCreatedAt={openedPack.created_at}
           onDone={closeResults}
         />
       )}

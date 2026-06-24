@@ -56,7 +56,7 @@ test.describe('Gruten Transactions', () => {
     await page.goto('/shop')
     await page.getByText('Starter Pack').click()
     await page.click('button:has-text("Buy 1 pack")')
-    await expect(page.getByText(/Swipe to see next|Last card!|You pulled:/)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Swipe to open|Swipe to see next|Last card!|You pulled:/).first()).toBeVisible({ timeout: 15000 })
 
     const txns = await getTransactions(playerId)
     expect(txns).toHaveLength(1)
@@ -129,7 +129,7 @@ test.describe('Gruten Transactions', () => {
     await page.goto('/shop')
     await page.getByText('Starter Pack').click()
     await page.click('button:has-text("Buy 1 pack")')
-    await expect(page.getByText(/Swipe to see next|Last card!|You pulled:/)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/Swipe to open|Swipe to see next|Last card!|You pulled:/).first()).toBeVisible({ timeout: 15000 })
 
     // Verify chain
     const txns = await getTransactions(playerId)

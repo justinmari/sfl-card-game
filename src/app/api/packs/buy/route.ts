@@ -25,9 +25,12 @@ export async function POST(request: Request) {
 
   // Attach each pulled card's type names + author credit so the reveal cards
   // match the collection. (buy_pack doesn't return types or author.)
-  const result = data as { cards?: { id: string; typeNames?: string[]; author_name?: string | null; author_anonymous?: boolean | null }[] } | null
+  // buy_pack emits the identifier as `card_id`; normalize it to `id` so the
+  // client (dedup/count/sort) and the enrichment lookups below both work.
+  const result = data as { cards?: { id?: string; card_id?: string; typeNames?: string[]; author_name?: string | null; author_anonymous?: boolean | null }[] } | null
   if (result?.cards?.length) {
-    const ids = [...new Set(result.cards.map((c) => c.id))]
+    for (const c of result.cards) c.id = c.id ?? c.card_id
+    const ids = [...new Set(result.cards.map((c) => c.id).filter((x): x is string => !!x))]
     const { data: typeRows } = await supabase
       .from('card_types')
       .select('card_id, types(name)')
@@ -43,8 +46,8 @@ export async function POST(request: Request) {
       .in('id', ids)
     const authorMap = new Map((authorRows ?? []).map((r) => [r.id, r]))
     for (const c of result.cards) {
-      c.typeNames = typeMap.get(c.id) ?? []
-      const a = authorMap.get(c.id)
+      c.typeNames = typeMap.get(c.id ?? '') ?? []
+      const a = authorMap.get(c.id ?? '')
       c.author_name = a?.author_name ?? null
       c.author_anonymous = a?.author_anonymous ?? false
     }
