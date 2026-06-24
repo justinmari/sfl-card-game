@@ -47,6 +47,8 @@ describe('parsePreferences', () => {
   it('reads a valid autoRevealSpeed value', () => {
     expect(parsePreferences('{"autoRevealSpeed":"slow"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'slow' })
     expect(parsePreferences('{"autoRevealSpeed":"fast"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'fast' })
+    expect(parsePreferences('{"autoRevealSpeed":"faster"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'faster' })
+    expect(parsePreferences('{"autoRevealSpeed":"fastest"}')).toEqual({ ...DEFAULT_PREFERENCES, autoRevealSpeed: 'fastest' })
   })
 
   it('falls back to default when autoRevealSpeed is invalid', () => {
@@ -73,6 +75,7 @@ describe('serializePreferences', () => {
       autoRevealSpeed: 'fast',
       passiveHoloAnimations: false,
       autoHoloAura: true,
+      collectionHoloDisplay: 'none',
     }
     expect(parsePreferences(serializePreferences(prefs))).toEqual(prefs)
   })
@@ -83,6 +86,7 @@ describe('serializePreferences', () => {
       autoRevealSpeed: 'normal',
       passiveHoloAnimations: true,
       autoHoloAura: false,
+      collectionHoloDisplay: 'rarest',
     }
     expect(JSON.parse(serializePreferences(prefs))).toEqual(prefs)
   })

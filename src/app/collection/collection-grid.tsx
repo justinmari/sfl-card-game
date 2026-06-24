@@ -3,7 +3,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import TradingCard, { rarityStarCount, rarityStarColor } from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
+import HoloCountBadges from '@/components/holo-count-badges'
 import { rarityLabel, RARITIES } from '@/lib/rarities'
+import {
+  rarestEdition, ownsAnyHolo, ownedEditionsRarestFirst, isHoloEdition,
+  EDITION_LABEL, EDITION_DOT, HOLO_EDITIONS, type Edition, type EditionCounts,
+} from '@/lib/editions'
 import { CompactFilterBar, sectionize, type FilterSelect } from '@/components/card-filters'
 import Pagination from '@/components/pagination'
 import { usePreferences } from '@/lib/preferences'
@@ -46,13 +51,15 @@ const rarityOrder: Record<string, number> = {
   common: 5,
 }
 
+type CardEntry = { card: Card; editions: EditionCounts; count: number; obtainedAt?: string }
+
 export default function CollectionGrid({
   cardCounts,
   packFilters,
   creatures,
   totalCards,
 }: {
-  cardCounts: { card: Card; count: number; obtainedAt?: string }[]
+  cardCounts: CardEntry[]
   packFilters: PackFilter[]
   creatures: Creature[]
   totalCards: number
@@ -60,14 +67,29 @@ export default function CollectionGrid({
   const { preferences } = usePreferences()
   const compact = preferences.compactCards
   const desktopSize = compact ? 'sm' : 'md'
+  // Which finish to show on a tile: the rarest the user owns, or plain.
+  const tileEdition = (editions: EditionCounts): Edition =>
+    preferences.collectionHoloDisplay === 'rarest' ? (rarestEdition(editions) ?? 'regular') : 'regular'
 
-  const [selected, setSelected] = useState<{ card: Card; count: number } | null>(null)
+  const [selected, setSelected] = useState<{ card: Card; editions: EditionCounts } | null>(null)
+  const [selectedEdition, setSelectedEdition] = useState<Edition>('regular')
   const [search, setSearch] = useState('')
   const [activePack, setActivePack] = useState<string | null>(null)
   const [activeRarity, setActiveRarity] = useState<string | null>(null)
   const [activeCreature, setActiveCreature] = useState<string | null>(null)
   const [activeType, setActiveType] = useState<string | null>(null)
+  const [activeHolo, setActiveHolo] = useState<string | null>(null)
   const [sort, setSort] = useState<SortOption>('rarity')
+
+  // Open the modal on the same finish the tile was showing — but fall back to
+  // the rarest finish actually owned (a card may be owned only as a holo, with
+  // no regular copy, in which case 'none' mode still shouldn't show x0).
+  const openCard = (entry: CardEntry) => {
+    const shown = tileEdition(entry.editions)
+    const initial: Edition = (entry.editions[shown] ?? 0) > 0 ? shown : (rarestEdition(entry.editions) ?? 'regular')
+    setSelected({ card: entry.card, editions: entry.editions })
+    setSelectedEdition(initial)
+  }
 
   const filtered = useMemo(() => {
     let result = cardCounts
@@ -105,8 +127,16 @@ export default function CollectionGrid({
       }
     }
 
+    if (activeHolo) {
+      if (activeHolo === '__any__') {
+        result = result.filter(({ editions }) => ownsAnyHolo(editions))
+      } else {
+        result = result.filter(({ editions }) => (editions[activeHolo as Edition] ?? 0) > 0)
+      }
+    }
+
     return result
-  }, [cardCounts, search, activePack, activeRarity, activeCreature, activeType, packFilters])
+  }, [cardCounts, search, activePack, activeRarity, activeCreature, activeType, activeHolo, packFilters])
 
   const sorted = useMemo(() => {
     const items = [...filtered]
@@ -139,7 +169,7 @@ export default function CollectionGrid({
 
   // Numbered pagination over the sorted list (resets to page 1 when filters change).
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [search, activePack, activeRarity, activeCreature, activeType, sort])
+  useEffect(() => { setPage(1) }, [search, activePack, activeRarity, activeCreature, activeType, activeHolo, sort])
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const currentPage = Math.min(page, pageCount)
   const pageItems = useMemo(() => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE), [sorted, currentPage])
@@ -169,6 +199,15 @@ export default function CollectionGrid({
       else hasUntyped = true
     }
     return { names: [...names].sort(), hasUntyped }
+  }, [cardCounts])
+
+  // Which holo finishes the user owns anywhere in the collection (for the filter).
+  const collectionHolos = useMemo(() => {
+    const present = new Set<Edition>()
+    for (const { editions } of cardCounts) {
+      for (const e of HOLO_EDITIONS) if ((editions[e] ?? 0) > 0) present.add(e)
+    }
+    return HOLO_EDITIONS.filter((e) => present.has(e))
   }, [cardCounts])
 
   const selects = useMemo(() => {
@@ -218,8 +257,47 @@ export default function CollectionGrid({
       })
     }
 
+    if (collectionHolos.length > 0) {
+      list.push({
+        ariaLabel: 'Filter by holo',
+        placeholder: 'All finishes',
+        value: activeHolo,
+        onChange: setActiveHolo,
+        options: [
+          { value: '__any__', label: 'Any holo' },
+          ...collectionHolos.map((e) => ({ value: e, label: EDITION_LABEL[e] })),
+        ],
+      })
+    }
+
     return list
-  }, [packFilters, cardCounts, activePack, activeRarity, activeCreature, activeType, collectionCreatures, collectionTypes])
+  }, [packFilters, cardCounts, activePack, activeRarity, activeCreature, activeType, activeHolo, collectionCreatures, collectionTypes, collectionHolos])
+
+  // One collection tile (mobile compact + desktop trading card), showing the
+  // preferred finish and the per-edition count badges.
+  const renderTile = (entry: CardEntry) => {
+    const { card, editions } = entry
+    const ed = tileEdition(editions)
+    return (
+      <div key={card.id} className="sm:contents">
+        <div className="sm:hidden">
+          <button
+            type="button"
+            data-testid="collection-card-mobile"
+            onClick={() => openCard(entry)}
+            className="relative block w-full text-left"
+          >
+            <CompactCard card={{ ...card, edition: ed }} />
+            <HoloCountBadges counts={editions} />
+          </button>
+        </div>
+        <div className="relative hidden sm:block" data-testid="collection-card-desktop">
+          <TradingCard card={{ ...card, edition: ed }} size={desktopSize} onClick={() => openCard(entry)} />
+          <HoloCountBadges counts={editions} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -248,7 +326,35 @@ export default function CollectionGrid({
             className="flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <TradingCard card={selected.card} size="lg" count={selected.count} />
+            <TradingCard
+              card={{ ...selected.card, edition: selectedEdition }}
+              size="lg"
+              count={selected.editions[selectedEdition] ?? 0}
+              auraActive={isHoloEdition(selectedEdition)}
+            />
+
+            {/* Finish swap — only when more than one finish is owned */}
+            {ownedEditionsRarestFirst(selected.editions).length > 1 && (
+              <div data-testid="finish-swap" className="mt-4 flex flex-wrap justify-center gap-2">
+                {ownedEditionsRarestFirst(selected.editions).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    aria-pressed={e === selectedEdition}
+                    onClick={() => setSelectedEdition(e)}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      e === selectedEdition
+                        ? 'border-violet-500 bg-violet-600/20 text-white'
+                        : 'border-white/10 text-zinc-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${EDITION_DOT[e]}`} aria-hidden />
+                    {EDITION_LABEL[e]} <span className="text-zinc-500">×{selected.editions[e]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="mt-4 flex items-center gap-4 text-sm text-zinc-400">
               <span>{rarityLabel[selected.card.rarity] || selected.card.rarity}</span>
               <span className={`flex gap-1 ${rarityStarColor[selected.card.rarity]}`}>
@@ -256,7 +362,7 @@ export default function CollectionGrid({
                   <span key={i}>★</span>
                 ))}
               </span>
-              <span>Owned: x{selected.count}</span>
+              <span>Owned: x{selected.editions[selectedEdition] ?? 0}</span>
               <span>#{selected.card.id.slice(0, 8)}</span>
             </div>
             {(selected.card.author_anonymous || selected.card.author_name) && (
@@ -296,62 +402,14 @@ export default function CollectionGrid({
             <div key={section.label}>
               <h3 className="font-display mb-3 flex items-center gap-2 border-b border-white/10 pb-2 text-sm font-bold uppercase tracking-wider text-zinc-300"><span className="h-3 w-1 rounded-full bg-gradient-to-b from-violet-400 to-fuchsia-500" />{section.label}</h3>
               <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
-                {section.items.map(({ card, count }) => (
-                  <div key={card.id} className="sm:contents">
-                    <div className="sm:hidden">
-                      <button
-                        type="button"
-                        data-testid="collection-card-mobile"
-                        onClick={() => setSelected({ card, count })}
-                        className="relative block w-full text-left"
-                      >
-                        <CompactCard card={card} />
-                        {count > 1 && (
-                          <span className="absolute right-1 top-1 z-10 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white">×{count}</span>
-                        )}
-                      </button>
-                    </div>
-                    <div className="hidden sm:block" data-testid="collection-card-desktop">
-                      <TradingCard
-                        card={card}
-                        size={desktopSize}
-                        count={count}
-                        onClick={() => setSelected({ card, count })}
-                      />
-                    </div>
-                  </div>
-                ))}
+                {section.items.map(renderTile)}
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-4">
-          {pageItems.map(({ card, count }) => (
-            <div key={card.id} className="sm:contents">
-              <div className="sm:hidden">
-                <button
-                  type="button"
-                  data-testid="collection-card-mobile"
-                  onClick={() => setSelected({ card, count })}
-                  className="relative block w-full text-left"
-                >
-                  <CompactCard card={card} />
-                  {count > 1 && (
-                    <span className="absolute right-1 top-1 z-10 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white">×{count}</span>
-                  )}
-                </button>
-              </div>
-              <div className="hidden sm:block">
-                <TradingCard
-                  card={card}
-                  size={desktopSize}
-                  count={count}
-                  onClick={() => setSelected({ card, count })}
-                />
-              </div>
-            </div>
-          ))}
+          {pageItems.map(renderTile)}
         </div>
       )}
       </div>

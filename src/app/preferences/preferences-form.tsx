@@ -1,12 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePreferences, isTouchDevice, type AutoRevealSpeed } from '@/lib/preferences'
+import { usePreferences, isTouchDevice, type AutoRevealSpeed, type CollectionHoloDisplay } from '@/lib/preferences'
 
 const AUTO_REVEAL_OPTIONS: { value: AutoRevealSpeed; label: string }[] = [
   { value: 'slow', label: 'Slow' },
   { value: 'normal', label: 'Normal' },
   { value: 'fast', label: 'Fast' },
+  { value: 'faster', label: 'Faster' },
+  { value: 'fastest', label: 'Fastest' },
+]
+
+const COLLECTION_HOLO_OPTIONS: { value: CollectionHoloDisplay; label: string }[] = [
+  { value: 'rarest', label: 'Rarest holo' },
+  { value: 'none', label: 'No holos' },
 ]
 
 export default function PreferencesForm() {
@@ -122,6 +129,33 @@ export default function PreferencesForm() {
               onClick={() => setPreference('autoRevealSpeed', opt.value)}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
                 preferences.autoRevealSpeed === opt.value
+                  ? 'bg-violet-600 text-white shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="surface flex items-center justify-between gap-4 rounded-xl p-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white">Collection holos</p>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Show the rarest holo finish you own on each collection card, or keep them plain. Per-edition counts show either way.
+          </p>
+        </div>
+        <div role="group" aria-label="Collection holos" className="flex flex-shrink-0 rounded-lg bg-zinc-800 p-0.5">
+          {COLLECTION_HOLO_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={preferences.collectionHoloDisplay === opt.value}
+              disabled={!loaded}
+              onClick={() => setPreference('collectionHoloDisplay', opt.value)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                preferences.collectionHoloDisplay === opt.value
                   ? 'bg-violet-600 text-white shadow-[0_0_10px_-1px_rgba(139,92,246,0.7)]'
                   : 'text-zinc-400 hover:text-white'
               }`}

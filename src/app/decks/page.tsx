@@ -22,9 +22,13 @@ export default async function DecksPage() {
     .eq('user_id', profile.id)
     .gt('count', 0)
 
-  const ownedCards = (userCards || []).map((uc) => {
+  // A card can have several user_cards rows now (one per holo finish), but a deck
+  // cares only about the card itself — dedupe to one entry per card_id.
+  const ownedById = new Map<string, { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null; typeNames: string[]; author_name: string | null; author_anonymous: boolean | null }>()
+  for (const uc of userCards || []) {
+    if (ownedById.has(uc.card_id)) continue
     const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_types: { types: { name: string } | null }[]; author_name: string | null; author_anonymous: boolean | null }
-    return {
+    ownedById.set(uc.card_id, {
       id: uc.card_id,
       name: c.name,
       description: c.description,
@@ -34,8 +38,9 @@ export default async function DecksPage() {
       typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
       author_name: c.author_name,
       author_anonymous: c.author_anonymous,
-    }
-  })
+    })
+  }
+  const ownedCards = [...ownedById.values()]
 
   // Build deck data for all 3 slots
   const deckMap = new Map((decks || []).map((d) => [d.slot, d]))

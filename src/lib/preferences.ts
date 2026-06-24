@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /** How fast the pack-reveal "Auto" button flips through cards. */
-export type AutoRevealSpeed = 'slow' | 'normal' | 'fast'
+export type AutoRevealSpeed = 'slow' | 'normal' | 'fast' | 'faster' | 'fastest'
 
-const AUTO_REVEAL_SPEEDS: readonly AutoRevealSpeed[] = ['slow', 'normal', 'fast']
+const AUTO_REVEAL_SPEEDS: readonly AutoRevealSpeed[] = ['slow', 'normal', 'fast', 'faster', 'fastest']
+
+/** How holo finishes appear on collection tiles. */
+export type CollectionHoloDisplay = 'rarest' | 'none'
+
+const COLLECTION_HOLO_DISPLAYS: readonly CollectionHoloDisplay[] = ['rarest', 'none']
 
 /** Per-step delay (ms) for the pack-reveal Auto mode, keyed by speed preference. */
 export const AUTO_REVEAL_DELAY_MS: Record<AutoRevealSpeed, number> = {
   slow: 1400,
   normal: 800,
   fast: 400,
+  faster: 200,
+  fastest: 80,
 }
 
 /** User-level display preferences, persisted per-device in localStorage. */
@@ -23,6 +30,9 @@ export type Preferences = {
   passiveHoloAnimations: boolean
   /** Show the holo glow aura without needing to hover. */
   autoHoloAura: boolean
+  /** How holo finishes show on collection tiles: the rarest finish you own of
+   *  each card, or plain (no holo). Per-edition counts show regardless. */
+  collectionHoloDisplay: CollectionHoloDisplay
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -30,6 +40,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   autoRevealSpeed: 'normal',
   passiveHoloAnimations: true,
   autoHoloAura: false,
+  collectionHoloDisplay: 'rarest',
 }
 
 /** True on touch/coarse-pointer devices (used for perf-sensitive defaults). */
@@ -60,6 +71,9 @@ export function parsePreferences(raw: string | null): Preferences {
           : DEFAULT_PREFERENCES.passiveHoloAnimations,
       autoHoloAura:
         typeof obj.autoHoloAura === 'boolean' ? obj.autoHoloAura : DEFAULT_PREFERENCES.autoHoloAura,
+      collectionHoloDisplay: COLLECTION_HOLO_DISPLAYS.includes(obj.collectionHoloDisplay as CollectionHoloDisplay)
+        ? (obj.collectionHoloDisplay as CollectionHoloDisplay)
+        : DEFAULT_PREFERENCES.collectionHoloDisplay,
     }
   } catch {
     return { ...DEFAULT_PREFERENCES }
@@ -111,6 +125,10 @@ export function usePreferences(): {
 } {
   const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES)
   const [loaded, setLoaded] = useState(false)
+  // Latest committed value, so setPreference can derive the next state without a
+  // functional updater (which would run — and broadcast — during render).
+  const prefsRef = useRef(preferences)
+  prefsRef.current = preferences
 
   useEffect(() => {
     setPreferences(loadPreferences())
@@ -129,11 +147,12 @@ export function usePreferences(): {
 
   const setPreference = useCallback(
     <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
-      setPreferences((prev) => {
-        const next = { ...prev, [key]: value }
-        savePreferences(next)
-        return next
-      })
+      // Runs in an event handler (onClick), so persisting + broadcasting here is
+      // safe — savePreferences synchronously notifies other usePreferences
+      // consumers, which must not happen inside a render-phase state updater.
+      const next = { ...prefsRef.current, [key]: value }
+      setPreferences(next)
+      savePreferences(next)
     },
     []
   )
