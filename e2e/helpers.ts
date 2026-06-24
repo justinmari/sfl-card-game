@@ -52,6 +52,22 @@ export async function setArenaDisabled() {
   })
 }
 
+// Holo rate helpers
+
+export async function setHoloRates(golden: number, diamond: number, galaxy: number) {
+  const patch = (edition: string, rate: number) =>
+    fetch(`${LOCAL_SUPABASE_URL}/rest/v1/holo_rates?edition=eq.${edition}`, {
+      method: 'PATCH',
+      headers: { ...serviceHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ rate }),
+    })
+  await Promise.all([patch('golden', golden), patch('diamond', diamond), patch('galaxy', galaxy)])
+}
+
+export async function resetHoloRates() {
+  await setHoloRates(0.1, 0.05, 0.01)
+}
+
 export async function cleanupArena() {
   const del = (table: string) =>
     fetch(`${LOCAL_SUPABASE_URL}/rest/v1/${table}?id=not.is.null`, {

@@ -3,12 +3,15 @@ import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
 import AppNavbar from '@/components/app-navbar'
 import HoloPreview from './holo-preview'
+import HoloRatesEditor from './holo-rates'
+import { getHoloRates } from './holo-actions'
 
 export default async function AdminHoloPage() {
   const profile = await getProfile()
   if (!profile || profile.role !== 'admin') redirect('/dashboard')
 
   const supabase = await createClient()
+  const holoRates = await getHoloRates()
   const { data: cards } = await supabase
     .from('cards')
     .select('id, name, description, image_url, rarity, creatures(name), card_types(types(name))')
@@ -33,9 +36,18 @@ export default async function AdminHoloPage() {
 
   return (
     <div className="min-h-screen text-white">
-      <AppNavbar backHref="/dashboard" title="Holo Preview" />
+      <AppNavbar backHref="/dashboard" title="Holo Editions" />
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <h2 className="font-display mb-1 text-2xl font-bold tracking-tight">Holo Editions Preview</h2>
+        <h2 className="font-display mb-1 text-2xl font-bold tracking-tight">Holo Editions</h2>
+        <p className="mb-6 text-sm text-zinc-400">
+          Tune how often each finish drops, and preview how they look on a real card.
+        </p>
+
+        <div className="mb-8">
+          <HoloRatesEditor initial={holoRates} />
+        </div>
+
+        <h3 className="font-display mb-1 text-xl font-bold tracking-tight">Holo Editions Preview</h3>
         <p className="mb-6 text-sm text-zinc-400">
           Cosmetic finishes applied to a real card. Hover any card to see the pointer-reactive shimmer.
         </p>

@@ -72,10 +72,10 @@ describe('buy_pack (integration)', () => {
     await serviceUpdate('profiles', `id=eq.${userId}`, { last_pack_purchase: null })
     await rpc(token, 'buy_pack', { p_pack_id: packId, p_quantity: 1 })
     const after2 = await sumCounts()
-    // Counts increased by another pack's worth, with no duplicate (user,card) rows.
+    // Counts increased by another pack's worth, with no duplicate (user,card,edition) rows.
     expect(after2.total).toBe(after1.total + cardsPerPack)
-    const distinct = await serviceSelect('user_cards', `user_id=eq.${userId}&select=card_id`)
-    const ids = distinct.map((r: { card_id: string }) => r.card_id)
-    expect(new Set(ids).size).toBe(ids.length)
+    const rows = await serviceSelect('user_cards', `user_id=eq.${userId}&select=card_id,edition`)
+    const keys = rows.map((r: { card_id: string; edition: string }) => `${r.card_id}:${r.edition}`)
+    expect(new Set(keys).size).toBe(keys.length)
   })
 })

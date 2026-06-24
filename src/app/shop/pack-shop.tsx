@@ -32,6 +32,7 @@ type PulledCard = {
   author_name?: string | null
   author_anonymous?: boolean | null
   is_new?: boolean
+  edition?: string | null
 }
 
 type RarityChance = { rarity: string; chance: number }

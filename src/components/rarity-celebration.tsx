@@ -29,6 +29,30 @@ const rarityRGB: Record<string, [number, number, number]> = {
   secret_rare: [236, 72, 153],
 }
 
+// Holo-finish celebrations layer ON TOP of the rarity burst. A galaxy pull is
+// the single biggest spectacle in the game — more (and larger) particles than
+// any rarity, secret_rare included.
+const editionEmojis: Record<string, string[]> = {
+  golden: ['✨', '🌟', '💛', '👑', '🌟', '✨', '💛', '🌟', '✨', '👑', '💛', '🌟', '✨', '💛', '🌟', '✨', '💛', '👑'],
+  diamond: ['💎', '💠', '❄️', '✨', '🔷', '💎', '💠', '❄️', '✨', '🔷', '💎', '💠', '❄️', '✨', '🔷', '💎', '💠', '❄️', '✨', '🔷', '💎', '💠', '❄️', '✨'],
+  galaxy: ['🌌', '🌠', '💫', '⭐', '🔮', '✨', '🌟', '🪐', '🌌', '🌠', '💫', '⭐', '🔮', '✨', '🌟', '🪐', '🌌', '🌠', '💫', '⭐', '🔮', '✨', '🌟', '🪐', '🌌', '🌠', '💫', '⭐', '🔮', '✨', '🌟', '🪐', '🌌', '🌠', '💫', '⭐', '🔮', '✨', '🌟', '🪐'],
+}
+
+const editionSizeRange: Record<string, [number, number]> = {
+  golden: [22, 36],
+  diamond: [26, 42],
+  galaxy: [32, 56],
+}
+
+const editionRGB: Record<string, [number, number, number]> = {
+  golden: [255, 190, 80],
+  diamond: [150, 205, 255],
+  galaxy: [168, 85, 247],
+}
+
+// Extra screen-flash punch for holo finishes (galaxy hits hardest).
+const editionFlashMul: Record<string, number> = { golden: 1.3, diamond: 1.5, galaxy: 1.9 }
+
 type Particle = {
   emoji: string
   x: number
@@ -61,18 +85,21 @@ function getEmojiCanvas(emoji: string, size: number): HTMLCanvasElement {
 export default function RarityCelebration({
   rarity,
   trigger,
+  edition,
   auraRarity,
   auraIntensity,
 }: {
   rarity: string
   trigger: number
+  /** Holo finish of the revealed card, if any — fires an extra, bigger burst. */
+  edition?: string | null
   auraRarity?: string | null
   auraIntensity?: number
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const particlesRef = useRef<Particle[]>([])
   const animFrameRef = useRef<number>(0)
-  const flashRef = useRef<{ age: number; color: [number, number, number] } | null>(null)
+  const flashRef = useRef<{ age: number; color: [number, number, number]; mul: number } | null>(null)
   const sizedRef = useRef(false)
   // Store latest props in refs so the loop always reads current values
   const auraRarityRef = useRef(auraRarity)
@@ -172,7 +199,7 @@ export default function RarityCelebration({
       const flash = flashRef.current
       if (flash && flash.age < 30) {
         const [r, g, b] = flash.color
-        const a = Math.max(0, 0.3 - flash.age * 0.01)
+        const a = Math.max(0, 0.3 * flash.mul - flash.age * 0.01)
         ctx.fillStyle = `rgba(${r},${g},${b},${a})`
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         flash.age++
@@ -206,41 +233,55 @@ export default function RarityCelebration({
     }
   })
 
-  // Spawn particles on trigger
+  // Spawn particles on trigger — the rarity burst, plus a bigger holo-finish
+  // burst layered on top when the revealed card is golden/diamond/galaxy.
   useEffect(() => {
     if (trigger === 0) return
-    const emojis = rarityEmojis[rarity] || []
-    if (emojis.length === 0) return
-
     ensureCanvasSize()
-    flashRef.current = { age: 0, color: rarityRGB[rarity] || [0, 0, 0] }
 
-    const sizeRange = raritySizeRange[rarity] || [14, 24]
     const cx = window.innerWidth / 2
     const cy = window.innerHeight / 2
-    const newParticles: Particle[] = emojis.map((emoji, i) => {
-      const angle = (i / emojis.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
-      const speed = 3 + Math.random() * 3
-      const spawnR = 40 + Math.random() * 60
-      const spawnA = Math.random() * Math.PI * 2
-      const size = Math.round(sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]))
-      getEmojiCanvas(emoji, size)
-      return {
-        emoji,
-        x: cx + Math.cos(spawnA) * spawnR,
-        y: cy + Math.sin(spawnA) * spawnR * 0.6,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size,
-        age: 0,
-        rotation: Math.random() * 360,
-        rotationSpeed: (Math.random() - 0.5) * 3,
-      }
-    })
+    const spawn = (emojis: string[], sizeRange: [number, number], speedBoost: number): Particle[] =>
+      emojis.map((emoji, i) => {
+        const angle = (i / emojis.length) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
+        const speed = 3 + speedBoost + Math.random() * (3 + speedBoost)
+        const spawnR = 40 + Math.random() * 60
+        const spawnA = Math.random() * Math.PI * 2
+        const size = Math.round(sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]))
+        getEmojiCanvas(emoji, size)
+        return {
+          emoji,
+          x: cx + Math.cos(spawnA) * spawnR,
+          y: cy + Math.sin(spawnA) * spawnR * 0.6,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size,
+          age: 0,
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 3,
+        }
+      })
+
+    const newParticles: Particle[] = []
+    const rEmojis = rarityEmojis[rarity] || []
+    if (rEmojis.length) newParticles.push(...spawn(rEmojis, raritySizeRange[rarity] || [14, 24], 0))
+
+    const isHolo = edition === 'golden' || edition === 'diamond' || edition === 'galaxy'
+    if (isHolo) {
+      const boost = edition === 'galaxy' ? 3 : edition === 'diamond' ? 1.5 : 0.5
+      newParticles.push(...spawn(editionEmojis[edition!], editionSizeRange[edition!], boost))
+    }
+
+    if (newParticles.length === 0) return
+
+    // Holo flash overrides the rarity flash with the finish colour + extra punch.
+    flashRef.current = isHolo
+      ? { age: 0, color: editionRGB[edition!], mul: editionFlashMul[edition!] }
+      : { age: 0, color: rarityRGB[rarity] || [0, 0, 0], mul: 1 }
 
     particlesRef.current = [...particlesRef.current, ...newParticles]
     startLoop()
-  }, [trigger, rarity])
+  }, [trigger, rarity, edition])
 
   useEffect(() => {
     return () => {

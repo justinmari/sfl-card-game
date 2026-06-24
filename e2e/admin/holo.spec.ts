@@ -95,4 +95,23 @@ test.describe('Admin Holo Preview', () => {
     await page.goto('/admin/holo')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
   })
+
+  test('pull-rates editor lists the finishes, recomputes Regular, and toggles Save on edit', async ({ page }) => {
+    await login(page, TEST_ADMIN)
+    await page.goto('/admin/holo')
+    const rates = page.getByTestId('holo-rates')
+    await expect(rates.getByRole('heading', { name: 'Pull Rates' })).toBeVisible({ timeout: 10000 })
+    await expect(rates.getByText('Regular', { exact: true })).toBeVisible()
+
+    // No edits yet → Save is disabled.
+    const save = rates.getByRole('button', { name: /save rates/i })
+    await expect(save).toBeDisabled()
+
+    // Editing a rate marks the form dirty and enables Save. (The RPC + persistence
+    // round-trip is covered deterministically in the holo-rates unit test.)
+    const golden = rates.locator('input[type=number]').first()
+    const original = await golden.inputValue()
+    await golden.fill(original === '1' ? '2' : '1')
+    await expect(save).toBeEnabled()
+  })
 })

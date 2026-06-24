@@ -22,9 +22,10 @@ type CardData = {
   typeNames?: string[]
   author_name?: string | null
   author_anonymous?: boolean | null
+  edition?: string | null
 }
 
-export default function FlippableCard({ card, size = 'sm', forceFlip = false }: { card: CardData; size?: 'sm' | 'md' | 'lg'; forceFlip?: boolean }) {
+export default function FlippableCard({ card, size = 'sm', forceFlip = false, auraActive = false }: { card: CardData; size?: 'sm' | 'md' | 'lg'; forceFlip?: boolean; auraActive?: boolean }) {
   const [flipped, setFlipped] = useState(false)
   const isFlipped = flipped || forceFlip
   const cardRef = useRef<HTMLDivElement>(null)
@@ -134,7 +135,7 @@ export default function FlippableCard({ card, size = 'sm', forceFlip = false }: 
                 transform: 'rotateY(180deg)',
               }}
             >
-              <TradingCard card={card} size={size} />
+              <TradingCard card={card} size={size} auraActive={auraActive} />
             </div>
           </div>
         </div>

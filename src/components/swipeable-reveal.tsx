@@ -21,7 +21,11 @@ type CardData = {
   author_name?: string | null
   author_anonymous?: boolean | null
   is_new?: boolean
+  edition?: string | null
 }
+
+const isHoloEdition = (e?: string | null): boolean =>
+  e === 'golden' || e === 'diamond' || e === 'galaxy'
 
 type DeckItem =
   | { kind: 'pack'; packNum: number }
@@ -113,6 +117,7 @@ export default function SwipeableReveal({
   useEffect(() => () => skipTimers.current.forEach(clearTimeout), [])
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [celebrateRarity, setCelebrateRarity] = useState('')
+  const [celebrateEdition, setCelebrateEdition] = useState('')
   const [celebrateTrigger, setCelebrateTrigger] = useState(0)
   const dragStartRef = useRef<number | null>(null)
   const isLast = currentIndex >= deck.length - 1
@@ -139,8 +144,11 @@ export default function SwipeableReveal({
     if (!item) return
     if (item.kind === 'card') {
       setCelebrateRarity(item.card.rarity)
+      setCelebrateEdition(item.card.edition ?? '')
       setCelebrateTrigger((t) => t + 1)
-      playCelebration(item.card.rarity)
+      // A galaxy pull is the loudest moment in the game — play the top sound
+      // regardless of the card's own rarity.
+      playCelebration(item.card.edition === 'galaxy' ? 'secret_rare' : item.card.rarity)
     }
   }
 
@@ -313,6 +321,7 @@ export default function SwipeableReveal({
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
       <RarityCelebration
         rarity={celebrateRarity}
+        edition={celebrateEdition}
         trigger={celebrateTrigger}
         auraRarity={nextCardRarity}
         auraIntensity={isDragging && current?.kind !== 'pack' ? dragProgress : 0}
@@ -426,7 +435,12 @@ export default function SwipeableReveal({
                 </div>
               ) : (
                 <div className="relative scale-[1.12] sm:scale-100">
-                  <FlippableCard card={item.card} size="lg" forceFlip={i <= currentIndex} />
+                  <FlippableCard
+                    card={item.card}
+                    size="lg"
+                    forceFlip={i <= currentIndex}
+                    auraActive={i <= currentIndex && isHoloEdition(item.card.edition)}
+                  />
                   {item.card.is_new && i <= currentIndex && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 animate-bounce rounded-full bg-green-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
                       NEW!
