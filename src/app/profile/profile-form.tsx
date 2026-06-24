@@ -1,15 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compress-image'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
-import CompactCard from '@/components/compact-card'
-import Pagination from '@/components/pagination'
+import CardSelector from '@/components/card-selector'
 import { rarestEdition, ownedEditionsRarestFirst, EDITION_DOT, EDITION_LABEL, type EditionCounts } from '@/lib/editions'
-
-const PAGE_SIZE = 12
 
 type Card = {
   id: string
@@ -44,7 +41,6 @@ export default function ProfileForm({
     topCardIds.map((_, i) => topCardEditions[i] ?? 'regular')
   )
   const [showCardPicker, setShowCardPicker] = useState(false)
-  const [cardSearch, setCardSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [savingCards, setSavingCards] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -155,16 +151,6 @@ export default function ProfileForm({
       setSaving(false)
     }
   }
-
-  const filteredCards = ownedCards.filter((c) =>
-    !cardSearch || c.name.toLowerCase().includes(cardSearch.toLowerCase())
-  )
-
-  const [cardPage, setCardPage] = useState(1)
-  useEffect(() => { setCardPage(1) }, [cardSearch, showCardPicker])
-  const cardPageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
-  const currentCardPage = Math.min(cardPage, cardPageCount)
-  const pagedCards = filteredCards.slice((currentCardPage - 1) * PAGE_SIZE, currentCardPage * PAGE_SIZE)
 
   // Aligned by index with selectedCards/selectedEditions (so drag + finish edits stay in sync).
   const topSlots = selectedCards.map((id, i) => ({
@@ -309,45 +295,7 @@ export default function ProfileForm({
 
         {/* Card picker */}
         {showCardPicker && (
-          <div className="surface rounded-xl p-4">
-            <input
-              type="text"
-              value={cardSearch}
-              onChange={(e) => setCardSearch(e.target.value)}
-              placeholder="Search cards..."
-              className="input-arcade mb-3 w-full px-3 py-2 text-sm"
-            />
-            <div>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {pagedCards.map((card) => {
-                  const isSelected = selectedCards.includes(card.id)
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => toggleCard(card.id)}
-                      disabled={!isSelected && selectedCards.length >= 4}
-                      className={`relative rounded-lg transition-all ${
-                        isSelected
-                          ? 'ring-2 ring-green-500 ring-offset-1 ring-offset-zinc-900'
-                          : selectedCards.length >= 4
-                            ? 'opacity-30 cursor-not-allowed'
-                            : 'hover:opacity-80'
-                      }`}
-                    >
-                      <CompactCard card={card} />
-                      {isSelected && (
-                        <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] font-bold text-white">
-                          ✓
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-              <Pagination page={currentCardPage} pageCount={cardPageCount} onPage={setCardPage} />
-            </div>
-          </div>
+          <CardSelector cards={ownedCards} selectedIds={selectedCards} onToggle={toggleCard} max={4} />
         )}
       </div>
 

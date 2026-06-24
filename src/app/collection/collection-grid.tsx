@@ -7,7 +7,7 @@ import HoloCountBadges from '@/components/holo-count-badges'
 import { rarityLabel, RARITIES } from '@/lib/rarities'
 import {
   rarestEdition, ownsAnyHolo, ownedEditionsRarestFirst, isHoloEdition,
-  EDITION_LABEL, EDITION_DOT, HOLO_EDITIONS, type Edition, type EditionCounts,
+  EDITION_LABEL, EDITION_DOT, EDITION_RANK, HOLO_EDITIONS, type Edition, type EditionCounts,
 } from '@/lib/editions'
 import { CompactFilterBar, sectionize, type FilterSelect } from '@/components/card-filters'
 import Pagination from '@/components/pagination'
@@ -142,7 +142,12 @@ export default function CollectionGrid({
     const items = [...filtered]
     switch (sort) {
       case 'rarity':
-        items.sort((a, b) => (rarityOrder[a.card.rarity] ?? 99) - (rarityOrder[b.card.rarity] ?? 99))
+        // Rarest card first, then — within a rarity — the rarest finish owned
+        // (galaxy → diamond → gold → regular), then name.
+        items.sort((a, b) =>
+          (rarityOrder[a.card.rarity] ?? 99) - (rarityOrder[b.card.rarity] ?? 99)
+          || (EDITION_RANK[rarestEdition(b.editions) ?? 'regular'] - EDITION_RANK[rarestEdition(a.editions) ?? 'regular'])
+          || a.card.name.localeCompare(b.card.name))
         break
       case 'name':
         items.sort((a, b) => a.card.name.localeCompare(b.card.name))

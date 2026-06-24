@@ -33,6 +33,14 @@ describe('editions helpers', () => {
       expect(ownedEditionsRarestFirst({ regular: 1 })).toEqual(['regular'])
       expect(ownedEditionsRarestFirst({ diamond: 1, regular: 0 })).toEqual(['diamond'])
     })
+
+    it('orders galaxy → diamond → golden → regular (diamond is rarer than golden)', () => {
+      // Insertion order intentionally scrambled to prove it sorts by rank, not order seen.
+      expect(ownedEditionsRarestFirst({ golden: 1, regular: 2, galaxy: 1, diamond: 1 }))
+        .toEqual(['galaxy', 'diamond', 'golden', 'regular'])
+      // The specific case to guard: diamond must come before golden.
+      expect(ownedEditionsRarestFirst({ golden: 1, diamond: 1 })).toEqual(['diamond', 'golden'])
+    })
   })
 
   describe('isHoloEdition', () => {

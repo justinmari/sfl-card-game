@@ -108,6 +108,8 @@ const sizeClasses: Record<Size, {
   descHeight: string
   stars: string
   label: string
+  photo: string // margin around the photo — tighter on small cards
+  pad: string // padding of the info area
 }> = {
   sm: {
     wrapper: 'w-[8.5rem]',
@@ -116,6 +118,8 @@ const sizeClasses: Record<Size, {
     descHeight: 'h-6',
     stars: 'text-[8px]',
     label: 'text-[8px]',
+    photo: 'mx-1 mt-1',
+    pad: 'px-2 py-1.5',
   },
   md: {
     wrapper: 'w-[11.5rem]',
@@ -124,6 +128,8 @@ const sizeClasses: Record<Size, {
     descHeight: 'h-8',
     stars: 'text-[10px]',
     label: 'text-[9px]',
+    photo: 'mx-1.5 mt-1.5',
+    pad: 'px-2.5 py-2',
   },
   lg: {
     wrapper: 'w-[18rem]',
@@ -132,6 +138,8 @@ const sizeClasses: Record<Size, {
     descHeight: 'h-12',
     stars: 'text-sm',
     label: 'text-xs',
+    photo: 'mx-2 mt-2',
+    pad: 'px-3 py-2.5',
   },
 }
 
@@ -226,7 +234,7 @@ export default function TradingCard({
       )}
 
       <div
-        className={`relative flex flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
+        className={`relative flex aspect-[5/8] flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
         style={{
           transform: cardTransform,
           transition: cardTransition,
@@ -282,13 +290,19 @@ export default function TradingCard({
           </>
         )}
         {lineField && <div data-testid="line-field" className="line-field" aria-hidden />}
-        {diamondField && <div data-testid="diamond-field" className="diamond-field" aria-hidden />}
+        {diamondField && (
+          <>
+            <div data-testid="diamond-lattice" className="diamond-lattice" aria-hidden />
+            <div data-testid="diamond-field" className="diamond-field" aria-hidden />
+          </>
+        )}
 
         {/* Accent gradient at top */}
         <div className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${rarityAccent[card.rarity]} pointer-events-none`} />
 
-        {/* Image */}
-        <div className="relative mx-2 mt-2 overflow-hidden rounded-xl">
+        {/* Image — flexes to fill the space above the info area so the whole card
+            keeps a constant 5/8 aspect ratio at every size (object-cover crops). */}
+        <div className={`relative ${s.photo} min-h-0 flex-1 overflow-hidden rounded-xl`}>
           {card.image_url ? (
             // Plain <img>: static cards stay static, animated WebP/GIF autoplay
             // natively (GPU-cheap). No canvas/poster work — that previously
@@ -296,10 +310,10 @@ export default function TradingCard({
             <img
               src={card.image_url}
               alt={card.name}
-              className="aspect-[5/6] w-full object-cover block"
+              className="h-full w-full object-cover block"
             />
           ) : (
-            <div className="aspect-[5/6] w-full flex items-center justify-center bg-zinc-800">
+            <div className="h-full w-full flex items-center justify-center bg-zinc-800">
               <span className="text-3xl opacity-30">🃏</span>
             </div>
           )}
@@ -334,8 +348,8 @@ export default function TradingCard({
           )}
         </div>
 
-        {/* Card info */}
-        <div className="relative flex flex-1 flex-col px-3 py-2.5">
+        {/* Card info — natural height; the image above flexes to fill the rest */}
+        <div className={`relative flex flex-col ${s.pad}`}>
           <p className={`${s.name} font-bold truncate text-white leading-tight`}>{card.name}</p>
           <div className={`${s.descHeight} mt-1 overflow-y-auto`}>
             {card.description ? (

@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
-import Pagination from '@/components/pagination'
+import CardSelector from '@/components/card-selector'
 import { rarestEdition, ownedEditionsRarestFirst, EDITION_DOT, EDITION_LABEL, type EditionCounts } from '@/lib/editions'
-
-const PAGE_SIZE = 12
 
 type Card = {
   id: string
@@ -28,18 +26,12 @@ type Deck = {
   cardEditions: string[]
 }
 
-const rarityOrder: Record<string, number> = {
-  secret_rare: 0, legendary: 1, ultra_rare: 2, rare: 3, uncommon: 4, common: 5,
-}
-
 export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; ownedCards: Card[] }) {
   const [editingSlot, setEditingSlot] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editCardIds, setEditCardIds] = useState<string[]>([])
   // Chosen finish per lineup slot, aligned by index with editCardIds.
   const [editCardEditions, setEditCardEditions] = useState<string[]>([])
-  const [cardSearch, setCardSearch] = useState('')
-  const [activeType, setActiveType] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -49,8 +41,6 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     setEditName(deck.name)
     setEditCardIds([...deck.cardIds])
     setEditCardEditions(deck.cardIds.map((_, i) => deck.cardEditions[i] ?? 'regular'))
-    setCardSearch('')
-    setActiveType(null)
     setError(null)
   }
 
@@ -100,32 +90,6 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     }
     setSaving(false)
   }
-
-  // Types present in the owned cards (plus an "Untyped" bucket)
-  const ownedTypes = useMemo(() => {
-    const names = new Set<string>()
-    let hasUntyped = false
-    ownedCards.forEach((c) => {
-      if (c.typeNames && c.typeNames.length > 0) c.typeNames.forEach((n) => names.add(n))
-      else hasUntyped = true
-    })
-    return { names: [...names].sort(), hasUntyped }
-  }, [ownedCards])
-
-  const filteredCards = ownedCards
-    .filter((c) => !cardSearch || c.name.toLowerCase().includes(cardSearch.toLowerCase()))
-    .filter((c) => {
-      if (!activeType) return true
-      if (activeType === '__untyped__') return !c.typeNames || c.typeNames.length === 0
-      return c.typeNames?.includes(activeType)
-    })
-    .sort((a, b) => (rarityOrder[a.rarity] ?? 99) - (rarityOrder[b.rarity] ?? 99))
-
-  const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [cardSearch, activeType, editingSlot])
-  const pageCount = Math.max(1, Math.ceil(filteredCards.length / PAGE_SIZE))
-  const currentPage = Math.min(page, pageCount)
-  const pageCards = filteredCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   // Aligned by index with editCardIds/editCardEditions.
   const selectedSlots = editCardIds.map((id, i) => ({
@@ -229,60 +193,15 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
             {/* Card picker */}
             <div className="mb-4">
               <label className="mb-2 block text-sm text-zinc-400">Add Cards</label>
-              <div className="mb-3 flex gap-2">
-                <input
-                  type="text"
-                  value={cardSearch}
-                  onChange={(e) => setCardSearch(e.target.value)}
-                  placeholder="Search cards..."
-                  className="input-arcade min-w-0 flex-1 px-3 py-2 text-sm"
-                />
-                {(ownedTypes.names.length > 0 || ownedTypes.hasUntyped) && (
-                  <select
-                    aria-label="Filter by type"
-                    value={activeType || ''}
-                    onChange={(e) => setActiveType(e.target.value || null)}
-                    className="input-arcade max-w-[9rem] shrink-0 px-2.5 py-2 text-sm"
-                  >
-                    <option value="">All types</option>
-                    {ownedTypes.names.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                    {ownedTypes.hasUntyped && <option value="__untyped__">Untyped</option>}
-                  </select>
-                )}
-              </div>
-              <div>
-                <div className="grid grid-cols-5 gap-2 sm:grid-cols-6" data-testid="card-picker">
-                  {pageCards.map((card) => {
-                    const isSelected = editCardIds.includes(card.id)
-                    const atSecretLimit = !isSelected && card.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1
-                    const isDisabled = !isSelected && (editCardIds.length >= 5 || atSecretLimit)
-                    return (
-                      <button
-                        key={card.id}
-                        onClick={() => toggleCard(card.id)}
-                        disabled={isDisabled}
-                        className={`relative rounded-lg transition-all ${
-                          isSelected
-                            ? 'ring-2 ring-green-500 ring-offset-1 ring-offset-zinc-900'
-                            : isDisabled
-                              ? 'opacity-30'
-                              : 'hover:opacity-80'
-                        }`}
-                      >
-                        <CompactCard card={card} />
-                        {isSelected && (
-                          <div className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px] font-bold text-white">
-                            ✓
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-                <Pagination page={currentPage} pageCount={pageCount} onPage={setPage} />
-              </div>
+              <CardSelector
+                cards={ownedCards}
+                selectedIds={editCardIds}
+                onToggle={toggleCard}
+                max={5}
+                disabledFor={(card) =>
+                  card.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1 ? 'Max 1 secret rare' : null
+                }
+              />
             </div>
 
             <div className="flex items-center gap-3">
