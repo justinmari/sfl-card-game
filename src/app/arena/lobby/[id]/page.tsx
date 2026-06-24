@@ -39,7 +39,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   // Get player's decks
   const { data: decks } = await supabase
     .from('decks')
-    .select('slot, name, card_ids')
+    .select('slot, name, card_ids, card_editions')
     .eq('user_id', profile.id)
     .order('slot')
 
@@ -56,7 +56,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
 
   type CardWithSkills = {
     id: string; name: string; image_url: string | null; rarity: string
-    creature_name: string | null; dbSkillIds: string[]
+    creature_name: string | null; dbSkillIds: string[]; edition?: string | null
   }
 
   const cardMap = new Map<string, CardWithSkills>()
@@ -74,13 +74,19 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
 
   const legalDecks = (decks || [])
     .filter((d) => d.card_ids?.length === 5)
-    .map((d) => ({
-      slot: d.slot as number,
-      name: d.name as string,
-      cards: (d.card_ids as string[])
-        .map((id) => cardMap.get(id))
-        .filter((c): c is CardWithSkills => c !== undefined),
-    }))
+    .map((d) => {
+      const editions = (d.card_editions as string[] | null) || []
+      return {
+        slot: d.slot as number,
+        name: d.name as string,
+        cards: (d.card_ids as string[])
+          .map((id, i) => {
+            const base = cardMap.get(id)
+            return base ? { ...base, edition: editions[i] ?? 'regular' } : undefined
+          })
+          .filter((c) => c !== undefined) as CardWithSkills[],
+      }
+    })
 
   // Check for active session
   let session = await supabase

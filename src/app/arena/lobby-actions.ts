@@ -156,7 +156,7 @@ export async function leaveLobby(lobbyId: string) {
 }
 
 type Sb = Awaited<ReturnType<typeof createClient>>
-type ValidatedDeckCard = { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds: string[] }
+type ValidatedDeckCard = { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds: string[]; edition?: string | null }
 
 // Resolve a player's arena deck authoritatively from the DB: requires the saved
 // deck at `slot` to have EXACTLY 5 unique cards, all owned by the player.
@@ -172,11 +172,11 @@ async function resolveArenaDeck(supabase: Sb, userId: string, deckSlot: number |
   if (deckSlot == null) return { error: 'No deck selected' }
   const { data, error } = await supabase.rpc('rpc_resolve_arena_deck', { p_user_id: userId, p_slot: deckSlot })
   if (error) return { error: error.message }
-  const rows = (data as { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; skill_ids: string[] | null }[] | null) ?? []
+  const rows = (data as { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; skill_ids: string[] | null; edition: string | null }[] | null) ?? []
   if (rows.length !== 5) return { error: 'Invalid deck' }
   const deckCards: ValidatedDeckCard[] = rows.map((c) => ({
     id: c.id, name: c.name, image_url: c.image_url, rarity: c.rarity,
-    creature_name: c.creature_name, dbSkillIds: c.skill_ids ?? [],
+    creature_name: c.creature_name, dbSkillIds: c.skill_ids ?? [], edition: c.edition ?? 'regular',
   }))
   return { deck: deckCards }
 }

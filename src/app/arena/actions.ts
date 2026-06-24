@@ -14,7 +14,7 @@ type SessionPlayer = {
   id: string
   name: string
   avatar_url: string | null
-  deck: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds?: string[]; types?: string[] }[]
+  deck: { id: string; name: string; image_url: string | null; rarity: string; creature_name: string | null; dbSkillIds?: string[]; types?: string[]; edition?: string | null }[]
   startingHp?: number // 10 for original players, 0 for late-joining spectators
 }
 

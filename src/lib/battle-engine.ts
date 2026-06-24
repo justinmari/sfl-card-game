@@ -13,6 +13,7 @@ export type BattleCard = {
   dbSkillIds?: string[]
   skills?: Skill[]
   types?: string[] // type ids (for synergy scoping)
+  edition?: string | null // cosmetic holo finish chosen for this deck card
 }
 
 export type BattlePlayer = {

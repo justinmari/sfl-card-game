@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
 import Pagination from '@/components/pagination'
+import { rarestEdition, ownedEditionsRarestFirst, EDITION_DOT, EDITION_LABEL, type EditionCounts } from '@/lib/editions'
 
 const PAGE_SIZE = 12
 
@@ -17,12 +18,14 @@ type Card = {
   rarity: string
   creature_name: string | null
   typeNames?: string[]
+  editions: EditionCounts
 }
 
 type Deck = {
   slot: number
   name: string
   cardIds: string[]
+  cardEditions: string[]
 }
 
 const rarityOrder: Record<string, number> = {
@@ -33,6 +36,8 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
   const [editingSlot, setEditingSlot] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editCardIds, setEditCardIds] = useState<string[]>([])
+  // Chosen finish per lineup slot, aligned by index with editCardIds.
+  const [editCardEditions, setEditCardEditions] = useState<string[]>([])
   const [cardSearch, setCardSearch] = useState('')
   const [activeType, setActiveType] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -43,6 +48,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     setEditingSlot(deck.slot)
     setEditName(deck.name)
     setEditCardIds([...deck.cardIds])
+    setEditCardEditions(deck.cardIds.map((_, i) => deck.cardEditions[i] ?? 'regular'))
     setCardSearch('')
     setActiveType(null)
     setError(null)
@@ -57,13 +63,20 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
     ids.filter((id) => ownedCards.find((c) => c.id === id)?.rarity === 'secret_rare').length
 
   const toggleCard = (cardId: string) => {
-    if (editCardIds.includes(cardId)) {
-      setEditCardIds(editCardIds.filter((id) => id !== cardId))
+    const idx = editCardIds.indexOf(cardId)
+    if (idx !== -1) {
+      setEditCardIds(editCardIds.filter((_, i) => i !== idx))
+      setEditCardEditions(editCardEditions.filter((_, i) => i !== idx))
     } else if (editCardIds.length < 5) {
       const card = ownedCards.find((c) => c.id === cardId)
       if (card?.rarity === 'secret_rare' && secretRareCount(editCardIds) >= 1) return
       setEditCardIds([...editCardIds, cardId])
+      setEditCardEditions([...editCardEditions, card ? (rarestEdition(card.editions) ?? 'regular') : 'regular'])
     }
+  }
+
+  const setSlotEdition = (slotIdx: number, edition: string) => {
+    setEditCardEditions((prev) => prev.map((e, i) => (i === slotIdx ? edition : e)))
   }
 
   const handleSave = async () => {
@@ -76,6 +89,7 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
       p_slot: editingSlot,
       p_name: editName.trim() || `Deck ${editingSlot}`,
       p_card_ids: editCardIds,
+      p_card_editions: editCardEditions,
     })
 
     if (rpcError) {
@@ -113,9 +127,11 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
   const currentPage = Math.min(page, pageCount)
   const pageCards = filteredCards.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  const selectedCards = editCardIds
-    .map((id) => ownedCards.find((c) => c.id === id))
-    .filter(Boolean) as Card[]
+  // Aligned by index with editCardIds/editCardEditions.
+  const selectedSlots = editCardIds.map((id, i) => ({
+    card: ownedCards.find((c) => c.id === id),
+    edition: editCardEditions[i] ?? 'regular',
+  }))
 
   // Total power for a deck
   const starCount: Record<string, number> = {
@@ -165,17 +181,37 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
               </div>
               <div className="grid grid-cols-5 gap-2 rounded-xl border border-white/5 bg-black/20 p-2">
                 {[0, 1, 2, 3, 4].map((i) => {
-                  const card = selectedCards[i]
+                  const slot = selectedSlots[i]
+                  const card = slot?.card
+                  const ownedFinishes = card ? ownedEditionsRarestFirst(card.editions) : []
                   return card ? (
                     <div key={card.id} className="relative">
-                      <CompactCard card={card} />
+                      <CompactCard card={{ ...card, edition: slot.edition }} />
                       <button
                         onClick={() => toggleCard(card.id)}
                         className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
                       >
                         ×
                       </button>
-                      <div className="mt-1 text-center text-[9px] text-zinc-500">#{i + 1}</div>
+                      {ownedFinishes.length > 1 && (
+                        <div className="mt-1 flex flex-wrap justify-center gap-0.5" data-testid="deck-finish-picker">
+                          {ownedFinishes.map((e) => (
+                            <button
+                              key={e}
+                              type="button"
+                              title={EDITION_LABEL[e]}
+                              aria-pressed={e === slot.edition}
+                              onClick={() => setSlotEdition(i, e)}
+                              className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                                e === slot.edition ? 'border-white' : 'border-transparent hover:border-white/40'
+                              }`}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${EDITION_DOT[e]}`} aria-hidden />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-0.5 text-center text-[9px] text-zinc-500">#{i + 1}</div>
                     </div>
                   ) : (
                     <div
@@ -275,9 +311,10 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
       {/* Deck list */}
       <div className="space-y-6">
         {decks.map((deck) => {
-          const cards = deck.cardIds
-            .map((id) => ownedCards.find((c) => c.id === id))
-            .filter(Boolean) as Card[]
+          const cardSlots = deck.cardIds
+            .map((id, i) => ({ card: ownedCards.find((c) => c.id === id), edition: deck.cardEditions[i] ?? 'regular' }))
+            .filter((s) => s.card) as { card: Card; edition: string }[]
+          const cards = cardSlots
           const power = getDeckPower(deck.cardIds)
 
           return (
@@ -300,13 +337,13 @@ export default function DeckManager({ decks, ownedCards }: { decks: Deck[]; owne
 
               {cards.length > 0 ? (
                 <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
-                  {cards.map((card, i) => (
-                    <div key={card.id}>
+                  {cards.map((slot, i) => (
+                    <div key={slot.card.id}>
                       <div className="sm:hidden" data-testid="deck-card-mobile">
-                        <CompactCard card={card} />
+                        <CompactCard card={{ ...slot.card, edition: slot.edition }} />
                       </div>
                       <div className="hidden sm:block" data-testid="deck-card-desktop">
-                        <TradingCard card={card} size="sm" className="!w-full" />
+                        <TradingCard card={{ ...slot.card, edition: slot.edition }} size="sm" className="!w-full" />
                       </div>
                       <div className="mt-1 text-center text-[9px] text-zinc-500">#{i + 1}</div>
                     </div>

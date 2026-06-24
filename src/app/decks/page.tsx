@@ -18,15 +18,21 @@ export default async function DecksPage() {
 
   const { data: userCards } = await supabase
     .from('user_cards')
-    .select('card_id, cards(*, creatures(name), card_types(types(name)))')
+    .select('card_id, edition, count, cards(*, creatures(name), card_types(types(name)))')
     .eq('user_id', profile.id)
     .gt('count', 0)
 
-  // A card can have several user_cards rows now (one per holo finish), but a deck
-  // cares only about the card itself — dedupe to one entry per card_id.
-  const ownedById = new Map<string, { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null; typeNames: string[]; author_name: string | null; author_anonymous: boolean | null }>()
+  // One entry per card_id, carrying which finishes the player owns so the deck
+  // editor can offer a finish picker per card.
+  type Owned = { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creature_name: string | null; typeNames: string[]; author_name: string | null; author_anonymous: boolean | null; editions: Record<string, number> }
+  const ownedById = new Map<string, Owned>()
   for (const uc of userCards || []) {
-    if (ownedById.has(uc.card_id)) continue
+    const edition = (uc.edition as string) || 'regular'
+    const existing = ownedById.get(uc.card_id)
+    if (existing) {
+      existing.editions[edition] = (existing.editions[edition] ?? 0) + uc.count
+      continue
+    }
     const c = uc.cards as unknown as { id: string; name: string; description: string | null; image_url: string | null; rarity: string; creatures: { name: string } | null; card_types: { types: { name: string } | null }[]; author_name: string | null; author_anonymous: boolean | null }
     ownedById.set(uc.card_id, {
       id: uc.card_id,
@@ -38,6 +44,7 @@ export default async function DecksPage() {
       typeNames: (c.card_types || []).map((ct) => ct.types?.name || '').filter(Boolean),
       author_name: c.author_name,
       author_anonymous: c.author_anonymous,
+      editions: { [edition]: uc.count },
     })
   }
   const ownedCards = [...ownedById.values()]
@@ -50,6 +57,7 @@ export default async function DecksPage() {
       slot,
       name: deck?.name || `Deck ${slot}`,
       cardIds: deck?.card_ids || [],
+      cardEditions: deck?.card_editions || [],
     }
   })
 
