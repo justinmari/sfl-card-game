@@ -8,7 +8,10 @@ import { playSwipe, playCelebration } from '@/lib/sounds'
 import { useBodyScrollLock } from '@/lib/use-body-scroll-lock'
 import { usePreferences, AUTO_REVEAL_DELAY_MS } from '@/lib/preferences'
 import { RARITIES } from '@/lib/rarities'
+import { EDITION_RANK, type Edition } from '@/lib/editions'
 import SlicePack, { SLICE_CUTY, SLICE_TOTALH, RARITY_RGB, GOLD_RGB } from './slice-pack'
+
+const editionRank = (e?: string | null) => EDITION_RANK[(e || 'regular') as Edition] ?? 0
 
 type CardData = {
   id: string
@@ -78,21 +81,27 @@ export default function SwipeableReveal({
   }, [cards, cardsPerPack, coverless])
   const packCount = deck.length ? deck[deck.length - 1].packNum : 0
 
-  // Final summary: dedupe by card id, count copies, NEW if any copy is new,
-  // sorted by rarity (highest first), then name.
+  // Final summary: dedupe by (card, finish) so each holo version is its own
+  // entry, count copies, NEW if any copy is new. Sorted by rarity (highest
+  // first), then name, then rarest finish first (so a card's versions group
+  // together: galaxy → diamond → gold → regular).
   const summary = useMemo(() => {
     const map = new Map<string, { card: CardData; count: number; isNew: boolean }>()
     for (const c of cards) {
-      const e = map.get(c.id)
+      const key = `${c.id}:${c.edition || 'regular'}`
+      const e = map.get(key)
       if (e) {
         e.count++
         e.isNew = e.isNew || !!c.is_new
       } else {
-        map.set(c.id, { card: c, count: 1, isNew: !!c.is_new })
+        map.set(key, { card: c, count: 1, isNew: !!c.is_new })
       }
     }
     return [...map.values()].sort(
-      (a, b) => rarityRank(b.card.rarity) - rarityRank(a.card.rarity) || a.card.name.localeCompare(b.card.name)
+      (a, b) =>
+        rarityRank(b.card.rarity) - rarityRank(a.card.rarity)
+        || a.card.name.localeCompare(b.card.name)
+        || editionRank(b.card.edition) - editionRank(a.card.edition)
     )
   }, [cards])
 
@@ -289,7 +298,7 @@ export default function SwipeableReveal({
     const grid = (cols: string) => (
       <div className={`grid ${cols} gap-2 pb-4`}>
         {summary.map(({ card, count, isNew }) => (
-          <CompactCard key={card.id} card={{ ...card, is_new: isNew }} count={count} showNew />
+          <CompactCard key={`${card.id}:${card.edition || 'regular'}`} card={{ ...card, is_new: isNew }} count={count} showNew />
         ))}
       </div>
     )

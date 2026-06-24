@@ -17,15 +17,9 @@ test.describe('Dashboard', () => {
     await expect(page.locator('a[href="/decks"]')).toBeVisible()
   })
 
-  test('admin sees all admin tiles', async ({ page }) => {
+  test('admin sees the Admin Panel link', async ({ page }) => {
     await login(page, TEST_ADMIN)
-    await expect(page.getByText('Manage Cards')).toBeVisible()
-    await expect(page.getByText('Manage Packs')).toBeVisible()
-    await expect(page.getByText('Creatures')).toBeVisible()
-    await expect(page.getByText('Users')).toBeVisible()
-    await expect(page.getByText('Skills')).toBeVisible()
-    await expect(page.getByText('Test Arena')).toBeVisible()
-    await expect(page.getByText('Feature Settings')).toBeVisible()
+    await expect(page.getByRole('link', { name: /Admin Panel/ })).toBeVisible()
   })
 
   test('shop link works', async ({ page }) => {

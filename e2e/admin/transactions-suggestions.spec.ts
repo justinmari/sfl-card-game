@@ -221,7 +221,7 @@ test.describe('Card suggestion reward notification', () => {
 })
 
 test.describe('Card suggestion notification badge', () => {
-  test('a pending suggestion shows a badge on the Card Suggestions tile', async ({ page }) => {
+  test('a pending suggestion shows a badge on the Admin Panel tile', async ({ page }) => {
     // Seed one pending suggestion (unique title so we can clean it up).
     const profs = await (await fetch(`${LOCAL}/rest/v1/profiles?select=id&limit=1`, { headers: svc })).json()
     const uid = profs[0].id
@@ -232,7 +232,7 @@ test.describe('Card suggestion notification badge', () => {
 
     await login(page, TEST_ADMIN)
     await page.goto('/dashboard')
-    const tile = page.locator('a[href="/admin/suggestions"]')
+    const tile = page.locator('a[href="/admin"]')
     await expect(tile.getByTestId('notif-badge')).toBeVisible({ timeout: 10000 })
 
     await fetch(`${LOCAL}/rest/v1/card_suggestions?title=eq.E2E%20badge%20probe`, { method: 'DELETE', headers: svc })

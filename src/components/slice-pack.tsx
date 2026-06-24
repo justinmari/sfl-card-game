@@ -2,8 +2,8 @@
 
 // A booster pack that's sliced open: a glowing spark travels the cut leaving a
 // trail, rays fan out from along the rip, particles rise from it, and on commit
-// the top crimp pops up while the body drops away. Shared by the shop reveal and
-// the admin Pack Lab. Drive it with `tear` 0→1 (the swipe) and `done` (commit).
+// the top crimp pops up while the body drops away. Used by the shop reveal.
+// Drive it with `tear` 0→1 (the swipe) and `done` (commit).
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 

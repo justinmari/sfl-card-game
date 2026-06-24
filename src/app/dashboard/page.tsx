@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
-  Swords, LayoutGrid,
-  Images, Package, PackageOpen, Ghost, Tags, Sparkles, FlaskConical, Settings, Inbox, Gift, Zap, Combine, Receipt, Gem,
+  Swords, LayoutGrid, Shield, Inbox, Gift, Receipt, Images,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -138,22 +137,12 @@ export default async function DashboardPage() {
             <h3 className="font-display mb-4 mt-10 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-amber-400">
               <span className="h-px w-6 flex-none bg-gradient-to-r from-amber-500 to-transparent" />Admin
             </h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <DashTile href="/admin/cards" icon={Images} title="Manage Cards" subtitle="Upload & edit cards" accent="amber" />
-              <DashTile href="/admin/holo" icon={Gem} title="Holo Preview" subtitle="Preview card finishes" accent="amber" />
-              <DashTile href="/admin/pack-lab" icon={PackageOpen} title="Pack Lab" subtitle="Pack-open animations" accent="amber" />
-              <DashTile href="/admin/packs" icon={Package} title="Manage Packs" subtitle="Configure packs" accent="amber" />
-              <DashTile href="/admin/creatures" icon={Ghost} title="Creatures" subtitle="Card characters" accent="amber" />
-              <DashTile href="/admin/types" icon={Tags} title="Types" subtitle="Manage type labels" accent="amber" />
-              <DashTile href="/admin/users" icon={Users} title="Users" subtitle="Manage accounts" accent="amber" />
-              <DashTile href="/admin/skills" icon={Sparkles} title="Skills" subtitle="Card abilities" accent="amber" />
-              <DashTile href="/admin/battle-effects" icon={Zap} title="Battle Effects" subtitle="Compose effects" accent="amber" />
-              <DashTile href="/admin/synergies" icon={Combine} title="Synergies" subtitle="Deck-type combos" accent="amber" />
-              <DashTile href="/arena/test" icon={FlaskConical} title="Test Arena" subtitle="Simulate battles" accent="amber" />
-              <DashTile href="/admin/arena" icon={Settings} title="Feature Settings" subtitle="Toggle features" accent="amber" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:auto-rows-[8.5rem]">
+              <DashTile href="/admin" icon={Shield} title="Admin Panel" subtitle="Manage everything" accent="amber" hero className="col-span-2 row-span-2" badge={countBadge(pendingSuggestions)} />
               <DashTile href="/admin/suggestions" icon={Inbox} title="Card Suggestions" subtitle="Review ideas" accent="amber" badge={countBadge(pendingSuggestions)} />
               <DashTile href="/admin/care-packages" icon={Gift} title="Care Packages" subtitle="Send Gruten gifts" accent="amber" />
               <DashTile href="/admin/transactions" icon={Receipt} title="Gruten Logs" subtitle="Transaction history" accent="amber" />
+              <DashTile href="/admin/cards" icon={Images} title="Manage Cards" subtitle="Upload & edit cards" accent="amber" />
             </div>
           </>
         )}

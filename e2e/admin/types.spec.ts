@@ -157,9 +157,10 @@ test.describe('Admin Types', () => {
     await firstCard.locator('button:has-text("Edit")').click()
 
     await expect(page.getByText('Edit Card')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('Types', { exact: true })).toBeVisible()
+    const modal = page.getByTestId('edit-card-modal')
+    await expect(modal.getByText('Types', { exact: true })).toBeVisible()
     // Type chips render inside the modal
-    await expect(page.getByTestId('edit-card-modal').locator('button:has-text("Fire")')).toBeVisible()
+    await expect(modal.locator('button:has-text("Fire")')).toBeVisible()
     await test.info().attach('card-edit-types', { body: await page.screenshot(), contentType: 'image/png' })
   })
 })

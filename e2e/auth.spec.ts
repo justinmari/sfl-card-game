@@ -48,11 +48,11 @@ test.describe('Authentication', () => {
   test('admin sees admin section on dashboard', async ({ page }) => {
     await login(page, TEST_ADMIN)
     await expect(page.getByRole('heading', { name: 'Admin', exact: true })).toBeVisible()
-    await expect(page.getByText('Feature Settings')).toBeVisible()
+    await expect(page.getByRole('link', { name: /Admin Panel/ })).toBeVisible()
   })
 
   test('player does not see admin section', async ({ page }) => {
     await login(page, TEST_PLAYER)
-    await expect(page.getByText('Feature Settings')).not.toBeVisible()
+    await expect(page.getByRole('link', { name: /Admin Panel/ })).not.toBeVisible()
   })
 })
