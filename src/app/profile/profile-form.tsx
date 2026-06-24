@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import TradingCard from '@/components/trading-card'
 import CompactCard from '@/components/compact-card'
 import Pagination from '@/components/pagination'
+import { rarestEdition, ownedEditionsRarestFirst, EDITION_DOT, EDITION_LABEL, type EditionCounts } from '@/lib/editions'
 
 const PAGE_SIZE = 12
 
@@ -18,23 +19,30 @@ type Card = {
   rarity: string
   creature_name: string | null
   typeNames?: string[]
+  editions: EditionCounts
 }
 
 export default function ProfileForm({
   fullName,
   avatarUrl,
   topCardIds,
+  topCardEditions,
   ownedCards,
 }: {
   fullName: string
   avatarUrl: string | null
   topCardIds: string[]
+  topCardEditions: string[]
   ownedCards: Card[]
 }) {
   const [name, setName] = useState(fullName)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [selectedCards, setSelectedCards] = useState<string[]>(topCardIds)
+  // Chosen finish per showcase slot, aligned by index with selectedCards.
+  const [selectedEditions, setSelectedEditions] = useState<string[]>(
+    topCardIds.map((_, i) => topCardEditions[i] ?? 'regular')
+  )
   const [showCardPicker, setShowCardPicker] = useState(false)
   const [cardSearch, setCardSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -46,21 +54,35 @@ export default function ProfileForm({
   const router = useRouter()
 
   const toggleCard = (cardId: string) => {
-    if (selectedCards.includes(cardId)) {
-      setSelectedCards(selectedCards.filter((id) => id !== cardId))
+    const idx = selectedCards.indexOf(cardId)
+    if (idx !== -1) {
+      setSelectedCards(selectedCards.filter((_, i) => i !== idx))
+      setSelectedEditions(selectedEditions.filter((_, i) => i !== idx))
     } else if (selectedCards.length < 4) {
+      // Default a newly-added card to the rarest finish the player owns of it.
+      const card = ownedCards.find((c) => c.id === cardId)
+      const def = card ? (rarestEdition(card.editions) ?? 'regular') : 'regular'
       setSelectedCards([...selectedCards, cardId])
+      setSelectedEditions([...selectedEditions, def])
     }
   }
 
   const handleDrop = (targetIdx: number) => {
     if (dragIdx === null || dragIdx === targetIdx) return
-    const updated = [...selectedCards]
-    const [moved] = updated.splice(dragIdx, 1)
-    updated.splice(targetIdx, 0, moved)
-    setSelectedCards(updated)
+    const cards = [...selectedCards]
+    const eds = [...selectedEditions]
+    const [mc] = cards.splice(dragIdx, 1)
+    const [me] = eds.splice(dragIdx, 1)
+    cards.splice(targetIdx, 0, mc)
+    eds.splice(targetIdx, 0, me)
+    setSelectedCards(cards)
+    setSelectedEditions(eds)
     setDragIdx(null)
     setDragOverIdx(null)
+  }
+
+  const setSlotEdition = (slotIdx: number, edition: string) => {
+    setSelectedEditions((prev) => prev.map((e, i) => (i === slotIdx ? edition : e)))
   }
 
   const saveTopCards = async () => {
@@ -72,6 +94,7 @@ export default function ProfileForm({
         p_full_name: name.trim() || fullName,
         p_avatar_url: null,
         p_top_cards: selectedCards,
+        p_top_card_editions: selectedEditions,
       })
       if (rpcError) throw rpcError
       setSuccess(true)
@@ -118,6 +141,7 @@ export default function ProfileForm({
         p_full_name: name.trim(),
         p_avatar_url: newAvatarUrl,
         p_top_cards: selectedCards,
+        p_top_card_editions: selectedEditions,
       })
       if (rpcError) throw rpcError
 
@@ -142,9 +166,11 @@ export default function ProfileForm({
   const currentCardPage = Math.min(cardPage, cardPageCount)
   const pagedCards = filteredCards.slice((currentCardPage - 1) * PAGE_SIZE, currentCardPage * PAGE_SIZE)
 
-  const topCards = selectedCards
-    .map((id) => ownedCards.find((c) => c.id === id))
-    .filter(Boolean) as Card[]
+  // Aligned by index with selectedCards/selectedEditions (so drag + finish edits stay in sync).
+  const topSlots = selectedCards.map((id, i) => ({
+    card: ownedCards.find((c) => c.id === id),
+    edition: selectedEditions[i] ?? 'regular',
+  }))
 
   return (
     <form onSubmit={handleSubmit}>
@@ -225,7 +251,9 @@ export default function ProfileForm({
         {/* Current top cards */}
         <div className="mb-4 grid grid-cols-4 gap-2 sm:flex sm:justify-center">
           {[0, 1, 2, 3].map((i) => {
-            const card = topCards[i]
+            const slot = topSlots[i]
+            const card = slot?.card
+            const ownedFinishes = card ? ownedEditionsRarestFirst(card.editions) : []
             return card ? (
               <div
                 key={card.id}
@@ -237,7 +265,7 @@ export default function ProfileForm({
                 onDrop={(e) => { e.preventDefault(); handleDrop(i) }}
                 onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
               >
-                <TradingCard card={card} size="sm" />
+                <TradingCard card={{ ...card, edition: slot.edition }} size="sm" />
                 {showCardPicker && (
                   <button
                     type="button"
@@ -246,6 +274,25 @@ export default function ProfileForm({
                   >
                     ×
                   </button>
+                )}
+                {/* Finish picker — only when editing and the player owns more than one finish */}
+                {showCardPicker && ownedFinishes.length > 1 && (
+                  <div className="mt-1.5 flex flex-wrap justify-center gap-1" data-testid="showcase-finish-picker">
+                    {ownedFinishes.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        title={EDITION_LABEL[e]}
+                        aria-pressed={e === slot.edition}
+                        onClick={() => setSlotEdition(i, e)}
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                          e === slot.edition ? 'border-white' : 'border-transparent hover:border-white/40'
+                        }`}
+                      >
+                        <span className={`h-2.5 w-2.5 rounded-full ${EDITION_DOT[e]}`} aria-hidden />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             ) : (

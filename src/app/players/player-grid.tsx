@@ -13,6 +13,7 @@ type Card = {
   creature_name: string | null
   author_name?: string | null
   author_anonymous?: boolean | null
+  edition?: string | null
 }
 
 type Player = {
