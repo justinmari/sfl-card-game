@@ -10,6 +10,15 @@ import { RARITIES } from '@/lib/rarities'
 
 type Creature = { id: string; name: string }
 
+// Upload size caps. Animated images (gif / webp) are sent raw to the
+// convertToAnimatedWebp Server Action, and Vercel hard-caps a function request
+// body at 4.5 MB — so the raw animation must clear that bar BEFORE it's
+// compressed to <200 KB server-side. Static images are compressed in the
+// browser and uploaded straight to Supabase Storage (no function involved), so
+// they aren't subject to that cap and only need a sane upper bound.
+const MAX_ANIMATED_MB = 4
+const MAX_STATIC_MB = 25
+
 export default function SuggestForm({
   creatures,
   pendingCount,
@@ -173,17 +182,33 @@ export default function SuggestForm({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-zinc-400">Image</label>
+            <label className="mb-1 block text-sm text-zinc-400">
+              Image <span className="text-xs text-zinc-600">(photos up to {MAX_STATIC_MB} MB, GIFs {MAX_ANIMATED_MB} MB)</span>
+            </label>
             <input
               type="file"
               accept="image/*"
               disabled={atLimit}
               onChange={(e) => {
                 const f = e.target.files?.[0]
-                if (f) {
-                  setFile(f)
-                  setPreview(URL.createObjectURL(f))
+                if (!f) return
+                const isAnimated = f.type === 'image/gif' || f.type === 'image/webp'
+                const limitMb = isAnimated ? MAX_ANIMATED_MB : MAX_STATIC_MB
+                if (f.size > limitMb * 1024 * 1024) {
+                  const mb = (f.size / 1024 / 1024).toFixed(1)
+                  setError(
+                    isAnimated
+                      ? `That animated image is ${mb} MB. GIFs and animated WebPs must be under ${MAX_ANIMATED_MB} MB — try trimming it to a shorter loop or lowering its resolution (a tool like ezgif.com works well), then upload again.`
+                      : `That image is ${mb} MB. Please keep it under ${MAX_STATIC_MB} MB.`
+                  )
+                  setFile(null)
+                  setPreview(null)
+                  e.target.value = ''
+                  return
                 }
+                setError(null)
+                setFile(f)
+                setPreview(URL.createObjectURL(f))
               }}
               className="text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600/80 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-violet-600 disabled:opacity-50"
             />

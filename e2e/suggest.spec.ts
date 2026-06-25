@@ -69,6 +69,23 @@ test.describe('Card Suggestions', () => {
     await test.info().attach('preview-update', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
+  test('rejects an oversized animated upload with a friendly message', async ({ page }) => {
+    await login(page, TEST_PLAYER)
+    await page.goto('/suggest')
+    await expect(page.getByPlaceholder('Card name')).toBeVisible({ timeout: 10000 })
+
+    // 5 MB GIF — over the 4 MB animated cap (Vercel functions reject bodies
+    // >4.5 MB). Without this guard it reaches the Server Action and fails as a
+    // cryptic "unexpected response from server".
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'too-big.gif',
+      mimeType: 'image/gif',
+      buffer: Buffer.alloc(5 * 1024 * 1024, 0),
+    })
+
+    await expect(page.getByText(/must be under 4 MB/)).toBeVisible({ timeout: 5000 })
+  })
+
   test('review modal appears before submission', async ({ page }) => {
     await login(page, TEST_PLAYER)
     await page.goto('/suggest')
