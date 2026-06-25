@@ -10,7 +10,7 @@ export default function AdminPage() {
       <main className="mx-auto max-w-5xl px-6 py-10">
         <h2 className="font-display mb-1 text-2xl font-bold tracking-tight">Admin Panel</h2>
         <p className="mb-8 text-sm text-zinc-400">
-          Manage cards, packs, game systems, and players. Pick a section from the sidebar, or jump in below.
+          Manage cards, packs, game systems, and players. Jump into any section below.
         </p>
 
         {ADMIN_NAV.map((group) => (

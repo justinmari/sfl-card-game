@@ -87,21 +87,21 @@ export default function Navbar({ avatarUrl, isAdmin, gruten, canClaimDaily, pack
 
   return (
     <>
-    <nav className="surface sticky top-0 z-40 border-b border-white/10 px-6 py-4">
-      <div className="mx-auto flex max-w-5xl items-center justify-between">
-        <div className="flex items-center gap-3">
+    <nav className="surface sticky top-0 z-40 border-b border-white/10 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {backHref && (
-            <Link href={backHref} className="text-zinc-400 transition-colors hover:text-white">
-              &larr; {backLabel || 'Back'}
+            <Link href={backHref} className="shrink-0 whitespace-nowrap text-zinc-400 transition-colors hover:text-white">
+              &larr;<span className="ml-1 hidden sm:inline">{backLabel || 'Back'}</span>
             </Link>
           )}
-          <Link href="/dashboard" className="font-display text-xl font-bold tracking-tight">
+          <Link href="/dashboard" className="min-w-0 truncate font-display text-lg font-bold tracking-tight sm:text-xl">
             <span className="text-arcade-gradient">{title || 'SFL TCG'}</span>
             {!title && version && <span className="ml-2 text-[10px] font-normal text-zinc-500">v{version}</span>}
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {grutenDisplay !== null && (
             <div className="flex items-center gap-2">
               {showPackage && (

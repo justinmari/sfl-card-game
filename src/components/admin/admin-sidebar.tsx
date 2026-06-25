@@ -6,16 +6,16 @@ import { LayoutGrid } from 'lucide-react'
 import { ADMIN_NAV } from './admin-nav'
 
 /**
- * Persistent left nav for the admin panel. Grouped sections with headings; the
- * active route is highlighted. On mobile it stacks above the content as a
- * wrapping set of chips; on lg+ it's a sticky left rail.
+ * Persistent left nav for the admin panel: a sticky left rail on lg+ screens.
+ * Hidden on mobile — there the admin landing page's bento grid is the hub, so a
+ * stacked sidebar would just duplicate it (and sit awkwardly above the navbar).
  */
 export default function AdminSidebar({ pendingSuggestions = 0 }: { pendingSuggestions?: number }) {
   const pathname = usePathname()
 
   return (
-    <aside className="shrink-0 border-b border-white/10 bg-zinc-950/40 lg:w-60 lg:border-b-0 lg:border-r" data-testid="admin-sidebar">
-      <div className="p-3 lg:sticky lg:top-0 lg:max-h-screen lg:overflow-y-auto lg:p-4">
+    <aside className="hidden shrink-0 border-r border-white/10 bg-zinc-950/40 lg:block lg:w-60" data-testid="admin-sidebar">
+      <div className="sticky top-0 max-h-screen overflow-y-auto p-4">
         <Link
           href="/admin"
           className={`mb-3 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-bold transition-colors ${
@@ -28,7 +28,7 @@ export default function AdminSidebar({ pendingSuggestions = 0 }: { pendingSugges
         {ADMIN_NAV.map((group) => (
           <div key={group.label} className="mb-4">
             <h3 className="mb-1 px-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">{group.label}</h3>
-            <div className="flex flex-wrap gap-1 lg:flex-col">
+            <div className="flex flex-col gap-1">
               {group.items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(item.href + '/')
                 const Icon = item.icon
