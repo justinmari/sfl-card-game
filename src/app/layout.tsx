@@ -34,6 +34,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // Passive holo animations default off (perf); HoloPreferences flips this
+      // to "on" after hydration only if the user opted in. Setting it here keeps
+      // them paused from first paint instead of flashing on then off.
+      data-holo-passive="off"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col"><HoloPreferences /><NavProgress />{children}</body>

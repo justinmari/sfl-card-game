@@ -121,16 +121,35 @@ function CompactCardHolo({
   children: React.ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [shine, setShine] = useState({ x: 50, y: 50, c: 0 })
   const [hover, setHover] = useState(false)
 
+  // Pointer position is written straight to the host node's CSS vars (never via
+  // state) so moving over the card doesn't re-render its holo subtree per frame.
   const onMove = useCallback((e: React.MouseEvent) => {
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
     const x = (e.clientX - r.left) / r.width
     const y = (e.clientY - r.top) / r.height
-    setShine({ x: x * 100, y: y * 100, c: Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2) })
+    const st = el.style
+    st.setProperty('--mx', `${x * 100}%`)
+    st.setProperty('--my', `${y * 100}%`)
+    st.setProperty('--pfc', `${Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2)}`)
+  }, [])
+
+  const onEnter = useCallback(() => {
+    setHover(true)
+    ref.current?.style.setProperty('--holo', '1')
+  }, [])
+  const onLeave = useCallback(() => {
+    setHover(false)
+    const el = ref.current
+    if (!el) return
+    const st = el.style
+    st.setProperty('--holo', '0')
+    st.setProperty('--mx', '50%')
+    st.setProperty('--my', '50%')
+    st.setProperty('--pfc', '0')
   }, [])
 
   const on = hover || auraActive
@@ -140,16 +159,14 @@ function CompactCardHolo({
       ref={ref}
       className="holo-host compact-holo relative isolate w-full"
       onMouseMove={onMove}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => {
-        setHover(false)
-        setShine({ x: 50, y: 50, c: 0 })
-      }}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
       style={{
-        '--mx': `${shine.x}%`,
-        '--my': `${shine.y}%`,
-        '--holo': hover ? 1 : 0,
-        '--pfc': shine.c,
+        // Constant rest-state values; the handlers mutate these vars directly.
+        '--mx': '50%',
+        '--my': '50%',
+        '--holo': 0,
+        '--pfc': 0,
       } as React.CSSProperties}
     >
       {aura && (

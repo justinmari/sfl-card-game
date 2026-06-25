@@ -264,8 +264,21 @@ body {
   100% { transform: translate(calc(-50% + var(--drift, 0px)), -150px) scale(0.2); opacity: 0; }
 }
 
+/* Long radial holo-coloured sunburst behind the pack: flashes out fast as the
+   pack splits, then fades away quickly. */
+.holo-ray {
+  animation: holoRayBurst 0.24s cubic-bezier(0.12, 0.9, 0.2, 1) forwards;
+}
+@keyframes holoRayBurst {
+  0% { transform: scaleY(0.1); opacity: 0; }
+  10% { transform: scaleY(1); opacity: 1; }
+  35% { opacity: 0.3; }
+  100% { transform: scaleY(1.08); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tear-spark, .pack-spark-bit, .tear-flash, .pack-screen-flash, .pack-part, .pack-rise { animation: none; }
+  .tear-spark, .pack-spark-bit, .tear-flash, .pack-screen-flash, .pack-part, .pack-rise, .holo-ray { animation: none; }
+  .holo-ray { opacity: 0; }
 }
 
 /* ---------- Holo editions (cosmetic card finishes) ----------
@@ -713,6 +726,76 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .card-aura { animation: none; filter: blur(2px) brightness(0.9); }
+}
+/* The aura's spin + blurred brightness pulse is the most expensive holo
+   animation (it re-rasterises a large blurred layer every frame), yet the aura
+   is invisible (opacity 0) until hover or the always-on aura preference. So
+   only run it while the aura is actually shown — this keeps a full collection
+   page of resting holos cheap, with no visual change. Declared after the
+   per-edition `animation` shorthands above so the paused state sticks. */
+.card-aura,
+.card-aura-galaxy,
+.card-aura-gold,
+.card-aura-diamond {
+  animation-play-state: paused;
+}
+.card-aura-on,
+html[data-holo-aura="on"] .card-aura {
+  animation-play-state: running;
+}
+/* Same idea for the cursor-spotlight layers: their opacity scales with --holo,
+   so they're invisible until the cursor is over the card — only animate them
+   while hovering. (Matches what passive-off already does, applied always.) */
+.star-spotlight::before,
+.star-spotlight::after,
+.diamond-field::after {
+  animation-play-state: paused;
+}
+.holo-host:hover .star-spotlight::before,
+.holo-host:hover .star-spotlight::after,
+.holo-host:hover .diamond-field::after {
+  animation-play-state: running;
+}
+/* The hover-only holo layers are invisible at rest (their opacity scales with
+   --holo, which is 0 until hover) yet they still sit in the paint tree as
+   screen-blended layers that recomposite on every scroll frame. Take them out
+   of the paint tree entirely until the card is hovered — on a collection grid
+   this removes ~half the blend layers from every resting card, with no visual
+   change at rest. */
+.star-spotlight,
+.line-field::after,
+.diamond-field::after,
+.diamond-lattice::after,
+.holo-galaxy-top,
+.holo-diamond-top {
+  display: none;
+}
+.holo-host:hover .star-spotlight,
+.holo-host:hover .line-field::after,
+.holo-host:hover .diamond-field::after,
+.holo-host:hover .diamond-lattice::after,
+.holo-host:hover .holo-galaxy-top,
+.holo-host:hover .holo-diamond-top {
+  display: block;
+}
+
+/* One-shot aura bloom flashed behind a pack as it pops open. The radial-glow
+   background is set inline per finish (slice-pack AURA_FLASH_BG). Fast bloom,
+   quick fade. */
+.pack-aura-flash {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(16px) brightness(1.35);
+  animation: packAuraFlash 0.4s ease-out forwards;
+}
+@keyframes packAuraFlash {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.45); }
+  22% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pack-aura-flash { animation: none; opacity: 0; }
 }
 
 /* ============================================================

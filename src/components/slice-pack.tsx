@@ -18,6 +18,30 @@ export const RARITY_RGB: Record<string, [number, number, number]> = {
 }
 export const GOLD_RGB: [number, number, number] = [255, 205, 95]
 
+/** Holo finish → solid ray colour. Galaxy uses a rainbow spectrum (below). */
+const HOLO_SOLID: Record<string, [number, number, number]> = {
+  golden: [255, 205, 95], // gold
+  diamond: [80, 165, 255], // azure-blue
+}
+/** Galaxy ray spectrum, red → violet, cycled across the burst rays. */
+const GALAXY_SPECTRUM: [number, number, number][] = [
+  [255, 70, 70], // red
+  [255, 150, 40], // orange
+  [255, 230, 70], // yellow
+  [80, 220, 100], // green
+  [80, 150, 255], // blue
+  [180, 100, 255], // violet
+]
+
+/** Aura-bloom backgrounds: a single symmetric radial glow per finish (galaxy is
+ *  a concentric rainbow halo). Centred — not the card's off-centre nebula. */
+const AURA_FLASH_BG: Record<string, string> = {
+  golden: 'radial-gradient(circle, rgba(255,228,150,0.95), rgba(255,195,80,0.55) 42%, transparent 70%)',
+  diamond: 'radial-gradient(circle, rgba(200,228,255,0.95), rgba(70,150,255,0.6) 42%, transparent 70%)',
+  galaxy:
+    'radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(180,100,255,0.7) 16%, rgba(80,150,255,0.6) 32%, rgba(80,220,100,0.55) 48%, rgba(255,230,70,0.55) 63%, rgba(255,150,40,0.5) 78%, rgba(255,70,70,0.45) 90%, transparent 100%)',
+}
+
 export const SLICE_PACKW = 340
 const IMGH = 524
 const ZIGH = Math.round((SLICE_PACKW * 12) / 208)
@@ -39,6 +63,17 @@ const RAYS = Array.from({ length: RAY_COUNT }, (_, i) => {
   const fx = i / (RAY_COUNT - 1)
   return { x: 8 + fx * (SLICE_PACKW - 16), angle: (fx - 0.5) * 54, len: 250 + (i % 4) * 60 }
 })
+
+// Radial burst of holo rays fired the instant the pack pops open — a long full
+// 360° sunburst from the centre of the pack, sitting behind it alongside an
+// aura bloom. Lengths vary for a spiky spread; for galaxy each ray takes the
+// next spectrum colour (count is a multiple of 6).
+const HOLO_RAY_COUNT = 12
+const HOLO_RAYS = Array.from({ length: HOLO_RAY_COUNT }, (_, i) => ({
+  angle: (i / HOLO_RAY_COUNT) * 360,
+  len: 560 + (i % 4) * 120,
+  delay: (i % 3) * 0.03,
+}))
 
 // Particles that emerge along the cut as the spark passes over them.
 const PART_COUNT = 22
@@ -93,6 +128,7 @@ export default function SlicePack({
   dir,
   done,
   rgb = GOLD_RGB,
+  holo = null,
 }: {
   name?: string
   image?: string | null
@@ -103,6 +139,8 @@ export default function SlicePack({
   done: boolean
   /** Ray/glow tint — set from the rarest card in the pack. */
   rgb?: [number, number, number]
+  /** Highest holo finish in the pack — fires an extra coloured ray burst on open. */
+  holo?: 'golden' | 'diamond' | 'galaxy' | null
 }) {
   const topT = done ? `translateY(-${SLICE_CUTY + 110}px) rotate(${dir * 5}deg)` : 'translateY(0px)'
   const botT = done ? `translateY(${SLICE_TOTALH + 90}px)` : 'translateY(0px)'
@@ -174,6 +212,39 @@ export default function SlicePack({
                       animationDelay: `${p.delay}s`,
                     } as React.CSSProperties
                   }
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Holo flash: a soft aura bloom + a few long rays directly behind the
+          pack's centre, revealed as it splits open and fading fast. Coloured by
+          the rarest holo finish in the pack (gold / azure / galaxy rainbow). */}
+      {done && holo && (
+        <div className="pointer-events-none absolute" style={{ left: SLICE_PACKW / 2, top: SLICE_TOTALH / 2, zIndex: 0 }}>
+          <div
+            className="pack-aura-flash"
+            style={{ left: 0, top: 0, width: 860, height: 860, background: AURA_FLASH_BG[holo] }}
+          />
+          {HOLO_RAYS.map((r, i) => {
+            const [hr, hg, hb] = holo === 'galaxy' ? GALAXY_SPECTRUM[i % GALAXY_SPECTRUM.length] : HOLO_SOLID[holo]
+            return (
+              <div key={`holo-ray-${i}`} style={{ position: 'absolute', left: 0, top: 0, transform: `rotate(${r.angle}deg)` }}>
+                <div
+                  className="holo-ray"
+                  style={{
+                    position: 'absolute',
+                    left: -22,
+                    bottom: 0,
+                    width: 44,
+                    height: r.len,
+                    transformOrigin: 'bottom center',
+                    background: `linear-gradient(to top, rgba(255,255,255,0.95), rgba(${hr},${hg},${hb},0.85) 38%, transparent)`,
+                    filter: 'blur(1.5px) brightness(1.5)',
+                    animationDelay: `${r.delay}s`,
+                  }}
                 />
               </div>
             )

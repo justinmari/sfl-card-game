@@ -178,40 +178,52 @@ export default function TradingCard({
   const diamondField = diamond
   const aura = galaxy ? 'galaxy' : diamond ? 'diamond' : golden ? 'gold' : null
   const cardRef = useRef<HTMLDivElement>(null)
-  const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 })
-  // `c` = pointer-from-center (0 at the middle → 1 at a corner). pokemon-cards-css
-  // uses this to bloom the glare brightest when the pointer is near the centre.
-  const [shine, setShine] = useState({ x: 50, y: 50, c: 0 })
+  // The tilting card inner. The pointer-driven values (tilt transform + the
+  // --mx/--my/--holo/--pfc CSS vars the holo layers read) are written STRAIGHT
+  // to this node on mousemove — never through React state — so moving the
+  // cursor over a card doesn't re-render its (heavy) holo subtree every frame.
+  // `c` = pointer-from-center (0 at the middle → 1 at a corner); blooms the
+  // glare brightest near the centre.
+  const innerRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const el = cardRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
+    const host = cardRef.current
+    const inner = innerRef.current
+    if (!host || !inner) return
+    const rect = host.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width
     const y = (e.clientY - rect.top) / rect.height
     const maxTilt = 15
-    setTilt({
-      rotateX: (0.5 - y) * maxTilt,
-      rotateY: (x - 0.5) * maxTilt,
-    })
-    setShine({ x: x * 100, y: y * 100, c: Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2) })
+    const st = inner.style
+    st.setProperty('--mx', `${x * 100}%`)
+    st.setProperty('--my', `${y * 100}%`)
+    st.setProperty('--pfc', `${Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2)}`)
+    st.transform = `perspective(800px) rotateX(${(0.5 - y) * maxTilt}deg) rotateY(${(x - 0.5) * maxTilt}deg) scale(1.05)`
   }, [])
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), [])
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true)
+    const inner = innerRef.current
+    if (!inner) return
+    inner.style.setProperty('--holo', '1')
+    inner.style.transition = 'transform 0.1s ease-out, box-shadow 0.3s'
+  }, [])
 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false)
-    setTilt({ rotateX: 0, rotateY: 0 })
-    setShine({ x: 50, y: 50, c: 0 })
+    const inner = innerRef.current
+    if (!inner) return
+    const st = inner.style
+    st.setProperty('--holo', '0')
+    st.setProperty('--mx', '50%')
+    st.setProperty('--my', '50%')
+    st.setProperty('--pfc', '0')
+    st.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) scale(1)'
+    st.transition = 'transform 0.4s ease-out, box-shadow 0.3s'
   }, [])
 
   const shineColor = rarityShineColor[card.rarity] || 'rgba(255,255,255,0.15)'
-
-  const cardTransform = isHovered
-    ? `perspective(800px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) scale(1.05)`
-    : 'perspective(800px) rotateX(0) rotateY(0) scale(1)'
-  const cardTransition = isHovered ? 'transform 0.1s ease-out, box-shadow 0.3s' : 'transform 0.4s ease-out, box-shadow 0.3s'
 
   return (
     <div
@@ -234,24 +246,28 @@ export default function TradingCard({
       )}
 
       <div
+        ref={innerRef}
         className={`relative flex aspect-[5/8] flex-col overflow-hidden rounded-2xl border ${rarityColors[card.rarity]} bg-zinc-900 ${isHovered ? 'shadow-2xl ' + rarityGlow[card.rarity] : ''} ${onClick ? 'text-left' : ''}`}
         style={{
-          transform: cardTransform,
-          transition: cardTransition,
-          // Pointer position + hover state for the holo edition layer (CSS reads these).
-          '--mx': `${shine.x}%`,
-          '--my': `${shine.y}%`,
-          '--holo': isHovered ? 1 : 0,
-          '--pfc': shine.c,
+          // Constant rest-state values: the pointer handlers mutate transform +
+          // the --mx/--my/--holo/--pfc vars directly on this node, so these
+          // literals must NOT depend on state (else a hover re-render would
+          // reset them mid-interaction).
+          transform: 'perspective(800px) rotateX(0deg) rotateY(0deg) scale(1)',
+          transition: 'transform 0.4s ease-out, box-shadow 0.3s',
+          '--mx': '50%',
+          '--my': '50%',
+          '--holo': 0,
+          '--pfc': 0,
         } as React.CSSProperties}
       >
-        {/* Shine overlay */}
+        {/* Shine overlay — follows the pointer via the CSS vars; faded in/out by
+            hover (low-frequency, so it can stay state-driven). */}
         <div
           className="pointer-events-none absolute inset-0 z-10 rounded-2xl"
           style={{
-            background: isHovered
-              ? `radial-gradient(circle at ${shine.x}% ${shine.y}%, ${shineColor} 0%, transparent 60%)`
-              : 'none',
+            background: `radial-gradient(circle at var(--mx) var(--my), ${shineColor} 0%, transparent 60%)`,
+            opacity: isHovered ? 1 : 0,
             transition: 'opacity 0.3s',
           }}
         />
@@ -260,16 +276,18 @@ export default function TradingCard({
             pointer-following rainbow + white sheen riding on top while hovered. */}
         {galaxy && (
           <>
-            <div className="holo-layer holo-behind holo-passive holo-galaxy-ambient" aria-hidden />
-            <div data-testid="holo-layer" className="holo-layer holo-galaxy-top" aria-hidden />
+            {/* testid lives on the always-present ambient (the -top sheen is
+                display:none until hover for perf, so it can't mark presence). */}
+            <div data-testid="holo-layer" className="holo-layer holo-behind holo-passive holo-galaxy-ambient" aria-hidden />
+            <div className="holo-layer holo-galaxy-top" aria-hidden />
           </>
         )}
 
         {/* Diamond holo — icy azure ambient behind the photo, white sheen on top. */}
         {diamond && (
           <>
-            <div className="holo-layer holo-behind holo-diamond-ambient" aria-hidden />
-            <div data-testid="holo-layer" className="holo-layer holo-diamond-top" aria-hidden />
+            <div data-testid="holo-layer" className="holo-layer holo-behind holo-diamond-ambient" aria-hidden />
+            <div className="holo-layer holo-diamond-top" aria-hidden />
           </>
         )}
 

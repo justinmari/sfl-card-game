@@ -142,6 +142,17 @@ export default function SwipeableReveal({
     }
     return RARITY_RGB[best] ?? GOLD_RGB
   }, [deck, currentPackNum])
+  // Highest holo finish in the current pack — fires the extra ray burst on open.
+  const packHolo = useMemo<'golden' | 'diamond' | 'galaxy' | null>(() => {
+    let best: Edition | '' = ''
+    for (const d of deck) {
+      if (d.kind === 'card' && d.packNum === currentPackNum && isHoloEdition(d.card.edition)) {
+        const e = (d.card.edition || 'regular') as Edition
+        if (best === '' || editionRank(e) > editionRank(best)) best = e
+      }
+    }
+    return best === 'golden' || best === 'diamond' || best === 'galaxy' ? best : null
+  }, [deck, currentPackNum])
   const { preferences } = usePreferences()
   const autoDelayMs = AUTO_REVEAL_DELAY_MS[preferences.autoRevealSpeed]
 
@@ -436,6 +447,7 @@ export default function SwipeableReveal({
                       price={packPrice}
                       createdAt={packCreatedAt}
                       rgb={packRgb}
+                      holo={packHolo}
                       tear={lift}
                       dir={curlDir}
                       done={isCurrent && tearing}

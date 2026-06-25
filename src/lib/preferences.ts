@@ -26,7 +26,7 @@ export type Preferences = {
   /** Pace of the pack-reveal Auto button. */
   autoRevealSpeed: AutoRevealSpeed
   /** Animate holo finishes at rest. When off, holos only animate on hover.
-   *  Defaults to true on desktop, false on touch/mobile (perf). */
+   *  Defaults off (perf) — opt in via preferences. */
   passiveHoloAnimations: boolean
   /** Show the holo glow aura without needing to hover. */
   autoHoloAura: boolean
@@ -38,7 +38,7 @@ export type Preferences = {
 export const DEFAULT_PREFERENCES: Preferences = {
   compactCards: false,
   autoRevealSpeed: 'normal',
-  passiveHoloAnimations: true,
+  passiveHoloAnimations: false,
   autoHoloAura: false,
   collectionHoloDisplay: 'rarest',
 }
@@ -87,19 +87,9 @@ export function serializePreferences(prefs: Preferences): string {
 export function loadPreferences(): Preferences {
   if (typeof window === 'undefined') return { ...DEFAULT_PREFERENCES }
   const raw = window.localStorage.getItem(PREFERENCES_STORAGE_KEY)
-  const prefs = parsePreferences(raw)
-  // First run on this device (no explicit value stored): default passive holo
-  // animations off on touch/mobile, on elsewhere.
-  let storedPassive: unknown
-  try {
-    storedPassive = raw ? (JSON.parse(raw) as Record<string, unknown>).passiveHoloAnimations : undefined
-  } catch {
-    storedPassive = undefined
-  }
-  if (typeof storedPassive !== 'boolean') {
-    prefs.passiveHoloAnimations = !isTouchDevice()
-  }
-  return prefs
+  // Passive holo animations now default off everywhere (perf); an explicit
+  // stored value is honoured by parsePreferences, otherwise it falls to false.
+  return parsePreferences(raw)
 }
 
 /** Fired in the current tab when preferences change (the native `storage` event
