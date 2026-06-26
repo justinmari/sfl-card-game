@@ -72,12 +72,21 @@ export default async function DashboardPage() {
       <DashboardToast />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <h2 className="font-display mb-2 text-3xl font-bold tracking-tight">
-          Welcome, <span className="text-arcade-gradient">{profile.full_name}</span>!
-        </h2>
-        <p className="mb-8 text-zinc-400">
-          {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
-        </p>
+        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-display mb-2 text-3xl font-bold tracking-tight">
+              Welcome, <span className="text-arcade-gradient">{profile.full_name}</span>!
+            </h2>
+            <p className="text-zinc-400">
+              {isAdmin ? 'Manage your card game below.' : 'Collect cards and open packs!'}
+            </p>
+          </div>
+          {latestChangelog && (
+            <div className="w-full sm:w-72 sm:flex-none">
+              <ChangelogTeaser entry={latestChangelog} />
+            </div>
+          )}
+        </div>
 
         {/* Main — bento grid: Shop hero + four standard tiles */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:auto-rows-[8.5rem]">
@@ -151,8 +160,6 @@ export default async function DashboardPage() {
             </div>
           </>
         )}
-
-        {latestChangelog && <ChangelogTeaser entry={latestChangelog} />}
       </main>
     </div>
   )
