@@ -48,6 +48,7 @@ export default function SwipeableReveal({
   packCreatedAt,
   onDone,
   coverless = false,
+  headline = 'You pulled:',
 }: {
   cards: CardData[]
   cardsPerPack: number
@@ -59,6 +60,8 @@ export default function SwipeableReveal({
   /** Skip the pack-cover stage and start straight at the cards (used when the
    *  pack was already opened by a different animation, e.g. the slice). */
   coverless?: boolean
+  /** Heading shown on the final summary grid (e.g. "You received:" for trades). */
+  headline?: string
 }) {
   // Build the deck: a pack cover before each pack's cards (unless coverless).
   // Cards within each pack are revealed least-rare → rarest.
@@ -316,7 +319,7 @@ export default function SwipeableReveal({
     return (
       <>
         <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-4 sm:hidden">
-          <h2 className="mb-3 text-center text-xl font-bold text-white">You pulled:</h2>
+          <h2 className="mb-3 text-center text-xl font-bold text-white">{headline}</h2>
           <div className="flex-1 overflow-y-auto">{grid('grid-cols-4')}</div>
           <div className="flex justify-center pt-3">
             <button onClick={onDone} className="btn-arcade rounded-lg px-6 py-2.5 text-sm">Done</button>
@@ -324,7 +327,7 @@ export default function SwipeableReveal({
         </div>
         <div data-testid="reveal-summary-desktop" className="fixed inset-0 z-50 hidden sm:flex items-center justify-center bg-black/80" onClick={onDone}>
           <div className="mx-auto w-full max-w-3xl rounded-2xl border border-zinc-700 bg-zinc-900 p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="mb-4 text-center text-xl font-bold text-white">You pulled:</h2>
+            <h2 className="mb-4 text-center text-xl font-bold text-white">{headline}</h2>
             <div className="max-h-[60vh] overflow-y-auto">{grid('grid-cols-6')}</div>
             <div className="flex justify-center pt-4">
               <button onClick={onDone} className="btn-arcade rounded-lg px-6 py-2.5 text-sm">Done</button>

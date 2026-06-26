@@ -1,6 +1,7 @@
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from './navbar'
+import TradeInviteListener from './trade-invite-listener'
 
 export default async function AppNavbar({
   backHref,
@@ -61,6 +62,8 @@ export default async function AppNavbar({
   }
 
   return (
+    <>
+    {profile && <TradeInviteListener userId={profile.id} />}
     <Navbar
       avatarUrl={profile?.user_metadata?.avatar_url}
       isAdmin={profile?.role === 'admin'}
@@ -74,5 +77,6 @@ export default async function AppNavbar({
       title={title}
       version={version}
     />
+    </>
   )
 }

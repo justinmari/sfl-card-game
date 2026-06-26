@@ -12,6 +12,7 @@ const serviceHeaders = {
 
 export const TEST_ADMIN = { email: 'admin@test.com', password: 'password123' }
 export const TEST_PLAYER = { email: 'player@test.com', password: 'password123' }
+export const TEST_PLAYER_TWO = { email: 'player2@test.com', password: 'password123' }
 
 export async function login(page: Page, user: { email: string; password: string }) {
   await page.goto('/login')

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import {
   ShoppingBag, Library, Users, ScrollText, Lightbulb,
-  Swords, LayoutGrid, Shield, Inbox, Gift, Receipt, Images,
+  Swords, LayoutGrid, Shield, Inbox, Gift, Receipt, Images, Handshake,
 } from 'lucide-react'
 import { getProfile } from '@/lib/supabase/get-profile'
 import { createClient } from '@/lib/supabase/server'
@@ -34,6 +34,10 @@ export default async function DashboardPage() {
   const arenaEnabled = await isArenaEnabled()
   const suggestionsEnabled = await isSuggestionsEnabled()
   const isAdmin = profile.role === 'admin'
+
+  // Incoming live-trade invites for the badge (sweeps stale sessions first).
+  await supabase.rpc('cleanup_stale_trade_sessions')
+  const { data: pendingTrades } = await supabase.rpc('pending_trade_invite_count')
 
   // Latest changelog entry for the dashboard "what's new" teaser.
   const { data: latestChangelog } = await supabase
@@ -87,6 +91,7 @@ export default async function DashboardPage() {
           />
           <DashTile href="/collection" icon={Library} title="Collection" subtitle="Browse your cards" />
           <DashTile href="/players" icon={Users} title="Friends" subtitle="See other players" />
+          <DashTile href="/trades" icon={Handshake} title="Trades" subtitle="Swap cards with players" badge={countBadge(pendingTrades ?? 0)} />
           <DashTile href="/changelog" icon={ScrollText} title="Changelog" subtitle="What's new" />
           {suggestionsEnabled ? (
             <DashTile href="/suggest" icon={Lightbulb} title="Suggest a Card" subtitle="Share an idea" />

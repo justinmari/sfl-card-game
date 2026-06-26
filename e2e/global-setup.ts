@@ -88,16 +88,22 @@ async function ensureCardImagesBucket() {
 export default async function globalSetup() {
   const adminId = await getOrCreateUser('admin@test.com', 'password123')
   const playerId = await getOrCreateUser('player@test.com', 'password123')
+  // Second non-admin player, for player-to-player trading tests.
+  const player2Id = await getOrCreateUser('player2@test.com', 'password123')
 
   await ensureCardImagesBucket()
 
-  console.log(`Test users: admin=${adminId}, player=${playerId}`)
+  console.log(`Test users: admin=${adminId}, player=${playerId}, player2=${player2Id}`)
 
   await upsertProfile(adminId, 'Test Admin', 'admin', 10000)
   await upsertProfile(playerId, 'Test Player', 'user', 5000)
+  // Name deliberately avoids the "Test Player" substring so existing
+  // getByText('Test Player') locators stay unambiguous.
+  await upsertProfile(player2Id, 'Trade Partner', 'user', 5000)
 
   await seedUserCards(adminId)
   await seedUserCards(playerId)
+  await seedUserCards(player2Id)
 
   await upsertDeck(adminId, 1, 'Admin Deck', [
     'dddddddd-0001-0000-0000-000000000000',

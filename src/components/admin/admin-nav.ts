@@ -1,6 +1,6 @@
 import {
   Images, Ghost, Tags, Sparkles, Package, Gem,
-  Zap, Combine, Settings, Users, Gift, Inbox, Receipt, type LucideIcon,
+  Zap, Combine, Settings, Users, Gift, Inbox, Receipt, ArrowLeftRight, type LucideIcon,
 } from 'lucide-react'
 
 export type AdminNavItem = { href: string; label: string; subtitle: string; icon: LucideIcon }
@@ -54,6 +54,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: 'Audit',
     items: [
       { href: '/admin/transactions', label: 'Gruten Logs', subtitle: 'Transaction history', icon: Receipt },
+      { href: '/admin/trade-logs', label: 'Trade Logs', subtitle: 'Accepted trades', icon: ArrowLeftRight },
     ],
   },
 ]
