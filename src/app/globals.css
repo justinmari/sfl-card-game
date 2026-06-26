@@ -849,38 +849,37 @@ html[data-holo-perf="low"] .holo-ray {
 }
 html[data-holo-perf="low"] .pack-aura-flash { filter: none; }
 
-/* ---- Baked foil textures (the real no-GPU scroll fix) ----
+/* ---- Lighten the live foil for the no-GPU tier ----
    The live foil is a stack of conic/radial gradients + tiled SVG fields + mask
-   passes. On a GPU that's free, but on a software rasteriser every layer is
-   re-PAINTED as each card scrolls into view — that paint cost (not compositing)
-   is what makes scrolling a full holo page lag. Swap the whole stack for a
-   single pre-baked bitmap per finish (public/foil/*.webp, ~6-9KB): painting a
-   tile becomes a cheap bitmap sample. The bitmap *is* the rich resting foil
-   (rainbow/azure/amber wash + stars/lattice/lines + border glow, captured with
-   the real screen-blend), so cards look the same — or better — and scroll cheap.
-   The premium (data-holo-perf="high") path keeps the live, animated foil. */
+   passes. On a software rasteriser every layer is re-PAINTED as each card
+   scrolls into view — that paint cost is the scroll lag. We keep the foil LIVE
+   (no bitmaps) but cut the two most expensive parts:
+     1. conic-gradient (per-pixel angle math) → a plain linear wash, same colours
+     2. the blurred inset glow (a per-card blur) → a crisp inset border
+   plus the always-on tiled fields stay OFF (their pattern is revealed live by the
+   flashlight on hover instead). The premium ("high") path keeps everything. */
 html[data-holo-perf="low"] .holo-galaxy-ambient {
-  background: url('/foil/galaxy.webp') center / cover no-repeat !important;
-  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+  background: linear-gradient(135deg,
+    rgba(255, 45, 155, 0.5), rgba(255, 154, 45, 0.5), rgba(245, 255, 45, 0.5),
+    rgba(45, 255, 154, 0.5), rgba(45, 155, 255, 0.5), rgba(155, 45, 255, 0.5)) !important;
+  box-shadow: inset 0 0 0 1.5px rgba(180, 120, 255, 0.5) !important;
 }
 html[data-holo-perf="low"] .holo-diamond-ambient {
-  background: url('/foil/diamond.webp') center / cover no-repeat !important;
-  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+  background: linear-gradient(135deg,
+    rgba(130, 205, 255, 0.5), rgba(90, 175, 250, 0.5), rgba(185, 230, 255, 0.5),
+    rgba(110, 190, 250, 0.5), rgba(150, 215, 255, 0.5)) !important;
+  box-shadow: inset 0 0 0 1.5px rgba(150, 205, 255, 0.6) !important;
 }
 html[data-holo-perf="low"] .holo-gold-ambient {
-  background: url('/foil/golden.webp') center / cover no-repeat !important;
-  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+  box-shadow: inset 0 0 0 2px rgba(250, 216, 112, 0.78) !important;
 }
 /* The ALWAYS-ON faint field textures stay off on no-GPU — they paint on every
-   card as it scrolls in (the scroll cost); their faint look is baked into the
-   bitmaps above. */
+   card as it scrolls in (the scroll cost). The flashlight reveals them live on
+   the one hovered card instead. */
 html[data-holo-perf="low"] .star-field,
 html[data-holo-perf="low"] .diamond-field { display: none !important; }
 html[data-holo-perf="low"] .line-field::before,
 html[data-holo-perf="low"] .diamond-lattice::before { opacity: 0 !important; }
-/* Gold sheen carries the holo-layer testid — keep it present but blank (its band
-   is already baked into golden.webp). */
-html[data-holo-perf="low"] .holo-gold-sheen { background: none !important; box-shadow: none !important; }
 
 /* ---- Keep the pointer flashlight on no-GPU ----
    The spotlight layers (the pattern lighting up under the cursor) are driven by
