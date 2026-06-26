@@ -865,21 +865,28 @@ html[data-holo-perf="low"] .holo-galaxy-ambient {
   box-shadow: inset 0 0 0 1.5px rgba(180, 120, 255, 0.5) !important;
 }
 html[data-holo-perf="low"] .holo-diamond-ambient {
+  /* Azure is monochrome, so unlike the rainbow/amber it needs more presence +
+     lighter "ice" highlights to read as diamond at rest. */
   background: linear-gradient(135deg,
-    rgba(130, 205, 255, 0.5), rgba(90, 175, 250, 0.5), rgba(185, 230, 255, 0.5),
-    rgba(110, 190, 250, 0.5), rgba(150, 215, 255, 0.5)) !important;
-  box-shadow: inset 0 0 0 1.5px rgba(150, 205, 255, 0.6) !important;
+    rgba(150, 215, 255, 0.62), rgba(90, 175, 250, 0.58), rgba(225, 244, 255, 0.72),
+    rgba(110, 190, 250, 0.58), rgba(175, 226, 255, 0.66)) !important;
+  opacity: 0.85 !important;
+  box-shadow: inset 0 0 0 1.5px rgba(175, 220, 255, 0.78) !important;
 }
 html[data-holo-perf="low"] .holo-gold-ambient {
   box-shadow: inset 0 0 0 2px rgba(250, 216, 112, 0.78) !important;
 }
-/* The ALWAYS-ON faint field textures stay off on no-GPU — they paint on every
-   card as it scrolls in (the scroll cost). The flashlight reveals them live on
-   the one hovered card instead. */
-html[data-holo-perf="low"] .star-field,
-html[data-holo-perf="low"] .diamond-field { display: none !important; }
+/* The ALWAYS-ON *tiled* field textures stay off on no-GPU — they repeat across
+   the whole card and repaint on every tile that scrolls in (the scroll cost).
+   The flashlight reveals them live on the one hovered card instead. */
+html[data-holo-perf="low"] .star-field { display: none !important; }
 html[data-holo-perf="low"] .line-field::before,
 html[data-holo-perf="low"] .diamond-lattice::before { opacity: 0 !important; }
+/* ...but keep the diamond's signature faceted jewel — it's a SINGLE small SVG at
+   the bottom (not tiled), so it's cheap, and without it a diamond card is just a
+   flat blue wash. Bump it up from its faint rest opacity so it actually reads
+   (the broad rule above already drops its blur). */
+html[data-holo-perf="low"] .diamond-field::before { opacity: 0.55 !important; }
 
 /* ---- Keep the pointer flashlight on no-GPU ----
    The spotlight layers (the pattern lighting up under the cursor) are driven by
