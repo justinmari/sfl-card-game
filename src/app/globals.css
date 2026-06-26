@@ -876,16 +876,19 @@ html[data-holo-perf="low"] .holo-diamond-ambient {
 html[data-holo-perf="low"] .holo-gold-ambient {
   box-shadow: inset 0 0 0 2px rgba(250, 216, 112, 0.78) !important;
 }
-/* The ALWAYS-ON *tiled* field textures stay off on no-GPU — they repeat across
-   the whole card and repaint on every tile that scrolls in (the scroll cost).
-   The flashlight reveals them live on the one hovered card instead. */
-html[data-holo-perf="low"] .star-field { display: none !important; }
-html[data-holo-perf="low"] .line-field::before,
-html[data-holo-perf="low"] .diamond-lattice::before { opacity: 0 !important; }
-/* ...but keep the diamond's signature faceted jewel — it's a SINGLE small SVG at
-   the bottom (not tiled), so it's cheap, and without it a diamond card is just a
-   flat blue wash. Bump it up from its faint rest opacity so it actually reads
-   (the broad rule above already drops its blur). */
+/* Show the foil patterns FAINTLY at rest too (not just under the flashlight).
+   They're the lightest layers now that the real offenders — conic washes, the
+   blur glow, screen blends, the lattice's SVG cut-out mask — are gone:
+   repeating-linear stripes/crosshatch are cheap; the tiled star SVG is slightly
+   heavier. Kept subtle to limit the per-card scroll paint. */
+html[data-holo-perf="low"] .star-field::before,
+html[data-holo-perf="low"] .star-field::after { opacity: 0.13 !important; }
+html[data-holo-perf="low"] .line-field::before { opacity: 0.12 !important; }
+html[data-holo-perf="low"] .diamond-lattice::before { opacity: 0.13 !important; }
+/* Drop the lattice's expensive gem-cutout mask on no-GPU (the gem paints on top
+   anyway), so the crosshatch is just a cheap repeating gradient. */
+html[data-holo-perf="low"] .diamond-lattice { -webkit-mask: none !important; mask: none !important; }
+/* Keep the diamond's signature faceted jewel readable (one small SVG, cheap). */
 html[data-holo-perf="low"] .diamond-field::before { opacity: 0.55 !important; }
 
 /* ---- Keep the pointer flashlight on no-GPU ----
