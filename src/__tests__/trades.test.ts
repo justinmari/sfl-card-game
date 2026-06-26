@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import {
   getOrCreateUser, upsertProfile, signIn, rpc,
   serviceSelect, serviceDelete, serviceInsert, serviceUpdate,
+  authedHeaders, LOCAL_URL,
 } from './rpc-helpers'
 
 // Integration tests for the live trading-session RPCs against local Supabase.
@@ -170,6 +171,36 @@ describe('confirm_trade_session — atomic swap', () => {
     expect((await serviceSelect('trade_audit', `session_id=eq.${id}&select=id`)).length).toBe(0)
   })
 
+  it('cannot trade the same card in two rooms (double-spend across sessions)', async () => {
+    // B holds exactly ONE copy of cardY and is the partner in two rooms.
+    await serviceUpdate('user_cards', `user_id=eq.${B}&card_id=eq.${cardY}&edition=eq.regular`, { count: 1 })
+    const s1 = (await rpc(aTok, 'create_trade_session', { p_partner_id: B })).data as string
+    const s2 = (await rpc(cTok, 'create_trade_session', { p_partner_id: B })).data as string
+
+    // B stages their single cardY in BOTH rooms (one-sided gifts to A and C).
+    const giveY = [{ card_id: cardY, edition: 'regular', quantity: 1 }]
+    await rpc(bTok, 'set_trade_stage', { p_session_id: s1, p_cards: giveY })
+    await rpc(bTok, 'set_trade_stage', { p_session_id: s2, p_cards: giveY })
+
+    // Room 1 completes — B gives cardY to A.
+    await rpc(aTok, 'set_trade_lock', { p_session_id: s1, p_locked: true })
+    await rpc(bTok, 'set_trade_lock', { p_session_id: s1, p_locked: true })
+    await rpc(aTok, 'confirm_trade_session', { p_session_id: s1 })
+    expect((await rpc(bTok, 'confirm_trade_session', { p_session_id: s1 })).data.completed).toBe(true)
+
+    // Room 2 tries to commit the SAME card — re-validation under lock aborts it.
+    await rpc(cTok, 'set_trade_lock', { p_session_id: s2, p_locked: true })
+    await rpc(bTok, 'set_trade_lock', { p_session_id: s2, p_locked: true })
+    await rpc(cTok, 'confirm_trade_session', { p_session_id: s2 })
+    expect((await rpc(bTok, 'confirm_trade_session', { p_session_id: s2 })).status).toBeGreaterThanOrEqual(400)
+
+    // Conserved: A got the one copy, C got nothing, B has zero — never duplicated.
+    expect(await cardCount(A, cardY, 'regular')).toBe(1)
+    expect(await cardCount(C, cardY, 'regular')).toBe(0)
+    expect(await cardCount(B, cardY, 'regular')).toBe(0)
+    expect(await sessionStatus(s2)).toBe('open')
+  })
+
   it('cannot confirm a completed session again', async () => {
     const id = await newSession()
     await rpc(aTok, 'set_trade_stage', { p_session_id: id, p_cards: offerX() })
@@ -207,6 +238,31 @@ describe('access control + lifecycle', () => {
     expect((await rpc(cTok, 'set_trade_stage', { p_session_id: id, p_cards: offerY() })).status).toBeGreaterThanOrEqual(400)
     expect((await rpc(cTok, 'cancel_trade_session', { p_session_id: id })).status).toBeGreaterThanOrEqual(400)
   })
+  it('clients cannot write the tables directly — RLS forces RPC-only mutations', async () => {
+    // Forge cards into your own collection via direct INSERT → denied by RLS.
+    const mint = await fetch(`${LOCAL_URL}/rest/v1/user_cards`, {
+      method: 'POST', headers: authedHeaders(aTok),
+      body: JSON.stringify({ user_id: A, card_id: cardX, edition: 'galaxy', count: 999 }),
+    })
+    expect(mint.status).toBeGreaterThanOrEqual(400)
+    expect(await cardCount(A, cardX, 'galaxy')).toBe(0)
+
+    // Forge a pre-completed trade row directly → denied by RLS.
+    const forgeSession = await fetch(`${LOCAL_URL}/rest/v1/trade_sessions`, {
+      method: 'POST', headers: authedHeaders(aTok),
+      body: JSON.stringify({ initiator_id: A, partner_id: B, status: 'completed' }),
+    })
+    expect(forgeSession.status).toBeGreaterThanOrEqual(400)
+
+    // Tamper an existing session's status by direct UPDATE → no row is changed.
+    const id = await newSession()
+    await fetch(`${LOCAL_URL}/rest/v1/trade_sessions?id=eq.${id}`, {
+      method: 'PATCH', headers: { ...authedHeaders(aTok), Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'completed' }),
+    })
+    expect(await sessionStatus(id)).toBe('open')
+  })
+
   it('either participant can cancel an open session', async () => {
     const id = await newSession()
     expect((await rpc(bTok, 'cancel_trade_session', { p_session_id: id })).status).toBeLessThan(300)
