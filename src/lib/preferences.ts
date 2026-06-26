@@ -10,6 +10,12 @@ export type CollectionHoloDisplay = 'rarest' | 'none'
 
 const COLLECTION_HOLO_DISPLAYS: readonly CollectionHoloDisplay[] = ['rarest', 'none']
 
+/** Card-effect quality tier. 'auto' detects software-rendering (no-GPU)
+ *  browsers and drops to the cheap static look; 'full'/'reduced' force it. */
+export type HoloEffects = 'auto' | 'full' | 'reduced'
+
+const HOLO_EFFECTS: readonly HoloEffects[] = ['auto', 'full', 'reduced']
+
 /** Per-step delay (ms) for the pack-reveal Auto mode, keyed by speed preference. */
 export const AUTO_REVEAL_DELAY_MS: Record<AutoRevealSpeed, number> = {
   slow: 1400,
@@ -33,6 +39,8 @@ export type Preferences = {
   /** How holo finishes show on collection tiles: the rarest finish you own of
    *  each card, or plain (no holo). Per-edition counts show regardless. */
   collectionHoloDisplay: CollectionHoloDisplay
+  /** Card-effect quality. 'auto' = downgrade on no-GPU browsers automatically. */
+  holoEffects: HoloEffects
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -41,6 +49,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   passiveHoloAnimations: false,
   autoHoloAura: false,
   collectionHoloDisplay: 'rarest',
+  holoEffects: 'auto',
 }
 
 /** True on touch/coarse-pointer devices (used for perf-sensitive defaults). */
@@ -74,6 +83,9 @@ export function parsePreferences(raw: string | null): Preferences {
       collectionHoloDisplay: COLLECTION_HOLO_DISPLAYS.includes(obj.collectionHoloDisplay as CollectionHoloDisplay)
         ? (obj.collectionHoloDisplay as CollectionHoloDisplay)
         : DEFAULT_PREFERENCES.collectionHoloDisplay,
+      holoEffects: HOLO_EFFECTS.includes(obj.holoEffects as HoloEffects)
+        ? (obj.holoEffects as HoloEffects)
+        : DEFAULT_PREFERENCES.holoEffects,
     }
   } catch {
     return { ...DEFAULT_PREFERENCES }

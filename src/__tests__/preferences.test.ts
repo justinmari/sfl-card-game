@@ -76,6 +76,7 @@ describe('serializePreferences', () => {
       passiveHoloAnimations: false,
       autoHoloAura: true,
       collectionHoloDisplay: 'none',
+      holoEffects: 'reduced',
     }
     expect(parsePreferences(serializePreferences(prefs))).toEqual(prefs)
   })
@@ -87,6 +88,7 @@ describe('serializePreferences', () => {
       passiveHoloAnimations: true,
       autoHoloAura: false,
       collectionHoloDisplay: 'rarest',
+      holoEffects: 'auto',
     }
     expect(JSON.parse(serializePreferences(prefs))).toEqual(prefs)
   })

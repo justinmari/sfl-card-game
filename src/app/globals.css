@@ -818,6 +818,34 @@ html[data-holo-passive="off"] .holo-host:hover *::after {
 html[data-holo-aura="on"] .card-aura { opacity: 0.85; }
 html[data-holo-aura="on"] .card-aura-rays { opacity: 0.4; }
 
+/* ============================================================
+   REDUCED CARD EFFECTS (data-holo-perf="low") — auto-set on software-rendering
+   (no-GPU) browsers, or forced via the "Card effects" preference. The premium
+   path (data-holo-perf="high") is untouched. Here we FREEZE every holo
+   animation and remove the per-frame-animated filters so the card paints once
+   and only composites — smooth without a GPU. Same colours/foil, just static.
+   ============================================================ */
+html[data-holo-perf="low"] .holo-host *,
+html[data-holo-perf="low"] .holo-host *::before,
+html[data-holo-perf="low"] .holo-host *::after {
+  animation: none !important;
+}
+/* Keep soft edges with a STATIC blur (rasterised once, cached) instead of the
+   animated filters we just removed. */
+html[data-holo-perf="low"] .card-aura { filter: blur(2px) brightness(0.95); }
+html[data-holo-perf="low"] .diamond-field::before { filter: blur(0.8px); }
+html[data-holo-perf="low"] .diamond-field::after { filter: blur(0.5px) brightness(1.2); }
+/* Drop the costliest pointer-driven foil + the pack-open burst on no-GPU. The
+   ambient washes + fields still render (static), so cards still read as holo. */
+html[data-holo-perf="low"] .holo-galaxy-top,
+html[data-holo-perf="low"] .holo-diamond-top,
+html[data-holo-perf="low"] .holo-host:hover .holo-galaxy-top,
+html[data-holo-perf="low"] .holo-host:hover .holo-diamond-top,
+html[data-holo-perf="low"] .holo-ray {
+  display: none !important;
+}
+html[data-holo-perf="low"] .pack-aura-flash { filter: none; }
+
 /* Compact cards have no chrome, so lift the behind-photo holo layers OVER the
    tiny photo — otherwise the holo/passive animation is hidden behind the art. */
 .compact-holo .holo-behind,
