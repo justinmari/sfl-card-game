@@ -829,12 +829,15 @@ html[data-holo-perf="low"] .holo-host *,
 html[data-holo-perf="low"] .holo-host *::before,
 html[data-holo-perf="low"] .holo-host *::after {
   animation: none !important;
+  /* The two worst cases for a software (no-GPU) rasteriser: a `mix-blend-mode`
+     layer can't be cached and is re-blended against the backdrop on every
+     paint/scroll frame, and `filter: blur()` forces a per-layer offscreen
+     buffer. With ~24 holo cards on screen that's hundreds of CPU blends/buffers
+     per frame. Flatten both → plain alpha-composited gradients that paint once
+     and cache. Colours go flatter/less luminous, but it stays smooth. */
+  mix-blend-mode: normal !important;
+  filter: none !important;
 }
-/* Keep soft edges with a STATIC blur (rasterised once, cached) instead of the
-   animated filters we just removed. */
-html[data-holo-perf="low"] .card-aura { filter: blur(2px) brightness(0.95); }
-html[data-holo-perf="low"] .diamond-field::before { filter: blur(0.8px); }
-html[data-holo-perf="low"] .diamond-field::after { filter: blur(0.5px) brightness(1.2); }
 /* Drop the costliest pointer-driven foil + the pack-open burst on no-GPU. The
    ambient washes + fields still render (static), so cards still read as holo. */
 html[data-holo-perf="low"] .holo-galaxy-top,
