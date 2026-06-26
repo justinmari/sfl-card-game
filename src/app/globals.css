@@ -849,6 +849,53 @@ html[data-holo-perf="low"] .holo-ray {
 }
 html[data-holo-perf="low"] .pack-aura-flash { filter: none; }
 
+/* ---- Baked foil textures (the real no-GPU scroll fix) ----
+   The live foil is a stack of conic/radial gradients + tiled SVG fields + mask
+   passes. On a GPU that's free, but on a software rasteriser every layer is
+   re-PAINTED as each card scrolls into view — that paint cost (not compositing)
+   is what makes scrolling a full holo page lag. Swap the whole stack for a
+   single pre-baked bitmap per finish (public/foil/*.webp, ~6-9KB): painting a
+   tile becomes a cheap bitmap sample. The bitmap *is* the rich resting foil
+   (rainbow/azure/amber wash + stars/lattice/lines + border glow, captured with
+   the real screen-blend), so cards look the same — or better — and scroll cheap.
+   The premium (data-holo-perf="high") path keeps the live, animated foil. */
+html[data-holo-perf="low"] .holo-galaxy-ambient {
+  background: url('/foil/galaxy.webp') center / cover no-repeat !important;
+  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+}
+html[data-holo-perf="low"] .holo-diamond-ambient {
+  background: url('/foil/diamond.webp') center / cover no-repeat !important;
+  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+}
+html[data-holo-perf="low"] .holo-gold-ambient {
+  background: url('/foil/golden.webp') center / cover no-repeat !important;
+  opacity: 1 !important; box-shadow: none !important; mix-blend-mode: normal !important;
+}
+/* The ALWAYS-ON faint field textures stay off on no-GPU — they paint on every
+   card as it scrolls in (the scroll cost); their faint look is baked into the
+   bitmaps above. */
+html[data-holo-perf="low"] .star-field,
+html[data-holo-perf="low"] .diamond-field { display: none !important; }
+html[data-holo-perf="low"] .line-field::before,
+html[data-holo-perf="low"] .diamond-lattice::before { opacity: 0 !important; }
+/* Gold sheen carries the holo-layer testid — keep it present but blank (its band
+   is already baked into golden.webp). */
+html[data-holo-perf="low"] .holo-gold-sheen { background: none !important; box-shadow: none !important; }
+
+/* ---- Keep the pointer flashlight on no-GPU ----
+   The spotlight layers (the pattern lighting up under the cursor) are driven by
+   --holo, which the pointer handlers set to 1 only while a card is hovered. So
+   they're fully transparent — and unpainted — at rest and during scroll; only
+   the ONE hovered card ever pays for them. We just restore their screen blend
+   (the broad rule above flattened it) so stars / stripes / lattice BRIGHTEN the
+   baked foil under the cursor instead of covering it. The radial mask centred on
+   --mx/--my and the cursor-tracking JS are unchanged, so the pattern lights up
+   and follows the pointer. */
+html[data-holo-perf="low"] .star-spotlight::before,
+html[data-holo-perf="low"] .star-spotlight::after,
+html[data-holo-perf="low"] .line-field::after,
+html[data-holo-perf="low"] .diamond-lattice::after { mix-blend-mode: screen !important; }
+
 /* Compact cards have no chrome, so lift the behind-photo holo layers OVER the
    tiny photo — otherwise the holo/passive animation is hidden behind the art. */
 .compact-holo .holo-behind,
